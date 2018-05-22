@@ -49,8 +49,9 @@ class Trainer:
         if mimic_dir:
             for path in Path(mimic_dir).iterdir():
                 if path.suffix == '.pkl':
-                    with Path(path).open('rb') as f:
-                        self.buffer.extend(pickle.load(f))
+                    for _ in range(10):
+                        with Path(path).open('rb') as f:
+                            self.buffer.extend(pickle.load(f))
                 print('Loaded mimic file {} into buffer.'.format(path))
 
         s1 = self.reset()

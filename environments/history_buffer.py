@@ -34,5 +34,4 @@ class HistoryBuffer(object):
         if self.shapes is None:
             raise RuntimeError(
                 "Shapes not specified. Call `update` before calling `get`.")
-        return tuple(
-            np.concatenate(buffer, axis=-1) for buffer in self._buffers)
+        return tuple(np.concatenate(buffer, axis=-1) for buffer in self._buffers)

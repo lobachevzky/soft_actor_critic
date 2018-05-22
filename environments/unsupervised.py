@@ -19,10 +19,8 @@ def quaternion_multiply(quaternion1, quaternion0):
     w1, x1, y1, z1 = quaternion1
     return np.array(
         [
-            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0,
-            x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
-            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
-            x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
+            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0, x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
+            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0, x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
         ],
         dtype=np.float64)
 
@@ -45,10 +43,8 @@ class UnsupervisedEnv(PickAndPlaceEnv):
             self.buffer = buffer
             self.sess = session
 
-            self.S1 = tf.placeholder(
-                tf.float32, [None] + self.state_size, name='S1')
-            self.S2 = tf.placeholder(
-                tf.float32, [None] + self.state_size, name='S2')
+            self.S1 = tf.placeholder(tf.float32, [None] + self.state_size, name='S1')
+            self.S2 = tf.placeholder(tf.float32, [None] + self.state_size, name='S2')
             self.A = tf.placeholder(
                 tf.float32, [None] + list(self.action_space.shape), name='A')
             self.T = tf.placeholder(tf.float32, [None, 1], name='T')
@@ -56,11 +52,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
 
             def network_output(inputs, name, reuse):
                 with tf.variable_scope(name, reuse=reuse):
-                    return mlp(
-                        inputs,
-                        layer_size=256,
-                        n_layers=3,
-                        activation=tf.nn.relu)
+                    return mlp(inputs, layer_size=256, n_layers=3, activation=tf.nn.relu)
 
             v1 = network_output(self.S1, name='Q', reuse=False)
             v2 = network_output(self.S2, name='Q', reuse=True)
@@ -72,8 +64,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
             optimizer = tf.train.AdamOptimizer(learning_rate=3e-4)
             gradients, variables = zip(*optimizer.compute_gradients(self.loss))
             if self._grad_clip:
-                gradients, _ = tf.clip_by_global_norm(gradients,
-                                                      self._grad_clip)
+                gradients, _ = tf.clip_by_global_norm(gradients, self._grad_clip)
             self.train = optimizer.apply_gradients(zip(gradients, variables))
             session.run(tf.global_variables_initializer())
 
@@ -89,8 +80,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
     def compute_reward(self, goal, obs):
         assert goal is None
         if self.train is None:
-            raise RuntimeError(
-                "Need to run `UnsupervisedEnv.initialize` first.")
+            raise RuntimeError("Need to run `UnsupervisedEnv.initialize` first.")
         if self.buffer.empty:
             return 0
         sample_steps = Step(*self.buffer.sample(self.batch_size))
@@ -110,8 +100,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
     def step(self, action):
         s, r, t, i = super().step(action)
         if self._block_height() > self._min_lift_height:
-            i['print'] = 'Block lifted by {}. Reward: {}'.format(
-                self._block_height(), r)
+            i['print'] = 'Block lifted by {}. Reward: {}'.format(self._block_height(), r)
             i['log'] = {'block-lifted': 1}
         else:
             i['log'] = {'block-lifted': 0}

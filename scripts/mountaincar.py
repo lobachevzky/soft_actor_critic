@@ -17,8 +17,7 @@ from sac.train import HindsightPropagationTrainer, HindsightTrainer
 def cli(default_reward, seed, logdir, save_path, load_path, render):
     HindsightTrainer(
         env=MountaincarHindsightWrapper(
-            gym.make('MountainCarContinuous-v0'),
-            default_reward=default_reward),
+            gym.make('MountainCarContinuous-v0'), default_reward=default_reward),
         seed=seed,
         buffer_size=10**7,
         activation=tf.nn.relu,

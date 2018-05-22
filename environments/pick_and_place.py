@@ -21,15 +21,12 @@ CHEAT_STARTS = [[
     0,
     3.573e-01,
     3.574e-01,
+], [-0.005, 0.025, 0.447, 0.488, -0.488, -0.512, 0.512, -1.101, 1.575, 0.357, 0.357], [
+    4.636e-03, 8.265e-06, 4.385e-01, 7.126e-01, 2.072e-17, -2.088e-17, -7.015e-01,
+    -1.101e+00, -1.575e+00, 3.573e-01, 3.574e-01
 ], [
-    -0.005, 0.025, 0.447, 0.488, -0.488, -0.512, 0.512, -1.101, 1.575, 0.357,
-    0.357
-], [
-    4.636e-03, 8.265e-06, 4.385e-01, 7.126e-01, 2.072e-17, -2.088e-17,
-    -7.015e-01, -1.101e+00, -1.575e+00, 3.573e-01, 3.574e-01
-], [
-    5.449e-03, -4.032e-03, 4.385e-01, 3.795e-01, 1.208e-17, -2.549e-17,
-    -9.252e-01, -1.101e+00, -7.793e-01, 3.573e-01, 3.574e-01
+    5.449e-03, -4.032e-03, 4.385e-01, 3.795e-01, 1.208e-17, -2.549e-17, -9.252e-01,
+    -1.101e+00, -7.793e-01, 3.573e-01, 3.574e-01
 ]]
 
 
@@ -38,10 +35,8 @@ def quaternion_multiply(quaternion1, quaternion0):
     w1, x1, y1, z1 = quaternion1
     return np.array(
         [
-            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0,
-            x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
-            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
-            x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
+            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0, x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
+            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0, x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
         ],
         dtype=np.float64)
 
@@ -77,10 +72,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [
-            left_finger_name,
-            left_finger_name.replace('_l_', '_r_')
-        ]
+        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         obs_size = history_len * sum(map(np.size, self._obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
@@ -160,10 +152,8 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def at_goal(self, goal, obs):
         qpos, = obs
-        gripper_at_goal = at_goal(
-            self.gripper_pos(qpos), goal.gripper, self._geofence)
-        block_at_goal = at_goal(
-            self.block_pos(qpos), goal.block, self._geofence)
+        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self._geofence)
+        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
@@ -198,15 +188,13 @@ class PickAndPlaceEnv(MujocoEnv):
 
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
-            self.sim.name2id(ObjType.ACTUATOR, n)
-            for n in [mirrored, mirroring]
+            self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:
             action[mirroring_index] = action[mirrored_index]
         else:
-            mirroring_index = np.minimum(mirroring_index,
-                                         self.action_space.shape)
+            mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
             action = np.insert(action, mirroring_index, action[mirrored_index])
         s, r, t, i = super().step(action)
         i['log'] = {'successes': float(r > 0)}

@@ -1,10 +1,9 @@
 import itertools
 import pickle
 import time
-from pathlib import Path
-
 from collections import Counter
-from typing import Callable, Iterable, Iterator, Tuple, Union, Optional
+from pathlib import Path
+from typing import Callable, Iterable, Iterator, Optional, Tuple, Union
 
 import gym
 import numpy as np
@@ -81,8 +80,7 @@ class Trainer:
             saver.restore(agent.sess, load_path)
             print("Model restored from", load_path)
         if logdir:
-            tb_writer = tf.summary.FileWriter(
-                logdir=logdir, graph=agent.sess.graph)
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
@@ -91,10 +89,8 @@ class Trainer:
         evaluation_period = 10
 
         for time_steps in itertools.count():
-            is_eval_period = count[
-                'episode'] % evaluation_period == evaluation_period - 1
-            a = agent.get_actions(
-                [self.vectorize_state(s1)], sample=(not is_eval_period))
+            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
+            a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -108,8 +104,7 @@ class Trainer:
 
             episode_count.update(Counter(reward=r, timesteps=1))
             if save_path and time_steps % 5000 == 0:
-                print("model saved in path:",
-                      saver.save(agent.sess, save_path=save_path))
+                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
                 self.add_to_buffer(s1=s1, a=a, r=r, s2=s2, t=t)
                 if len(self.buffer) >= self.batch_size:
@@ -118,17 +113,14 @@ class Trainer:
                         # noinspection PyProtectedMember
                         step = self.agent.train_step(
                             sample_steps._replace(
-                                s1=list(
-                                    map(self.vectorize_state,
-                                        sample_steps.s1)),
-                                s2=list(
-                                    map(self.vectorize_state,
-                                        sample_steps.s2)),
+                                s1=list(map(self.vectorize_state, sample_steps.s1)),
+                                s2=list(map(self.vectorize_state, sample_steps.s2)),
                             ))
-                        episode_count.update(Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in LOGGER_VALUES
-                        }))
+                        episode_count.update(
+                            Counter({
+                                k: getattr(step, k.replace(' ', '_'))
+                                for k in LOGGER_VALUES
+                            }))
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -136,30 +128,25 @@ class Trainer:
                 episode_timesteps = episode_count['timesteps']
                 count.update(Counter(reward=episode_reward, episode=1))
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', count['episode'],
-                    time_steps, episode_reward))
+                    'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
+                    episode_reward))
                 fps = int(episode_timesteps / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
-                        summary.value.add(
-                            tag='eval reward',
-                            simple_value=episode_reward)
+                        summary.value.add(tag='eval reward', simple_value=episode_reward)
                     summary.value.add(
                         tag='average reward',
-                        simple_value=(
-                            count['reward'] / float(count['episode'])))
+                        simple_value=(count['reward'] / float(count['episode'])))
                     summary.value.add(tag='time-steps', simple_value=episode_timesteps)
                     summary.value.add(tag='fps', simple_value=fps)
-                    summary.value.add(
-                        tag='reward', simple_value=episode_reward)
+                    summary.value.add(tag='reward', simple_value=episode_reward)
                     for k in info_log_keys:
                         summary.value.add(tag=k, simple_value=info_counter[k])
                     for k in LOGGER_VALUES:
                         summary.value.add(
                             tag=k,
-                            simple_value=episode_count[k] / float(
-                                episode_timesteps))
+                            simple_value=episode_count[k] / float(episode_timesteps))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
@@ -167,14 +154,13 @@ class Trainer:
                 info_counter = Counter()
                 episode_count = Counter()
 
-    def build_agent(
-            self,
-            activation: Callable,
-            n_layers: int,
-            layer_size: int,
-            learning_rate: float,
-            grad_clip: float,
-            base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
+    def build_agent(self,
+                    activation: Callable,
+                    n_layers: int,
+                    layer_size: int,
+                    learning_rate: float,
+                    grad_clip: float,
+                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -214,10 +200,9 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float,
-                      s2: State, t: bool) -> None:
-        self.buffer.append(
-            Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State,
+                      t: bool) -> None:
+        self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
 
     def sample_buffer(self):
         return Step(*self.buffer.sample(self.batch_size))

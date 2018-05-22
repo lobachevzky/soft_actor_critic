@@ -26,16 +26,12 @@ class Arm2PosEnv(MujocoEnv):
 
         self._geofence = geofence
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [
-            left_finger_name,
-            left_finger_name.replace('_l_', '_r_')
-        ]
+        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
         obs_shape = history_len * np.size(self._obs()) + np.size(self.goal())
-        self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_shape, ))
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(obs_shape, ))
 
         if continuous:
             self.action_space = spaces.Box(-1, 1, shape=(self.sim.nu, ))

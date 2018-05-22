@@ -56,8 +56,7 @@ class CategoricalPolicy(object):
 
     def policy_parameters_to_log_prob(self, a, parameters):
         logits = parameters
-        out = tf.distributions.Categorical(logits=logits).log_prob(
-            tf.argmax(a, axis=1))
+        out = tf.distributions.Categorical(logits=logits).log_prob(tf.argmax(a, axis=1))
         # out = tf.Print(out, [out], summarize=10)
         return out
 
@@ -65,8 +64,7 @@ class CategoricalPolicy(object):
         logits = parameters
         a_shape = logits.get_shape()[1].value
         # logits = tf.Print(logits, [tf.nn.softmax(logits)], message='logits are:', summarize=10)
-        out = tf.one_hot(
-            tf.distributions.Categorical(logits=logits).sample(), a_shape)
+        out = tf.one_hot(tf.distributions.Categorical(logits=logits).sample(), a_shape)
         return out
 
     def policy_parameters_to_max_likelihood_action(self, parameters):

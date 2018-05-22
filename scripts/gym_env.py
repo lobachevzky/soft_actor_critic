@@ -31,9 +31,8 @@ def str_to_activation(ctx, param, value):
     try:
         return activations[value]
     except KeyError:
-        raise click.BadParameter(
-            "Activation name must be one of the following:", '\n'.join(
-                activations.keys()))
+        raise click.BadParameter("Activation name must be one of the following:",
+                                 '\n'.join(activations.keys()))
 
 
 @click.command()
@@ -53,8 +52,8 @@ def str_to_activation(ctx, param, value):
 @click.option('--render', is_flag=True)
 @click.option('--reward-prop', is_flag=True)
 def cli(reward_prop, env, seed, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, batch_size, num_train_steps, logdir,
-        save_path, load_path, render):
+        learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path,
+        load_path, render):
     # if args.mimic_file is not None:
     #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
 

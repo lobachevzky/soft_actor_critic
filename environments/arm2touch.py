@@ -28,10 +28,7 @@ class Arm2TouchEnv(BaseEnv):
             image_dimensions=None)
 
         left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [
-            left_finger_name,
-            left_finger_name.replace('_l_', '_r_')
-        ]
+        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous

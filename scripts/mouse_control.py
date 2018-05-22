@@ -2,6 +2,7 @@
 """Agent that executes random actions"""
 # import gym
 import argparse
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -11,8 +12,6 @@ from environments.base import print1
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
-import pickle
-
 from sac.utils import Step
 
 saved_pos = None
@@ -27,8 +26,7 @@ def cli(discrete, mimic_path):
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
     env = PickAndPlaceHindsightWrapper(
-        default_reward=0,
-        env=PickAndPlaceEnv(random_block=True, discrete=discrete))
+        default_reward=0, env=PickAndPlaceEnv(random_block=True, discrete=discrete))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -79,7 +77,6 @@ def cli(discrete, mimic_path):
             if discrete:
                 action = 0
 
-
             traj.append(Step(s1, action, r, s2, done))
             s1 = s2
             total_reward += r
@@ -109,8 +106,7 @@ def run_tests(env, obs):
     assert_equal(obs, env.mlp_input(*env.destructure_mlp_input(obs)))
     assert_equal(obs, env.change_goal(goal, obs))
     try:
-        assert_equal(
-            env.gripper_pos(), env.gripper_pos(env.sim.qpos), atol=1e-2)
+        assert_equal(env.gripper_pos(), env.gripper_pos(env.sim.qpos), atol=1e-2)
     except AttributeError:
         pass
 
@@ -120,6 +116,4 @@ def assert_equal(val1, val2, atol=1e-5):
         for a, b in zip(val1, val2):
             assert_equal(a, b, atol=atol)
     except TypeError:
-        assert np.allclose(
-            val1, val2, atol=atol), "{} vs. {}".format(val1, val2)
-
+        assert np.allclose(val1, val2, atol=atol), "{} vs. {}".format(val1, val2)

@@ -106,6 +106,4 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def vectorize_state(state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
-        return np.concatenate(
-            [np.concatenate(state_history),
-             np.concatenate(state.goal)])
+        return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])

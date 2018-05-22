@@ -50,8 +50,7 @@ class NavigateEnv(BaseEnv):
         else:
             self.action_space = Discrete(5)
 
-        cnn_space = Box(
-            0, 1, shape=(list(image_dimensions) + [3 * history_len]))
+        cnn_space = Box(0, 1, shape=(list(image_dimensions) + [3 * history_len]))
         obs_size = history_len * \
             sum(map(np.size, self._obs())) + sum(map(np.size, self.goal()))
         mlp_space = Box(
@@ -96,8 +95,7 @@ class NavigateEnv(BaseEnv):
         return np.append(self.__goal, 0)
 
     def _currently_failed(self):
-        return escaped(self._pos(), self._world_upper_bound,
-                       self._world_lower_bound)
+        return escaped(self._pos(), self._world_upper_bound, self._world_lower_bound)
 
     def _orientation(self):
         quat = self.sim.get_body_xquat(self._body_name)
@@ -142,8 +140,7 @@ class NavigateEnv(BaseEnv):
 
             forward, rotate = np.array(action)
             action = np.append(forward * self._orientation(), [rotate * .01])
-        obs, reward, done, meta = super().step(
-            action * self._action_multiplier)
+        obs, reward, done, meta = super().step(action * self._action_multiplier)
         if done:
             self._write_log_file()
         return obs, reward, done, meta
@@ -157,8 +154,7 @@ class NavigateEnv(BaseEnv):
     def _get_new_pos(self, rel_to=None):
         while True:
             if rel_to is None:
-                pos = np.random.uniform(self._world_lower_bound,
-                                        self._world_upper_bound)
+                pos = np.random.uniform(self._world_lower_bound, self._world_upper_bound)
 
             else:
                 coord, min_radius, max_radius = rel_to

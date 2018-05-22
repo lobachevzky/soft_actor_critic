@@ -87,6 +87,7 @@ class Trainer:
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
         info_counter = Counter()
+        info_log_keys = set()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -100,6 +101,7 @@ class Trainer:
             if 'print' in info:
                 print('time-step:', time_steps, info['print'])
             if 'log' in info:
+                info_log_keys |= info['log'].keys()
                 info_counter += Counter(info['log'])
 
             tick = time.time()
@@ -148,7 +150,7 @@ class Trainer:
                     summary.value.add(tag='fps', simple_value=fps)
                     summary.value.add(
                         tag='reward', simple_value=episode_count['reward'])
-                    for k in info_counter:
+                    for k in info_log_keys:
                         summary.value.add(tag=k, simple_value=info_counter[k])
                     for k in LOGGER_VALUES:
                         summary.value.add(

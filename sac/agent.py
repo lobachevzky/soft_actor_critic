@@ -222,7 +222,7 @@ class PropagationAgent(AbstractAgent):
     def __init__(self, reward_scale: float, **kwargs):
         self.sampled_V2 = tf.placeholder(tf.float32, [None], name='R')
         self.reward_scale = reward_scale
-        super().__init__(**kwargs)
+        super().__init__(reward_scale=reward_scale, **kwargs)
 
     def compute_v2(self) -> tf.Tensor:
         return tf.maximum(self.reward_scale * self.sampled_V2, super().compute_v2())

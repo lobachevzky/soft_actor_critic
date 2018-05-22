@@ -224,7 +224,7 @@ class DoubleBufferTrainer(TrajectoryTrainer):
         self.buffer = ReplayBuffer(buffer_size)
         super().__init__(buffer_size=buffer_size, **kwargs)
 
-    def add_to_buffer(self, **_):
+    def add_to_buffer(self, _):
         pass
 
     def step(self, action: np.ndarray):
@@ -235,9 +235,7 @@ class DoubleBufferTrainer(TrajectoryTrainer):
 
     def reset(self):
         if self.success:
-            half = len(self.trajectory) // 2
-            self.buffer.extend(self.trajectory[:half])
-            self.success_buffer.extend(self.trajectory[half:])
+            self.success_buffer.extend(self.trajectory)
         else:
             self.buffer.extend(self.trajectory)
         return super().reset()
@@ -287,7 +285,7 @@ class DoubleBufferHindsightTrainer(DoubleBufferTrainer, HindsightTrainer):
 
 
 class PropagationTrainer(TrajectoryTrainer):
-    def add_to_buffer(self, **_):
+    def add_to_buffer(self, _):
         pass
 
     def build_agent(self, **kwargs) -> AbstractAgent:

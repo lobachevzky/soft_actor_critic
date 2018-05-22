@@ -220,7 +220,7 @@ class DoubleBufferTrainer(TrajectoryTrainer):
     def __init__(self, buffer_size: int, **kwargs):
         self.success = False
         self.success_buffer = ReplayBuffer(buffer_size)
-        self.failure_buffer = ReplayBuffer(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
         super().__init__(buffer_size=buffer_size, **kwargs)
 
     def add_to_buffer(self, **_):
@@ -233,22 +233,26 @@ class DoubleBufferTrainer(TrajectoryTrainer):
         return s, r, t, i
 
     def reset(self):
-        buffer = self.success_buffer if self.success else self.failure_buffer
-        buffer.extend(self.trajectory)
+        if self.success:
+            half = len(self.trajectory) // 2
+            self.buffer.extend(self.trajectory[:half])
+            self.success_buffer.extend(self.trajectory[half:])
+        else:
+            self.buffer.extend(self.trajectory)
         return super().reset()
 
     def buffer_full(self):
         return self.batch_size <= max(len(self.success_buffer),
-                                      len(self.failure_buffer))
+                                      len(self.buffer))
 
     def sample_buffer(self):
-        if self.batch_size <= min(len(self.success_buffer), len(self.failure_buffer)):
+        if self.batch_size <= min(len(self.success_buffer), len(self.buffer)):
             # both buffers have enough elements
             half_batch = self.batch_size // 2
             success_sample = self.success_buffer.sample(half_batch)
-            failure_sample = self.failure_buffer.sample(self.batch_size - half_batch)
+            failure_sample = self.buffer.sample(self.batch_size - half_batch)
             return Step(*map(np.concatenate, zip(success_sample, failure_sample)))
-        for buffer in [self.success_buffer, self.failure_buffer]:
+        for buffer in [self.success_buffer, self.buffer]:
             if self.batch_size <= len(buffer):
                 # sample first buffer that has enough elements
                 return Step(*buffer.sample(self.batch_size))
@@ -279,7 +283,7 @@ class DoubleBufferHindsightTrainer(DoubleBufferTrainer, HindsightTrainer):
     def reset(self):
         assert isinstance(self.env, HindsightWrapper)
         for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
-            self.failure_buffer.append((s1, a, r * self.reward_scale, s2, t))
+            self.buffer.append((s1, a, r * self.reward_scale, s2, t))
         return DoubleBufferTrainer.reset(self)
 
 

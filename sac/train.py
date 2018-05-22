@@ -164,12 +164,12 @@ class Trainer:
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
-            PolicyType = CategoricalPolicy
+            policy_type = CategoricalPolicy
         else:
             action_shape = self.env.action_space.shape
-            PolicyType = GaussianPolicy
+            policy_type = GaussianPolicy
 
-        class Agent(PolicyType, base_agent):
+        class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):
                 super(Agent, self).__init__(
                     s_shape=s_shape,

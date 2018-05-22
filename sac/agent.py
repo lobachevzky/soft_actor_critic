@@ -41,7 +41,7 @@ class AbstractAgent:
         self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
         self.S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
         self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
-        self.R = R = tf.placeholder(tf.float32, [None], name='R')
+        self.R = R = tf.placeholder(tf.float32, [None], name='R')  # TODO: put reward_scale here.
         self.T = T = tf.placeholder(tf.float32, [None], name='T')
         gamma = 0.99
         tau = 0.01

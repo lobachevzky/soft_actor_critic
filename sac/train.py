@@ -314,7 +314,7 @@ class PropagationTrainer(TrajectoryTrainer):
     def step_generator(self, trajectory: Iterable[Step]) -> Iterator[PropStep]:
         v2 = 0
         for step in reversed(trajectory):
-            v2 = .99 * v2 + step.r
+            v2 = .99 * v2 + step.r * self.reward_scale
             # noinspection PyProtectedMember
             prop_step = PropStep(v2=v2, **step._asdict())
             # noinspection PyProtectedMember

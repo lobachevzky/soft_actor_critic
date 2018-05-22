@@ -102,9 +102,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
         if np.random.uniform(0, 1) < self._cheat_prob:
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
-
-        # else:
-        #     self.init_qpos = self.initial_qpos
+        else:
+            self.init_qpos = self.initial_qpos
 
         # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
         #     4) * 2 * np.pi

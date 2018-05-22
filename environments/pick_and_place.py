@@ -196,5 +196,6 @@ class PickAndPlaceEnv(MujocoEnv):
             mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
             action = np.insert(action, mirroring_index, action[mirrored_index])
         s, r, t, i = super().step(action)
+
         i['log'] = {'successes': float(r > 0)}
         return s, r, t, i

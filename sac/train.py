@@ -19,12 +19,12 @@ from sac.utils import PropStep, State, Step
 
 LOGGER_VALUES = """\
 entropy
-V loss
-Q loss
-pi loss
-V grad
-Q grad
-pi grad\
+V_loss
+Q_loss
+pi_loss
+V_grad
+Q_grad
+pi_grad\
 """.split('\n')
 
 
@@ -77,8 +77,6 @@ class Trainer:
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
-        info_counter = Counter()
-        info_log_keys = set()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -90,8 +88,7 @@ class Trainer:
             if 'print' in info:
                 print('time-step:', time_steps, info['print'])
             if 'log' in info:
-                info_log_keys |= info['log'].keys()
-                info_counter.update(Counter(info['log']))
+                episode_count.update(Counter(info['log']))
 
             tick = time.time()
 
@@ -111,8 +108,7 @@ class Trainer:
                             ))
                         episode_count.update(
                             Counter({
-                                k: getattr(step, k.replace(' ', '_'))
-                                for k in LOGGER_VALUES
+                                k: getattr(step, k) for k in LOGGER_VALUES
                             }))
             s1 = s2
             if t:
@@ -134,11 +130,9 @@ class Trainer:
                     summary.value.add(tag='time-steps', simple_value=episode_timesteps)
                     summary.value.add(tag='fps', simple_value=fps)
                     summary.value.add(tag='reward', simple_value=episode_reward)
-                    for k in info_log_keys:
-                        summary.value.add(tag=k, simple_value=info_counter[k])
-                    for k in LOGGER_VALUES:
+                    for k in episode_count:
                         summary.value.add(
-                            tag=k,
+                            tag=k.replace('_', ' '),
                             simple_value=episode_count[k] / float(episode_timesteps))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()

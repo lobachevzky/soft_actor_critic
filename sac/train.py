@@ -102,11 +102,11 @@ class Trainer:
                 print('time-step:', time_steps, info['print'])
             if 'log' in info:
                 info_log_keys |= info['log'].keys()
-                info_counter += Counter(info['log'])
+                info_counter.update(Counter(info['log']))
 
             tick = time.time()
 
-            episode_count += Counter(reward=r, timesteps=1)
+            episode_count.update(Counter(reward=r, timesteps=1))
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:",
                       saver.save(agent.sess, save_path=save_path))
@@ -125,38 +125,41 @@ class Trainer:
                                     map(self.vectorize_state,
                                         sample_steps.s2)),
                             ))
-                        episode_count += Counter({
+                        episode_count.update(Counter({
                             k: getattr(step, k.replace(' ', '_'))
                             for k in LOGGER_VALUES
-                        })
+                        }))
             s1 = s2
             if t:
                 s1 = self.reset()
+                episode_reward = episode_count['reward']
+                episode_timesteps = episode_count['timesteps']
+                count.update(Counter(reward=episode_reward, episode=1))
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', count['episode'],
-                    time_steps, episode_count['reward']))
-                count += Counter(reward=(episode_count['reward']), episode=1)
-                fps = int(episode_count['timesteps'] / (time.time() - tick))
+                    time_steps, episode_reward))
+                fps = int(episode_timesteps / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
                         summary.value.add(
                             tag='eval reward',
-                            simple_value=(episode_count['reward']))
+                            simple_value=episode_reward)
                     summary.value.add(
                         tag='average reward',
                         simple_value=(
                             count['reward'] / float(count['episode'])))
+                    summary.value.add(tag='time-steps', simple_value=episode_timesteps)
                     summary.value.add(tag='fps', simple_value=fps)
                     summary.value.add(
-                        tag='reward', simple_value=episode_count['reward'])
+                        tag='reward', simple_value=episode_reward)
                     for k in info_log_keys:
                         summary.value.add(tag=k, simple_value=info_counter[k])
                     for k in LOGGER_VALUES:
                         summary.value.add(
                             tag=k,
                             simple_value=episode_count[k] / float(
-                                episode_count['timesteps']))
+                                episode_timesteps))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 

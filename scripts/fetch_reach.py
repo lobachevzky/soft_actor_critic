@@ -9,7 +9,7 @@ from gym.envs.robotics.fetch_env import goal_distance
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import str_to_activation, cast_to_int
+from scripts.gym_env import cast_to_int, str_to_activation
 
 ACHIEVED_GOAL = 'achieved_goal'
 
@@ -22,7 +22,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
     def achieved_goal(self, obs):
         return obs[ACHIEVED_GOAL]
 
-    def reward(self, obs, goal):
+    def _reward(self, obs, goal):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
     def at_goal(self, obs, goal):
@@ -52,20 +52,18 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 @click.option('--reward-prop', action='store_true')
 @click.option('--logdir', default=None, type=str)
 @click.option('--render', action='store_true')
-def cli(seed, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, batch_size, num_train_steps, logdir, render):
-    # if args.mimic_file is not None:
-    #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-
-    HindsightTrainer(env=FetchReachHindsightWrapper(gym.make('FetchReach-v0')),
-                     seed=seed,
-                     buffer_size=buffer_size,
-                     activation=activation,
-                     n_layers=n_layers,
-                     layer_size=layer_size,
-                     learning_rate=learning_rate,
-                     reward_scale=reward_scale,
-                     batch_size=batch_size,
-                     num_train_steps=num_train_steps,
-                     logdir=logdir,
-                     render=render)
+def cli(seed, buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
+        batch_size, num_train_steps, logdir, render):
+    HindsightTrainer(
+        env=FetchReachHindsightWrapper(gym.make('FetchReach-v0')),
+        seed=seed,
+        buffer_size=buffer_size,
+        activation=activation,
+        n_layers=n_layers,
+        layer_size=layer_size,
+        learning_rate=learning_rate,
+        reward_scale=reward_scale,
+        batch_size=batch_size,
+        num_train_steps=num_train_steps,
+        logdir=logdir,
+        render=render)

@@ -4,12 +4,19 @@ import tensorflow as tf
 
 from sac.train import PropagationTrainer, Trainer
 
+
 def cast_to_int(ctx, param, value):
     try:
         return int(value)
     except ValueError:
-        raise click.BadParameter(
-            "Cannot cast param {} to int".format(value))
+        raise click.BadParameter("Cannot cast param {} to int".format(value))
+
+
+def check_probability(ctx, param, value):
+    if not (0 <= value <= 1):
+        raise click.BadParameter("Param {} should be between 0 and 1".format(value))
+    return value
+
 
 def str_to_activation(ctx, param, value):
     activations = dict(
@@ -24,9 +31,8 @@ def str_to_activation(ctx, param, value):
     try:
         return activations[value]
     except KeyError:
-        raise click.BadParameter(
-            "Activation name must be one of the following:", '\n'.join(
-                activations.keys()))
+        raise click.BadParameter("Activation name must be one of the following:",
+                                 '\n'.join(activations.keys()))
 
 
 @click.command()
@@ -46,10 +52,8 @@ def str_to_activation(ctx, param, value):
 @click.option('--render', is_flag=True)
 @click.option('--reward-prop', is_flag=True)
 def cli(reward_prop, env, seed, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render):
-    # if args.mimic_file is not None:
-    #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-
+        learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path,
+        load_path, render):
     trainer = PropagationTrainer if reward_prop else Trainer
     trainer(
         env=gym.make(env),

@@ -34,12 +34,16 @@ class HindsightWrapper(gym.Wrapper):
     def vectorize_state(state):
         return np.concatenate(state)
 
+    def _reward(self, state, goal):
+        return 1 if self.at_goal(state, goal) else self._default_reward
+
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         new_s2 = State(obs=s2, goal=self.desired_goal())
-        new_r = float(self.at_goal(s2, self.desired_goal()))
+        new_r = self._reward(s2, self.desired_goal())
         new_t = self.at_goal(s2, self.desired_goal()) or t
-        return new_s2, new_r, new_t, {'base_reward': r}
+        info['base_reward'] = r
+        return new_s2, new_r, new_t, info
 
     def reset(self):
         return State(obs=self.env.reset(), goal=self.desired_goal())
@@ -50,12 +54,13 @@ class HindsightWrapper(gym.Wrapper):
         achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
         for step in trajectory:
             new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
-            r = 1 if self.at_goal(step.s2.obs, achieved_goal) else self._default_reward
-            yield Step(s1=State(obs=step.s1.obs, goal=achieved_goal),
-                       a=step.a,
-                       r=r,
-                       s2=State(obs=step.s2.obs, goal=achieved_goal),
-                       t=new_t)
+            r = self._reward(step.s2.obs, achieved_goal)
+            yield Step(
+                s1=State(obs=step.s1.obs, goal=achieved_goal),
+                a=step.a,
+                r=r,
+                s2=State(obs=step.s2.obs, goal=achieved_goal),
+                t=new_t)
             if new_t:
                 break
 
@@ -101,6 +106,4 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def vectorize_state(state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
-        return np.concatenate(
-            [np.concatenate(state_history),
-             np.concatenate(state.goal)])
+        return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])

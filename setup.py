@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 with open('README.md') as f:
     long_description = f.read()
@@ -20,10 +20,6 @@ setup(
         'pick-and-place=scripts.pick_and_place:cli',
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',
+        'mouse-control=scripts.mouse_control:cli',
     ]),
-    install_requires=[
-        'tensorflow==1.6.0',
-        'gym==0.10.4',
-        'pygame==1.9.3',
-        'click==6.7'
-    ])
+    install_requires=['tensorflow==1.6.0', 'gym==0.10.4', 'pygame==1.9.3', 'click==6.7'])

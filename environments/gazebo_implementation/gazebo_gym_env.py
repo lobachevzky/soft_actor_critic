@@ -75,6 +75,5 @@ class GazeboEnv(gym.Env):
         # if roscore_count > 0:
         #     os.system("killall -9 roscore")
 
-        if (gzclient_count or gzserver_count or roscore_count
-                or rosmaster_count > 0):
+        if (gzclient_count or gzserver_count or roscore_count or rosmaster_count > 0):
             os.wait()

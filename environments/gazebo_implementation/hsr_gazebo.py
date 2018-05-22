@@ -63,15 +63,13 @@ class HSRGazeboEnv(GazeboEnv):
 
         self.robot_pose = [0.0, 0.0, 0.0]  # Pos X, Pos Y, Angular Z
 
-        self.vel_pub = rospy.Publisher(
-            '/hsrb/command_velocity', Twist, queue_size=5)
+        self.vel_pub = rospy.Publisher('/hsrb/command_velocity', Twist, queue_size=5)
         self.set_state = rospy.Publisher(
             '/gazebo/set_model_state', ModelState, queue_size=5)
 
         self.unpause_srv = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause_srv = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
-        self.reset_proxy_srv = rospy.ServiceProxy('/gazebo/reset_simulation',
-                                                  Empty)
+        self.reset_proxy_srv = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
 
         self.world_lower_bound = np.array([0.0, 0.0])
         self.world_upper_bound = np.array([0.0, 0.0])
@@ -89,9 +87,8 @@ class HSRGazeboEnv(GazeboEnv):
         for _ in range(MAX_GOAL_QUERIES):
             if rel_to is None:
 
-                pos = np.random.uniform(
-                    self.world_lower_bound + self.world_size * 1 / 5,
-                    self.world_upper_bound - self.world_size * 1 / 5)
+                pos = np.random.uniform(self.world_lower_bound + self.world_size * 1 / 5,
+                                        self.world_upper_bound - self.world_size * 1 / 5)
 
             else:
                 coord, radius = rel_to
@@ -121,9 +118,7 @@ class HSRGazeboEnv(GazeboEnv):
 
     @property
     def orientation(self):
-        return np.array(
-            [np.cos(self.robot_pose[2]),
-             np.sin(self.robot_pose[2])])
+        return np.array([np.cos(self.robot_pose[2]), np.sin(self.robot_pose[2])])
 
     @property
     def _at_goal(self):
@@ -157,8 +152,7 @@ class HSRGazeboEnv(GazeboEnv):
 
     @property
     def obs(self):
-        msg = rospy.wait_for_message('/hsrb/head_rgbd_sensor/rgb/image_raw',
-                                     Image)
+        msg = rospy.wait_for_message('/hsrb/head_rgbd_sensor/rgb/image_raw', Image)
 
         dimensions = msg.height, msg.width
         obs = self.resize_image(msg)
@@ -207,8 +201,7 @@ class HSRGazeboEnv(GazeboEnv):
 
         while msg is None:
             try:
-                msg = rospy.wait_for_message(
-                    '/hsrb/base_scan', LaserScan, timeout=5)
+                msg = rospy.wait_for_message('/hsrb/base_scan', LaserScan, timeout=5)
             except:
                 pass
 
@@ -321,8 +314,7 @@ class HSRGazeboEnv(GazeboEnv):
 
             while msg is None:
                 try:
-                    msg = rospy.wait_for_message(
-                        '/hsrb/base_scan', LaserScan, timeout=5)
+                    msg = rospy.wait_for_message('/hsrb/base_scan', LaserScan, timeout=5)
                 except:
                     pass
 
@@ -438,8 +430,7 @@ class HSRGazeboEnv(GazeboEnv):
         return False
 
     def get_hsrb_state(self):
-        msg = rospy.wait_for_message(
-            '/gazebo/model_states', ModelStates, timeout=5)
+        msg = rospy.wait_for_message('/gazebo/model_states', ModelStates, timeout=5)
 
         if self.ros_first == None:
             self.ros_first = rospy.Time.now()
@@ -454,9 +445,9 @@ class HSRGazeboEnv(GazeboEnv):
                              sim_actual.clock.nsecs) - self.sim_first
 
         rospy.loginfo(
-            'Current ROS Time: {}, Current Sim Time: {}, Real time factor: {}'.
-            format(ros_now.to_sec(), sim_now.to_sec(),
-                   sim_now.to_sec() / ros_now.to_sec()))
+            'Current ROS Time: {}, Current Sim Time: {}, Real time factor: {}'.format(
+                ros_now.to_sec(), sim_now.to_sec(),
+                sim_now.to_sec() / ros_now.to_sec()))
 
         with self.lock:
             if not self.objects_initialized:

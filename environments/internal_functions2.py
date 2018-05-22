@@ -19,9 +19,8 @@ MODEL_XML = """
 """
 
 # TODO: Change to relative path
-with open(
-        '/home/bhairav/coding/zero_shot/environments/hsr_description/robots/hsrb4s.mjcf'
-) as f:
+with open('/home/bhairav/coding/zero_shot/environments/hsr_description/robots/hsrb4s.mjcf'
+          ) as f:
     MODEL_XML = f.read()
 
 model = load_model_from_xml(MODEL_XML)

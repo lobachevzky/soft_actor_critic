@@ -1,13 +1,14 @@
-import numpy as np
 from collections import namedtuple
-from gym import spaces
-from mujoco import ObjType
 from os.path import join
+
+import numpy as np
 import tensorflow as tf
+from gym import spaces
 
 from environments.base import at_goal
 from environments.mujoco import MujocoEnv
 from environments.pick_and_place import PickAndPlaceEnv
+from mujoco import ObjType
 from sac.agent import mlp
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import Step
@@ -18,10 +19,8 @@ def quaternion_multiply(quaternion1, quaternion0):
     w1, x1, y1, z1 = quaternion1
     return np.array(
         [
-            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0,
-            x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
-            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
-            x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
+            -x1 * x0 - y1 * y0 - z1 * z0 + w1 * w0, x1 * w0 + y1 * z0 - z1 * y0 + w1 * x0,
+            -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0, x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0
         ],
         dtype=np.float64)
 
@@ -36,7 +35,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
         self.sess = self.buffer = self.loss = self.train \
             = self.S1 = self.S2 = self.A = self.T = None
         self.state_size = [self.observation_space.shape[0] * 2] + \
-                          list(self.observation_space.shape[1:])
+            list(self.observation_space.shape[1:])
         self._grad_clip = 1e6
 
     def initialize(self, session: tf.Session(), buffer: ReplayBuffer):
@@ -46,7 +45,8 @@ class UnsupervisedEnv(PickAndPlaceEnv):
 
             self.S1 = tf.placeholder(tf.float32, [None] + self.state_size, name='S1')
             self.S2 = tf.placeholder(tf.float32, [None] + self.state_size, name='S2')
-            self.A = tf.placeholder(tf.float32, [None] + list(self.action_space.shape), name='A')
+            self.A = tf.placeholder(
+                tf.float32, [None] + list(self.action_space.shape), name='A')
             self.T = tf.placeholder(tf.float32, [None, 1], name='T')
             gamma = 0.99
 
@@ -56,8 +56,11 @@ class UnsupervisedEnv(PickAndPlaceEnv):
 
             v1 = network_output(self.S1, name='Q', reuse=False)
             v2 = network_output(self.S2, name='Q', reuse=True)
-            q1 = v1 + network_output(tf.concat([self.S1, self.A], axis=1), name='A', reuse=False)
-            self.loss = tf.reduce_mean(0.5 * tf.square(q1 - gamma * (self.T + (1 - self.T) * v2)))
+            q1 = v1 + \
+                network_output(
+                    tf.concat([self.S1, self.A], axis=1), name='A', reuse=False)
+            self.loss = tf.reduce_mean(
+                0.5 * tf.square(q1 - gamma * (self.T + (1 - self.T) * v2)))
             optimizer = tf.train.AdamOptimizer(learning_rate=3e-4)
             gradients, variables = zip(*optimizer.compute_gradients(self.loss))
             if self._grad_clip:
@@ -85,13 +88,14 @@ class UnsupervisedEnv(PickAndPlaceEnv):
         s1 = self._add_goal_to_sample(obs=sample_steps.s1, goal=goal)
         s2 = self._add_goal_to_sample(obs=sample_steps.s2, goal=goal)
         t = at_goal(sample_steps.s2, goal, self._geofence)
-        return self.sess.run([self.loss, self.train],
-                             feed_dict={
-                                 self.S1: s1,
-                                 self.S2: s2,
-                                 self.A: sample_steps.a,
-                                 self.T: np.reshape(t, (self.batch_size, 1))
-                             })[0]
+        return self.sess.run(
+            [self.loss, self.train],
+            feed_dict={
+                self.S1: s1,
+                self.S2: s2,
+                self.A: sample_steps.a,
+                self.T: np.reshape(t, (self.batch_size, 1))
+            })[0]
 
     def step(self, action):
         s, r, t, i = super().step(action)

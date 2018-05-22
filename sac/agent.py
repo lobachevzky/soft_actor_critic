@@ -31,8 +31,8 @@ TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 class AbstractAgent:
     def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable,
-                 n_layers: int, layer_size: int, learning_rate: float,
-                 grad_clip: float) -> None:
+                 reward_scale: float, n_layers: int, layer_size: int,
+                 learning_rate: float, grad_clip: float) -> None:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
@@ -41,7 +41,7 @@ class AbstractAgent:
         self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
         self.S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
         self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
-        self.R = R = tf.placeholder(tf.float32, [None], name='R')  # TODO: put reward_scale here.
+        self.R = R = tf.placeholder(tf.float32, [None], name='R')
         self.T = T = tf.placeholder(tf.float32, [None], name='T')
         gamma = 0.99
         tau = 0.01
@@ -70,7 +70,7 @@ class AbstractAgent:
             q = self.q_network(self.S1, self.transform_action_sample(A), 'Q', reuse=True)
             # noinspection PyTypeChecker
             self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
+                0.5 * tf.square(q - (reward_scale * R + (1 - T) * gamma * v2)))
 
         # constructing pi loss
         with tf.control_dependencies([self.Q_loss]):
@@ -219,12 +219,13 @@ class AbstractAgent:
 
 # noinspection PyAbstractClass
 class PropagationAgent(AbstractAgent):
-    def __init__(self, **kwargs):
+    def __init__(self, reward_scale: float, **kwargs):
         self.sampled_V2 = tf.placeholder(tf.float32, [None], name='R')
+        self.reward_scale = reward_scale
         super().__init__(**kwargs)
 
     def compute_v2(self) -> tf.Tensor:
-        return tf.maximum(self.sampled_V2, super().compute_v2())
+        return tf.maximum(self.reward_scale * self.sampled_V2, super().compute_v2())
 
     def train_step(self, step: PropStep, feed_dict: dict = None) -> TrainStep:
         assert isinstance(step, PropStep)

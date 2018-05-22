@@ -54,9 +54,6 @@ def str_to_activation(ctx, param, value):
 def cli(reward_prop, env, seed, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path,
         load_path, render):
-    # if args.mimic_file is not None:
-    #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-
     trainer = PropagationTrainer if reward_prop else Trainer
     trainer(
         env=gym.make(env),

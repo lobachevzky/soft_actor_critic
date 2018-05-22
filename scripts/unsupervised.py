@@ -32,11 +32,7 @@ from scripts.gym_env import cast_to_int, str_to_activation
 def cli(max_steps, discrete, random_block, min_lift_height, geofence, seed, buffer_size,
         activation, n_layers, layer_size, learning_rate, reward_scale, grad_clip,
         batch_size, num_train_steps, logdir, save_path, load_path, render):
-    # if mimic_file is not None:
-    #     inject_mimic_experiences(mimic_file, buffer, N=10)
-    trainer = Trainer
-
-    trainer(
+    Trainer(
         env=TimeLimit(
             max_episode_steps=max_steps,
             env=UnsupervisedEnv(

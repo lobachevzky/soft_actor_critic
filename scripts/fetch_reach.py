@@ -54,9 +54,6 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 @click.option('--render', action='store_true')
 def cli(seed, buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         batch_size, num_train_steps, logdir, render):
-    # if args.mimic_file is not None:
-    #     inject_mimic_experiences(args.mimic_file, buffer, N=10)
-
     HindsightTrainer(
         env=FetchReachHindsightWrapper(gym.make('FetchReach-v0')),
         seed=seed,

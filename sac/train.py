@@ -28,15 +28,6 @@ pi grad\
 """.split('\n')
 
 
-def inject_mimic_experiences(mimic_file, buffer, N=1):
-    with open(mimic_file, 'rb') as f:
-        mimic_trajectories = [pickle.load(f)]
-    for trajectory in mimic_trajectories:
-        for (s1, a, r, s2, t) in trajectory:
-            for _ in range(N):
-                buffer.append(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-
-
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,

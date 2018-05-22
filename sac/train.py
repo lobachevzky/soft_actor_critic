@@ -97,7 +97,7 @@ class Trainer:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
                 self.add_to_buffer(s1=s1, a=a, r=r, s2=s2, t=t)
-                if len(self.buffer) >= self.batch_size:
+                if self.buffer_full():
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
@@ -108,8 +108,8 @@ class Trainer:
                             ))
                         episode_count.update(
                             Counter({
-                                k: getattr(step, k) for k in LOGGER_VALUES
-                            }))
+                                        k: getattr(step, k) for k in LOGGER_VALUES
+                                        }))
             s1 = s2
             if t:
                 s1 = self.reset()
@@ -191,6 +191,9 @@ class Trainer:
                       t: bool) -> None:
         self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
 
+    def buffer_full(self):
+        return len(self.buffer) >= self.batch_size
+
     def sample_buffer(self):
         return Step(*self.buffer.sample(self.batch_size))
 
@@ -213,6 +216,45 @@ class TrajectoryTrainer(Trainer):
         return self.s1
 
 
+class DoubleBufferTrainer(TrajectoryTrainer):
+    def __init__(self, buffer_size: int, **kwargs):
+        self.success = False
+        self.success_buffer = ReplayBuffer(buffer_size)
+        self.failure_buffer = ReplayBuffer(buffer_size)
+        super().__init__(buffer_size=buffer_size, **kwargs)
+
+    def add_to_buffer(self, **_):
+        pass
+
+    def step(self, action: np.ndarray):
+        s, r, t, i = super().step(action)
+        if r == 1:
+            self.success = False
+        return s, r, t, i
+
+    def reset(self):
+        buffer = self.success_buffer if self.success else self.failure_buffer
+        buffer.extend(self.trajectory)
+        return super().reset()
+
+    def buffer_full(self):
+        return self.batch_size <= max(len(self.success_buffer),
+                                      len(self.failure_buffer))
+
+    def sample_buffer(self):
+        if self.batch_size <= min(len(self.success_buffer), len(self.failure_buffer)):
+            # both buffers have enough elements
+            half_batch = self.batch_size // 2
+            success_sample = self.success_buffer.sample(half_batch)
+            failure_sample = self.failure_buffer.sample(self.batch_size - half_batch)
+            return Step(*map(np.concatenate, zip(success_sample, failure_sample)))
+        for buffer in [self.success_buffer, self.failure_buffer]:
+            if self.batch_size <= len(buffer):
+                # sample first buffer that has enough elements
+                return Step(*buffer.sample(self.batch_size))
+        raise RuntimeError("This should be impossible. At least one buffer should be full.")
+
+
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env, **kwargs):
         assert isinstance(env, HindsightWrapper)
@@ -227,6 +269,18 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
+
+
+class DoubleBufferHindsightTrainer(DoubleBufferTrainer, HindsightTrainer):
+    def __init__(self, env, buffer_size: int, **kwargs):
+        assert isinstance(env, HindsightWrapper)
+        DoubleBufferTrainer.__init__(self, env=env, buffer_size=buffer_size, **kwargs)
+
+    def reset(self):
+        assert isinstance(self.env, HindsightWrapper)
+        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
+            self.failure_buffer.append((s1, a, r * self.reward_scale, s2, t))
+        return DoubleBufferTrainer.reset(self)
 
 
 class PropagationTrainer(TrajectoryTrainer):

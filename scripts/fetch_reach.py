@@ -45,7 +45,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=1e7, callback=cast_to_int)
+@click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)

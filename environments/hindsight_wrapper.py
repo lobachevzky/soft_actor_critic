@@ -34,10 +34,13 @@ class HindsightWrapper(gym.Wrapper):
     def vectorize_state(state):
         return np.concatenate(state)
 
+    def _reward(self, state, goal):
+        return 1 if self.at_goal(state, goal) else self._default_reward
+
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         new_s2 = State(obs=s2, goal=self.desired_goal())
-        new_r = float(self.at_goal(s2, self.desired_goal()))
+        new_r = self._reward(s2, self.desired_goal())
         new_t = self.at_goal(s2, self.desired_goal()) or t
         return new_s2, new_r, new_t, {'base_reward': r}
 
@@ -50,8 +53,7 @@ class HindsightWrapper(gym.Wrapper):
         achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
         for step in trajectory:
             new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
-            r = 1 if self.at_goal(step.s2.obs,
-                                  achieved_goal) else self._default_reward
+            r = self._reward(step.s2.obs, achieved_goal)
             yield Step(
                 s1=State(obs=step.s1.obs, goal=achieved_goal),
                 a=step.a,

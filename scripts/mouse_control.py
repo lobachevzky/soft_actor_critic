@@ -55,7 +55,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy()
+                action[i] += env.env.sim.get_mouse_dy() * .5
 
         if lastkey is 'R':
             env.reset()
@@ -90,9 +90,10 @@ def cli(discrete, mimic_path):
                 print('\nresetting', total_reward)
             pause = True
             total_reward = 0
-            with Path(mimic_path + '.pkl').open(mode='wb') as f:
-                pickle.dump(traj, f)
-            exit()
+            if mimic_path is not None:
+                with Path(mimic_path + '.pkl').open(mode='wb') as f:
+                    pickle.dump(traj, f)
+                exit()
         env.env.render(labels={'x': env.env.goal_3d()})
 
 

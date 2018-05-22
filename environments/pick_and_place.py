@@ -1,3 +1,4 @@
+import random
 from collections import namedtuple
 from os.path import join
 
@@ -7,6 +8,29 @@ from gym import spaces
 from environments.base import at_goal, print1
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
+
+CHEAT_STARTS = [[
+    7.450e-05,
+    -3.027e-03,
+    4.385e-01,
+    1.000e+00,
+    0,
+    0,
+    -6.184e-04,
+    -1.101e+00,
+    0,
+    3.573e-01,
+    3.574e-01,
+], [
+    -0.005, 0.025, 0.447, 0.488, -0.488, -0.512, 0.512, -1.101, 1.575, 0.357,
+    0.357
+], [
+    4.636e-03, 8.265e-06, 4.385e-01, 7.126e-01, 2.072e-17, -2.088e-17,
+    -7.015e-01, -1.101e+00, -1.575e+00, 3.573e-01, 3.574e-01
+], [
+    5.449e-03, -4.032e-03, 4.385e-01, 3.795e-01, 1.208e-17, -2.549e-17,
+    -9.252e-01, -1.101e+00, -7.793e-01, 3.573e-01, 3.574e-01
+]]
 
 
 def quaternion_multiply(quaternion1, quaternion0):
@@ -65,7 +89,9 @@ class PickAndPlaceEnv(MujocoEnv):
             self.action_space = spaces.Discrete(7)
         else:
             self.action_space = spaces.Box(
-                low=np.array([-15, -20, -20]), high=np.array([35, 20, 20]), dtype=np.float32)
+                low=np.array([-15, -20, -20]),
+                high=np.array([35, 20, 20]),
+                dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
@@ -82,32 +108,9 @@ class PickAndPlaceEnv(MujocoEnv):
 
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
-
-        # self.init_qpos = np.array([4.886e-05,
-        #                            - 2.152e-05,
-        #                            4.385e-01,
-        #                            1.000e+00,
-        #                            2.254e-17,
-        #                            - 2.388e-19,
-        #                            1.290e-05,
-        #                            - 9.773e-01,
-        #                            2.773e-02,
-        #                            3.573e-01,
-        #                            3.574e-01, ])
         if np.random.uniform(0, 1) < self._cheat_prob:
-            self.init_qpos = np.array([
-                7.450e-05,
-                -3.027e-03,
-                4.385e-01,
-                1.000e+00,
-                0,
-                0,
-                -6.184e-04,
-                -1.101e+00,
-                0,
-                3.573e-01,
-                3.574e-01,
-            ])
+            self.init_qpos = np.array(random.choice(CHEAT_STARTS))
+
         # else:
         #     self.init_qpos = self.initial_qpos
 

@@ -24,7 +24,7 @@ from scripts.gym_env import cast_to_int, check_probability, str_to_activation
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--default-reward', default=0, type=float)
 @click.option('--grad-clip', default=1e6, type=float)
-@click.option('--random-block', is_flag=True)
+@click.option('--fixed-block', is_flag=True)
 @click.option('--reward-prop', is_flag=True)
 @click.option('--discrete', is_flag=True)
 @click.option('--mimic-dir', default=None, type=str)
@@ -32,7 +32,7 @@ from scripts.gym_env import cast_to_int, check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(reward_prop, default_reward, max_steps, discrete, random_block, min_lift_height,
+def cli(reward_prop, default_reward, max_steps, discrete, fixed_block, min_lift_height,
         geofence, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps, mimic_dir,
         logdir, save_path, load_path, render):
@@ -47,7 +47,7 @@ def cli(reward_prop, default_reward, max_steps, discrete, random_block, min_lift
                 env=PickAndPlaceEnv(
                     discrete=discrete,
                     cheat_prob=cheat_prob,
-                    random_block=random_block,
+                    fixed_block=fixed_block,
                     min_lift_height=min_lift_height,
                     geofence=geofence))),
         seed=seed,

@@ -46,7 +46,7 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
-                 random_block,
+                 fixed_block,
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
@@ -55,7 +55,7 @@ class PickAndPlaceEnv(MujocoEnv):
                  cheat_prob=0):
         self._cheat_prob = cheat_prob
         self.grip = 0
-        self._random_block = random_block
+        self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
         self._geofence = geofence
@@ -95,7 +95,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        if self._random_block:
+        if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
 
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)

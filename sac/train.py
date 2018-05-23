@@ -234,7 +234,9 @@ class DoubleBufferTrainer(TrajectoryTrainer):
 
     def reset(self):
         if self.success:
-            self.success_buffer.extend(self.trajectory)
+            half = len(self.trajectory) // 2
+            self.success_buffer.extend(self.trajectory[half:])
+            self.buffer.extend(self.trajectory[:half])
         else:
             self.buffer.extend(self.trajectory)
         return super().reset()

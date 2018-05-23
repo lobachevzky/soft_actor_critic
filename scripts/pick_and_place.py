@@ -4,8 +4,9 @@ from gym.wrappers import TimeLimit
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightPropagationTrainer, HindsightTrainer, TrajectoryTrainer, \
-    DoubleBufferHindsightTrainer
+    DoubleBufferHindsightTrainer, SimpleHindsightTrainer
 from scripts.gym_env import check_probability, str_to_activation
+
 
 
 @click.command()
@@ -29,6 +30,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--hindsight', 'trainer', flag_value=HindsightTrainer, default=True)
 @click.option('--reward-prop', 'trainer', flag_value=HindsightPropagationTrainer)
 @click.option('--double-buffer', 'trainer', flag_value=DoubleBufferHindsightTrainer)
+@click.option('--simple-hindsight', 'trainer', flag_value=SimpleHindsightTrainer)
 @click.option('--discrete', is_flag=True)
 @click.option('--mimic-dir',  default=None, type=str)
 @click.option('--mimic-save-dir',  default=None, type=str)

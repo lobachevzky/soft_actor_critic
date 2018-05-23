@@ -3,7 +3,7 @@ import pickle
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, Optional, Tuple, Union
+from typing import Callable, Iterable, Iterator, Optional, Tuple
 
 import gym
 import numpy as np
@@ -16,16 +16,6 @@ from sac.agent import AbstractAgent, PropagationAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import PropStep, State, Step
-
-LOGGER_VALUES = """\
-entropy
-V loss
-Q loss
-pi loss
-V grad
-Q grad
-pi grad\
-""".split('\n')
 
 
 class Trainer:
@@ -86,15 +76,13 @@ class Trainer:
                 env.render()
             s2, r, t, info = self.step(a)
             if 'print' in info:
-                print('time-step:', time_steps, info['print'])
+                print('Time step:', time_steps, info['print'])
             if 'log count' in info:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
 
             tick = time.time()
-
-            episode_count.update(Counter(reward=r, timesteps=1))
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
@@ -122,6 +110,8 @@ class Trainer:
                                 ]
                             }))
             s1 = s2
+            episode_mean.update(Counter(fps=time.time() - tick))
+            episode_count.update(Counter(reward=r, timesteps=1))
             if t:
                 s1 = self.reset()
                 episode_reward = episode_count['reward']
@@ -130,7 +120,6 @@ class Trainer:
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
                     episode_reward))
-                fps = int(episode_timesteps / (time.time() - tick))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
@@ -138,9 +127,6 @@ class Trainer:
                     summary.value.add(
                         tag='average reward',
                         simple_value=(count['reward'] / float(count['episode'])))
-                    summary.value.add(tag='time-steps', simple_value=episode_timesteps)
-                    summary.value.add(tag='fps', simple_value=fps)
-                    summary.value.add(tag='reward', simple_value=episode_reward)
                     for k in episode_count:
                         summary.value.add(tag=k, simple_value=episode_count[k])
                     for k in episode_mean:
@@ -152,7 +138,6 @@ class Trainer:
 
                 # zero out counters
                 episode_count = Counter()
-                episode_mean = Counter()
 
     def build_agent(self,
                     activation: Callable,

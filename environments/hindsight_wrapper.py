@@ -48,11 +48,11 @@ class HindsightWrapper(gym.Wrapper):
     def reset(self):
         return State(obs=self.env.reset(), goal=self.desired_goal())
 
-    def recompute_trajectory(self, trajectory):
+    def recompute_trajectory(self, trajectory, final_state=-1):
         if not trajectory:
             return ()
-        achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
-        for step in trajectory:
+        achieved_goal = self.achieved_goal(trajectory[final_state].s2.obs)
+        for step in trajectory[:final_state]:
             new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
             r = self._reward(step.s2.obs, achieved_goal)
             yield Step(

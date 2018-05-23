@@ -258,13 +258,23 @@ class DoubleBufferTrainer(TrajectoryTrainer):
 
 
 class HindsightTrainer(TrajectoryTrainer):
-    def __init__(self, env, **kwargs):
+    def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
+        self.n_goals = n_goals
         assert isinstance(env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
-    def reset(self) -> State:
+    def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.env, HindsightWrapper)
         self.buffer.extend(self.env.recompute_trajectory(self.trajectory))
+        if self.n_goals - 1 and self.trajectory:
+            final_states = np.random.randint(1, len(self.trajectory), size=self.n_goals - 1)
+            assert isinstance(final_states, np.ndarray)
+            for final_state in final_states:
+                self.buffer.extend(self.env.recompute_trajectory(self.trajectory,
+                                                                 final_state=final_state))
+
+    def reset(self) -> State:
+        self.add_hindsight_trajectories()
         return super().reset()
 
     def vectorize_state(self, state: State) -> np.ndarray:
@@ -278,8 +288,7 @@ class DoubleBufferHindsightTrainer(DoubleBufferTrainer, HindsightTrainer):
         DoubleBufferTrainer.__init__(self, env=env, buffer_size=buffer_size, **kwargs)
 
     def reset(self):
-        assert isinstance(self.env, HindsightWrapper)
-        self.buffer.extend(self.env.recompute_trajectory(self.trajectory))
+        self.add_hindsight_trajectories()
         return DoubleBufferTrainer.reset(self)
 
 
@@ -308,7 +317,5 @@ class PropagationTrainer(TrajectoryTrainer):
 
 class HindsightPropagationTrainer(HindsightTrainer, PropagationTrainer):
     def reset(self) -> State:
-        assert isinstance(self.env, HindsightWrapper)
-        trajectory = list(self.env.recompute_trajectory(self.trajectory))
-        self.buffer.extend(self.step_generator(trajectory))
+        self.add_hindsight_trajectories()
         return PropagationTrainer.reset(self)

@@ -20,6 +20,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--reward-scale', default=9e3, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=500, type=int)
+@click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--default-reward', default=0, type=float)
@@ -37,7 +38,7 @@ from scripts.gym_env import check_probability, str_to_activation
 def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discrete, fixed_block, min_lift_height,
         geofence, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps, mimic_dir,
-        logdir, save_path, load_path, render):
+        logdir, save_path, load_path, render, n_goals):
 
     print('Using', trainer.__name__)
 
@@ -53,6 +54,7 @@ def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discret
                     min_lift_height=min_lift_height,
                     geofence=geofence))),
         seed=seed,
+        n_goals=n_goals,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,

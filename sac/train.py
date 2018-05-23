@@ -60,6 +60,7 @@ class Trainer:
         episode_count = Counter()
         episode_mean = Counter()
         evaluation_period = 10
+        tick = time.time()
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
@@ -74,7 +75,6 @@ class Trainer:
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
 
-            tick = time.time()
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
@@ -102,7 +102,8 @@ class Trainer:
                                 ]
                             }))
             s1 = s2
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick) + 1e-10))
+            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            tick = time.time()
             episode_count.update(Counter(reward=r, timesteps=1))
             if t:
                 s1 = self.reset()

@@ -27,7 +27,6 @@ Q grad
 pi grad\
 """.split('\n')
 
-
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
@@ -49,9 +48,8 @@ class Trainer:
         if mimic_dir:
             for path in Path(mimic_dir).iterdir():
                 if path.suffix == '.pkl':
-                    for _ in range(10):
-                        with Path(path).open('rb') as f:
-                            self.buffer.extend(pickle.load(f))
+                    with Path(path).open('rb') as f:
+                        self.buffer.extend(pickle.load(f))
                 print('Loaded mimic file {} into buffer.'.format(path))
 
         s1 = self.reset()
@@ -100,7 +98,7 @@ class Trainer:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
                 self.add_to_buffer(s1=s1, a=a, r=r, s2=s2, t=t)
-                if len(self.buffer) >= self.batch_size:
+                if self.buffer_full():
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
@@ -196,6 +194,9 @@ class Trainer:
     def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State,
                       t: bool) -> None:
         self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+
+    def buffer_full(self):
+        return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self):
         return Step(*self.buffer.sample(self.batch_size))

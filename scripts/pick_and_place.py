@@ -1,11 +1,10 @@
 import click
-import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightPropagationTrainer, HindsightTrainer
-from scripts.gym_env import cast_to_int, check_probability, str_to_activation
+from sac.train import HindsightPropagationTrainer, HindsightTrainer, TrajectoryTrainer
+from scripts.gym_env import check_probability, str_to_activation
 
 
 @click.command()
@@ -14,7 +13,7 @@ from scripts.gym_env import cast_to_int, check_probability, str_to_activation
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=2e-4, type=float)
-@click.option('--buffer-size', default=1e7, callback=cast_to_int)
+@click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)
@@ -25,19 +24,20 @@ from scripts.gym_env import cast_to_int, check_probability, str_to_activation
 @click.option('--default-reward', default=0, type=float)
 @click.option('--grad-clip', default=1e6, type=float)
 @click.option('--fixed-block', is_flag=True)
-@click.option('--reward-prop', is_flag=True)
+@click.option('--hindsight', 'trainer', flag_value=HindsightTrainer, default=True)
+@click.option('--reward-prop', 'trainer', flag_value=HindsightPropagationTrainer)
 @click.option('--discrete', is_flag=True)
-@click.option('--mimic-dir', default=None, type=str)
+@click.option('--mimic-dir',  default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(reward_prop, default_reward, max_steps, discrete, fixed_block, min_lift_height,
+def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discrete, fixed_block, min_lift_height,
         geofence, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps, mimic_dir,
         logdir, save_path, load_path, render):
 
-    trainer = HindsightPropagationTrainer if reward_prop else HindsightTrainer
+    print('Using', trainer.__name__)
 
     trainer(
         env=PickAndPlaceHindsightWrapper(

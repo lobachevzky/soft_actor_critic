@@ -97,7 +97,7 @@ class Trainer:
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
-                self.add_to_buffer(s1=s1, a=a, r=r, s2=s2, t=t)
+                self.add_to_buffer(Step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t))
                 if self.buffer_full():
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
@@ -191,9 +191,9 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def add_to_buffer(self, s1: State, a: Union[float, np.ndarray], r: float, s2: State,
-                      t: bool) -> None:
-        self.buffer.append(Step(s1=s1, a=a, r=r * self.reward_scale, s2=s2, t=t))
+    def add_to_buffer(self, step: Step) -> None:
+        assert isinstance(step, Step)
+        self.buffer.append(step)
 
     def buffer_full(self):
         return len(self.buffer) >= self.batch_size

@@ -53,6 +53,7 @@ class PickAndPlaceEnv(MujocoEnv):
                  history_len=1,
                  discrete=False,
                  cheat_prob=0):
+        self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
         self._fixed_block = fixed_block
@@ -101,10 +102,11 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
         if np.random.uniform(0, 1) < self._cheat_prob:
+            self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
-
-        # else:
-        #     self.init_qpos = self.initial_qpos
+        else:
+            self._cheated = False
+            self.init_qpos = self.initial_qpos
 
         # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
         #     4) * 2 * np.pi
@@ -197,5 +199,6 @@ class PickAndPlaceEnv(MujocoEnv):
             mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
             action = np.insert(action, mirroring_index, action[mirrored_index])
         s, r, t, i = super().step(action)
-        i['log'] = {'successes': float(r > 0)}
+        if not self._cheated:
+            i['log'] = {'successes': float(r > 0)}
         return s, r, t, i

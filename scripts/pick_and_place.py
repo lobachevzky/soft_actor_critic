@@ -31,14 +31,15 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--double-buffer', 'trainer', flag_value=DoubleBufferHindsightTrainer)
 @click.option('--discrete', is_flag=True)
 @click.option('--mimic-dir',  default=None, type=str)
+@click.option('--mimic-save-dir',  default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
 def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discrete, fixed_block, min_lift_height,
         geofence, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps, mimic_dir,
-        logdir, save_path, load_path, render, n_goals):
+        reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+        mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
     print('Using', trainer.__name__)
 
@@ -65,6 +66,7 @@ def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discret
         batch_size=batch_size,
         num_train_steps=num_train_steps,
         mimic_dir=mimic_dir,
+        mimic_save_dir=mimic_save_dir,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,

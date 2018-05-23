@@ -87,7 +87,7 @@ class Trainer:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
                 self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-                if self.buffer_full():
+                if self.buffer_full() and not load_path:
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
@@ -199,7 +199,13 @@ class Trainer:
 
 
 class TrajectoryTrainer(Trainer):
-    def __init__(self, **kwargs):
+    def __init__(self, mimic_save_dir: Optional[str], **kwargs):
+        self.mimic_save_dir = mimic_save_dir
+        if mimic_save_dir is not None:
+            path = Path(mimic_save_dir)
+            print('Using model dir', path.absolute())
+            path.mkdir(parents=True, exist_ok=True)
+        self.mimic_num = 0
         self.trajectory = []
         super().__init__(**kwargs)
         self.s1 = self.reset()
@@ -211,6 +217,11 @@ class TrajectoryTrainer(Trainer):
         return s2, r, t, i
 
     def reset(self) -> State:
+        if self.mimic_save_dir is not None:
+            path = Path(self.mimic_save_dir, str(self.mimic_num) + '.pkl')
+            with path.open(mode='wb') as f:
+                pickle.dump(self.trajectory, f)
+            self.mimic_num += 1
         self.trajectory = []
         self.s1 = super().reset()
         return self.s1

@@ -43,7 +43,6 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
-        self.reward_scale = reward_scale
 
         if mimic_dir:
             for path in Path(mimic_dir).iterdir():
@@ -59,6 +58,7 @@ class Trainer:
             n_layers=n_layers,
             layer_size=layer_size,
             learning_rate=learning_rate,
+            reward_scale=reward_scale,
             grad_clip=grad_clip)
 
         if isinstance(env.unwrapped, UnsupervisedEnv):
@@ -97,7 +97,7 @@ class Trainer:
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if not is_eval_period:
-                self.add_to_buffer(Step(s1=s1, a=a, r=r * reward_scale, s2=s2, t=t))
+                self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
                 if self.buffer_full():
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
@@ -150,6 +150,7 @@ class Trainer:
                     n_layers: int,
                     layer_size: int,
                     learning_rate: float,
+                    reward_scale: float,
                     grad_clip: float,
                     base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
         state_shape = self.env.observation_space.shape
@@ -169,6 +170,7 @@ class Trainer:
                     n_layers=n_layers,
                     layer_size=layer_size,
                     learning_rate=learning_rate,
+                    reward_scale=reward_scale,
                     grad_clip=grad_clip)
 
         return Agent(state_shape, action_shape)
@@ -227,8 +229,7 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def reset(self) -> State:
         assert isinstance(self.env, HindsightWrapper)
-        for s1, a, r, s2, t in self.env.recompute_trajectory(self.trajectory):
-            self.buffer.append((s1, a, r * self.reward_scale, s2, t))
+        self.buffer.extend(self.env.recompute_trajectory(self.trajectory))
         return super().reset()
 
     def vectorize_state(self, state: State) -> np.ndarray:
@@ -247,14 +248,13 @@ class PropagationTrainer(TrajectoryTrainer):
         self.buffer.extend(self.step_generator(self.trajectory))
         return super().reset()
 
-    def step_generator(self, trajectory: Iterable[Step]) -> Iterator[PropStep]:
+    @staticmethod
+    def step_generator(trajectory: Iterable[Step]) -> Iterator[PropStep]:
         v2 = 0
         for step in reversed(trajectory):
             v2 = .99 * v2 + step.r
             # noinspection PyProtectedMember
-            prop_step = PropStep(v2=v2, **step._asdict())
-            # noinspection PyProtectedMember
-            yield prop_step._replace(r=step.r * self.reward_scale)
+            yield PropStep(v2=v2, **step._asdict())
 
     def sample_buffer(self):
         return PropStep(*self.buffer.sample(self.batch_size))

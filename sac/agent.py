@@ -31,11 +31,13 @@ TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 class AbstractAgent:
     def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable,
-                 n_layers: int, layer_size: int, learning_rate: float,
-                 grad_clip: float) -> None:
+                 reward_scale: float, n_layers: int, layer_size: int,
+                 learning_rate: float, grad_clip: float) -> None:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
+        self.reward_scale = reward_scale
+
 
         tf.set_random_seed(0)  # TODO: this needs to go
         self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
@@ -133,7 +135,7 @@ class AbstractAgent:
             feed_dict = {
                 self.S1: step.s1,
                 self.A: step.a,
-                self.R: step.r,
+                self.R: np.array(step.r) * self.reward_scale,
                 self.S2: step.s2,
                 self.T: step.t
             }
@@ -219,12 +221,8 @@ class AbstractAgent:
 
 # noinspection PyAbstractClass
 class PropagationAgent(AbstractAgent):
-    def __init__(self, **kwargs):
-        self.sampled_V2 = tf.placeholder(tf.float32, [None], name='R')
-        super().__init__(**kwargs)
-
     def compute_v2(self) -> tf.Tensor:
-        return tf.maximum(self.sampled_V2, super().compute_v2())
+        return tf.maximum(self.reward_scale * self.sampled_V2, super().compute_v2())
 
     def train_step(self, step: PropStep, feed_dict: dict = None) -> TrainStep:
         assert isinstance(step, PropStep)

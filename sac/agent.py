@@ -38,8 +38,6 @@ class AbstractAgent:
         self.layer_size = layer_size
         self.reward_scale = reward_scale
 
-
-        tf.set_random_seed(0)  # TODO: this needs to go
         self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
         self.S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
         self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')

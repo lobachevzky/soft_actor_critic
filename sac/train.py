@@ -27,6 +27,7 @@ Q grad
 pi grad\
 """.split('\n')
 
+
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  activation: Callable, n_layers: int, layer_size: int,
@@ -75,8 +76,7 @@ class Trainer:
 
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
-        info_counter = Counter()
-        info_log_keys = set()
+        episode_mean = Counter()
         evaluation_period = 10
 
         for time_steps in itertools.count():
@@ -87,9 +87,10 @@ class Trainer:
             s2, r, t, info = self.step(a)
             if 'print' in info:
                 print('time-step:', time_steps, info['print'])
-            if 'log' in info:
-                info_log_keys |= info['log'].keys()
-                info_counter.update(Counter(info['log']))
+            if 'log count' in info:
+                episode_count.update(Counter(info['log count']))
+            if 'log mean' in info:
+                episode_mean.update(Counter(info['log mean']))
 
             tick = time.time()
 
@@ -107,10 +108,18 @@ class Trainer:
                                 s1=list(map(self.vectorize_state, sample_steps.s1)),
                                 s2=list(map(self.vectorize_state, sample_steps.s2)),
                             ))
-                        episode_count.update(
+                        episode_mean.update(
                             Counter({
                                 k: getattr(step, k.replace(' ', '_'))
-                                for k in LOGGER_VALUES
+                                for k in [
+                                    'entropy',
+                                    'V loss',
+                                    'Q loss',
+                                    'pi loss',
+                                    'V grad',
+                                    'Q grad',
+                                    'pi grad',
+                                ]
                             }))
             s1 = s2
             if t:
@@ -132,18 +141,18 @@ class Trainer:
                     summary.value.add(tag='time-steps', simple_value=episode_timesteps)
                     summary.value.add(tag='fps', simple_value=fps)
                     summary.value.add(tag='reward', simple_value=episode_reward)
-                    for k in info_log_keys:
-                        summary.value.add(tag=k, simple_value=info_counter[k])
-                    for k in LOGGER_VALUES:
+                    for k in episode_count:
+                        summary.value.add(tag=k, simple_value=episode_count[k])
+                    for k in episode_mean:
                         summary.value.add(
                             tag=k,
-                            simple_value=episode_count[k] / float(episode_timesteps))
+                            simple_value=episode_mean[k] / float(episode_timesteps))
                     tb_writer.add_summary(summary, count['episode'])
                     tb_writer.flush()
 
                 # zero out counters
-                info_counter = Counter()
                 episode_count = Counter()
+                episode_mean = Counter()
 
     def build_agent(self,
                     activation: Callable,
@@ -246,8 +255,7 @@ class DoubleBufferTrainer(TrajectoryTrainer):
         return super().reset()
 
     def buffer_full(self):
-        return self.batch_size <= max(len(self.success_buffer),
-                                      len(self.buffer))
+        return self.batch_size <= max(len(self.success_buffer), len(self.buffer))
 
     def sample_buffer(self):
         if self.batch_size <= min(len(self.success_buffer), len(self.buffer)):
@@ -260,7 +268,8 @@ class DoubleBufferTrainer(TrajectoryTrainer):
             if self.batch_size <= len(buffer):
                 # sample first buffer that has enough elements
                 return Step(*buffer.sample(self.batch_size))
-        raise RuntimeError("This should be impossible. At least one buffer should be full.")
+        raise RuntimeError(
+            "This should be impossible. At least one buffer should be full.")
 
 
 class HindsightTrainer(TrajectoryTrainer):

@@ -200,5 +200,5 @@ class PickAndPlaceEnv(MujocoEnv):
             action = np.insert(action, mirroring_index, action[mirrored_index])
         s, r, t, i = super().step(action)
         if not self._cheated:
-            i['log'] = {'successes': float(r > 0)}
+            i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i

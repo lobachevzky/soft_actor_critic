@@ -110,7 +110,7 @@ class Trainer:
                                 ]
                             }))
             s1 = s2
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            episode_mean.update(Counter(fps=1 / float(time.time() - tick) + 1e-10))
             episode_count.update(Counter(reward=r, timesteps=1))
             if t:
                 s1 = self.reset()

@@ -222,6 +222,47 @@ class TrajectoryTrainer(Trainer):
         return self.s1
 
 
+class DoubleBufferTrainer(TrajectoryTrainer):
+    def __init__(self, buffer_size: int, **kwargs):
+        self.success = False
+        self.success_buffer = ReplayBuffer(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
+        super().__init__(buffer_size=buffer_size, **kwargs)
+
+    def add_to_buffer(self, _):
+        pass
+
+    def step(self, action: np.ndarray):
+        s, r, t, i = super().step(action)
+        if r == 1:
+            self.success = False
+        return s, r, t, i
+
+    def reset(self):
+        if self.success:
+            self.success_buffer.extend(self.trajectory)
+        else:
+            self.buffer.extend(self.trajectory)
+        return super().reset()
+
+    def buffer_full(self):
+        return self.batch_size <= max(len(self.success_buffer),
+                                      len(self.buffer))
+
+    def sample_buffer(self):
+        if self.batch_size <= min(len(self.success_buffer), len(self.buffer)):
+            # both buffers have enough elements
+            half_batch = self.batch_size // 2
+            success_sample = self.success_buffer.sample(half_batch)
+            failure_sample = self.buffer.sample(self.batch_size - half_batch)
+            return Step(*map(np.concatenate, zip(success_sample, failure_sample)))
+        for buffer in [self.success_buffer, self.buffer]:
+            if self.batch_size <= len(buffer):
+                # sample first buffer that has enough elements
+                return Step(*buffer.sample(self.batch_size))
+        raise RuntimeError("This should be impossible. At least one buffer should be full.")
+
+
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env, **kwargs):
         assert isinstance(env, HindsightWrapper)
@@ -235,6 +276,17 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
+
+
+class DoubleBufferHindsightTrainer(DoubleBufferTrainer, HindsightTrainer):
+    def __init__(self, env, buffer_size: int, **kwargs):
+        assert isinstance(env, HindsightWrapper)
+        DoubleBufferTrainer.__init__(self, env=env, buffer_size=buffer_size, **kwargs)
+
+    def reset(self):
+        assert isinstance(self.env, HindsightWrapper)
+        self.buffer.extend(self.env.recompute_trajectory(self.trajectory))
+        return DoubleBufferTrainer.reset(self)
 
 
 class PropagationTrainer(TrajectoryTrainer):

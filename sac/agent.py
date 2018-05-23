@@ -221,6 +221,10 @@ class AbstractAgent:
 
 # noinspection PyAbstractClass
 class PropagationAgent(AbstractAgent):
+    def __init__(self, **kwargs):
+        self.sampled_V2 = tf.placeholder(tf.float32, [None], name='V2')
+        super().__init__(**kwargs)
+
     def compute_v2(self) -> tf.Tensor:
         return tf.maximum(self.reward_scale * self.sampled_V2, super().compute_v2())
 

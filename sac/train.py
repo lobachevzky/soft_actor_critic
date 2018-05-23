@@ -300,7 +300,7 @@ class SimpleHindsightTrainer(HindsightTrainer):
     def sample_buffer(self):
         assert isinstance(self.env, HindsightWrapper)
         step = Step(*self.buffer.sample(self.batch_size))
-        goal_indexes = np.random.randint(0, self.batch_size - 1, self.batch_size // 2)
+        goal_indexes = np.random.randint(0, self.batch_size - 1, self.batch_size // 10)
         assert isinstance(goal_indexes, np.ndarray)
         for i in goal_indexes:
             achieved_goal = self.env.achieved_goal(step.s2[i].obs)

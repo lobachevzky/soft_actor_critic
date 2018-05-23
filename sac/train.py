@@ -237,24 +237,11 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class PropagationTrainer(TrajectoryTrainer):
-    def add_to_buffer(self, **_):
+    def add_to_buffer(self, _):
         pass
 
-    def build_agent(self,
-                    activation: Callable,
-                    n_layers: int,
-                    layer_size: int,
-                    learning_rate: float,
-                    grad_clip: float,
-                    base_agent: AbstractAgent = AbstractAgent,
-                    **kwargs) -> AbstractAgent:
-        return super().build_agent(
-            activation=activation,
-            n_layers=n_layers,
-            layer_size=layer_size,
-            learning_rate=learning_rate,
-            grad_clip=grad_clip,
-            base_agent=PropagationAgent)
+    def build_agent(self, **kwargs) -> AbstractAgent:
+        return super().build_agent(base_agent=PropagationAgent, **kwargs)
 
     def reset(self) -> State:
         self.buffer.extend(self.step_generator(self.trajectory))

@@ -20,10 +20,8 @@ from sac.utils import PropStep, State, Step
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 activation: Callable, n_layers: int, layer_size: int,
-                 learning_rate: float, reward_scale: float, grad_clip: Optional[float],
                  batch_size: int, num_train_steps: int, mimic_dir: Optional[str],
-                 logdir: str, save_path: str, load_path: str, render: bool):
+                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -44,13 +42,7 @@ class Trainer:
 
         s1 = self.reset()
 
-        self.agent = agent = self.build_agent(
-            activation=activation,
-            n_layers=n_layers,
-            layer_size=layer_size,
-            learning_rate=learning_rate,
-            reward_scale=reward_scale,
-            grad_clip=grad_clip)
+        self.agent = agent = self.build_agent(**kwargs)
 
         if isinstance(env.unwrapped, UnsupervisedEnv):
             # noinspection PyUnresolvedReferences
@@ -139,14 +131,7 @@ class Trainer:
                 # zero out counters
                 episode_count = Counter()
 
-    def build_agent(self,
-                    activation: Callable,
-                    n_layers: int,
-                    layer_size: int,
-                    learning_rate: float,
-                    reward_scale: float,
-                    grad_clip: float,
-                    base_agent: AbstractAgent = AbstractAgent) -> AbstractAgent:
+    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -160,12 +145,7 @@ class Trainer:
                 super(Agent, self).__init__(
                     s_shape=s_shape,
                     a_shape=a_shape,
-                    activation=activation,
-                    n_layers=n_layers,
-                    layer_size=layer_size,
-                    learning_rate=learning_rate,
-                    reward_scale=reward_scale,
-                    grad_clip=grad_clip)
+                    **kwargs)
 
         return Agent(state_shape, action_shape)
 

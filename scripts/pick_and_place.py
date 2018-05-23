@@ -10,6 +10,7 @@ from scripts.gym_env import check_probability, str_to_activation
 
 @click.command()
 @click.option('--seed', default=0, type=int)
+@click.option('--device-num', default=0, type=int)
 @click.option('--activation', default='relu', callback=str_to_activation)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
@@ -36,9 +37,9 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discrete, fixed_block, min_lift_height,
-        geofence, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discrete, fixed_block,
+        min_lift_height, geofence, seed, device_num, buffer_size, activation, n_layers, layer_size,
+        learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
     print('Using', trainer.__name__)
@@ -55,6 +56,7 @@ def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discret
                     min_lift_height=min_lift_height,
                     geofence=geofence))),
         seed=seed,
+        device_num=device_num,
         n_goals=n_goals,
         buffer_size=buffer_size,
         activation=activation,

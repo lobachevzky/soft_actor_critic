@@ -20,7 +20,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
-@click.option('--max-steps', default=500, type=int)
+@click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)

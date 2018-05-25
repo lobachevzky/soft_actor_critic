@@ -6,6 +6,7 @@ import numpy as np
 from gym import spaces
 
 from environments.base import at_goal, print1
+from sac.utils import State
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 
@@ -64,7 +65,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
         super().__init__(
             xml_filepath=join('models', 'pick-and-place', 'discrete.xml'
-                              if discrete else 'world.xml'),
+            if discrete else 'world.xml'),
             history_len=history_len,
             neg_reward=neg_reward,
             steps_per_action=20,
@@ -77,7 +78,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = history_len * sum(map(np.size, self._obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         if discrete:
             self.action_space = spaces.Discrete(7)
         else:
@@ -138,12 +139,12 @@ class PickAndPlaceEnv(MujocoEnv):
     def gripper_pos(self, qpos=None):
         finger1, finger2 = [
             self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
+            ]
         return (finger1 + finger2) / 2.
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
-            np.array([0, 0, self._min_lift_height])
+                   np.array([0, 0, self._min_lift_height])
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):
@@ -177,7 +178,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 action -= 1
                 joint = action // 2
                 assert 0 <= joint <= 2
-                direction = (-1)**(action % 2)
+                direction = (-1) ** (action % 2)
                 joint_scale = [.2, .05, .5]
                 a[2] = self.grip
                 a[joint] = direction * joint_scale[joint]
@@ -191,7 +192,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-        ]
+            ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:
             action[mirroring_index] = action[mirrored_index]
@@ -202,3 +203,8 @@ class PickAndPlaceEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
+
+    @staticmethod
+    def vectorize_state(state):
+        state_history = list(map(np.concatenate, state))
+        return np.concatenate(state_history)

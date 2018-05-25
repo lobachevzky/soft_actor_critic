@@ -1,14 +1,10 @@
-from abc import abstractmethod
-from collections import namedtuple
-
 import gym
 import numpy as np
+from abc import abstractmethod
 from gym.spaces import Box
 
 from environments.pick_and_place import Goal, PickAndPlaceEnv
-from sac.utils import Step
-
-State = namedtuple('State', 'obs goal')
+from sac.utils import Step, State
 
 
 class HindsightWrapper(gym.Wrapper):
@@ -30,8 +26,7 @@ class HindsightWrapper(gym.Wrapper):
     def desired_goal(self):
         raise NotImplementedError
 
-    @staticmethod
-    def vectorize_state(state):
+    def vectorize_state(self, state):
         return np.concatenate(state)
 
     def _reward(self, state, goal):
@@ -102,8 +97,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def desired_goal(self):
         return self.unwrapped_env.goal()
 
-    @staticmethod
-    def vectorize_state(state):
+    def vectorize_state(self, state):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])

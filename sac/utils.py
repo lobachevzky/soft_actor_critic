@@ -50,8 +50,6 @@ def component(function):
     return wrapper
 
 
-State = Any
-
 Step = namedtuple('Step', 's1 a r s2 t')
 PropStep = namedtuple('PropStep', 's1 a r s2 t v2')
 # class Step(NamedTuple):
@@ -69,3 +67,4 @@ PropStep = namedtuple('PropStep', 's1 a r s2 t v2')
 #     s2: State
 #     t: bool
 #     v2: float
+State = namedtuple('State', 'obs goal')

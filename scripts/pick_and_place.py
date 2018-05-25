@@ -4,7 +4,7 @@ from gym.wrappers import TimeLimit
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightPropagationTrainer, HindsightTrainer, TrajectoryTrainer, \
-    DoubleBufferHindsightTrainer
+    DoubleBufferHindsightTrainer, Trainer
 from scripts.gym_env import check_probability, str_to_activation
 
 
@@ -28,11 +28,12 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--hindsight', 'trainer', flag_value=HindsightTrainer, default=True)
+@click.option('--no-hindsight', 'trainer', flag_value=Trainer)
 @click.option('--reward-prop', 'trainer', flag_value=HindsightPropagationTrainer)
 @click.option('--double-buffer', 'trainer', flag_value=DoubleBufferHindsightTrainer)
 @click.option('--discrete', is_flag=True)
-@click.option('--mimic-dir',  default=None, type=str)
-@click.option('--mimic-save-dir',  default=None, type=str)
+@click.option('--mimic-dir', default=None, type=str)
+@click.option('--mimic-save-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
@@ -41,8 +42,34 @@ def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discret
         min_lift_height, geofence, seed, device_num, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
-
     print('Using', trainer.__name__)
+
+    if isinstance(trainer, Trainer.__class__):
+        trainer(
+            env=TimeLimit(
+                max_episode_steps=max_steps,
+                env=PickAndPlaceEnv(
+                    discrete=discrete,
+                    cheat_prob=cheat_prob,
+                    fixed_block=fixed_block,
+                    min_lift_height=min_lift_height,
+                    geofence=geofence)),
+            seed=seed,
+            device_num=device_num,
+            buffer_size=buffer_size,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate,
+            reward_scale=reward_scale,
+            grad_clip=grad_clip if grad_clip > 0 else None,
+            batch_size=batch_size,
+            num_train_steps=num_train_steps,
+            mimic_dir=mimic_dir,
+            logdir=logdir,
+            save_path=save_path,
+            load_path=load_path,
+            render=render)
 
     trainer(
         env=PickAndPlaceHindsightWrapper(

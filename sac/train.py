@@ -68,6 +68,8 @@ class Trainer:
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
+            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            tick = time.time()
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -90,20 +92,18 @@ class Trainer:
                             ))
                         episode_mean.update(
                             Counter({
-                                k: getattr(step, k.replace(' ', '_'))
-                                for k in [
-                                    'entropy',
-                                    'V loss',
-                                    'Q loss',
-                                    'pi loss',
-                                    'V grad',
-                                    'Q grad',
-                                    'pi grad',
-                                ]
-                            }))
+                                        k: getattr(step, k.replace(' ', '_'))
+                                        for k in [
+                                            'entropy',
+                                            'V loss',
+                                            'Q loss',
+                                            'pi loss',
+                                            'V grad',
+                                            'Q grad',
+                                            'pi grad',
+                                        ]
+                                        }))
             s1 = s2
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
-            tick = time.time()
             episode_count.update(Counter(reward=r, timesteps=1))
             if t:
                 s1 = self.reset()
@@ -166,7 +166,14 @@ class Trainer:
 
     def vectorize_state(self, state: State) -> np.ndarray:
         """ Preprocess state before feeding to network """
-        return state
+        try:
+            # noinspection PyUnresolvedReferences
+            return self.env.vectorize_state(state)
+        except AttributeError:
+            try:
+                return self.env.unwrapped.vectorize_state(state)
+            except AttributeError:
+                return state
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -268,10 +275,6 @@ class HindsightTrainer(TrajectoryTrainer):
     def reset(self) -> State:
         self.add_hindsight_trajectories()
         return super().reset()
-
-    def vectorize_state(self, state: State) -> np.ndarray:
-        assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize_state(state)
 
 
 class DoubleBufferHindsightTrainer(DoubleBufferTrainer, HindsightTrainer):

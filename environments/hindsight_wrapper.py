@@ -91,8 +91,8 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             gripper=self.unwrapped_env.gripper_pos(last_obs),
             block=self.unwrapped_env.block_pos(last_obs))
 
-    def at_goal(self, obs, goal):
-        return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
+    def at_goal(self, obs, goal, geofence=None):
+        return any(self.unwrapped_env.at_goal(goal, o) for o in obs)
 
     def desired_goal(self):
         return self.unwrapped_env.goal()
@@ -118,10 +118,12 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
         self.time_step += 1
         if self.surrogate_goal is None:
             goal = self.desired_goal()
+            geofence = None
         else:
             goal = self.surrogate_goal
+            geofence = .05
         new_s2 = State(obs=s2, goal=goal)
-        at_goal = self.at_goal(s2, goal)
+        at_goal = self.at_goal(s2, goal, geofence)
         if at_goal:
             self.success_streak += 1
         new_t = at_goal or t or self.time_step > self.max_time_step

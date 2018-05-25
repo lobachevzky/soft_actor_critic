@@ -186,6 +186,41 @@ class Trainer:
         return Step(*self.buffer.sample(self.batch_size))
 
 
+# class ProgressiveTrainer(Trainer):
+#     def __init__(self, **kwargs):
+#         self.time_step = 0
+#         self.max_time_step = 0
+#         self.surrogate_goal = None
+#         self.success_streak = 0
+#         self.max_success_streak = 4
+#         super().__init__(**kwargs)
+#
+#     def step(self, action: np.ndarray):
+#         s, r, t, i = super().step(action)
+#         self.time_step += 1
+#         if r == 1:
+#             self.success_streak += 1
+#         if self.surrogate_goal is not None:
+#             # noinspection PyProtectedMember
+#             s = s._replace(goal=self.surrogate_goal)
+#         if self.time_step > self.max_time_step:
+#         if self.env.at_goal(s.obs, s.goal):
+#             t = True
+#             r = 1
+#         if t and self.surrogate_goal is None:
+#             # end of an episode without surrogate goal
+#             self.surrogate_goal = self.env.achieved_goal(s.obs)
+#         if self.success_streak == self.max_success_streak:
+#             self.surrogate_goal = None
+#             print('mastered surrogate goal')
+#         return s, r, t, i
+#
+#     def reset(self):
+#         self.time_step = 0
+#         self.success_streak = 0
+#         return super().reset()
+
+
 class TrajectoryTrainer(Trainer):
     def __init__(self, mimic_save_dir: Optional[str], **kwargs):
         self.mimic_save_dir = mimic_save_dir

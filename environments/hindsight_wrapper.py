@@ -76,7 +76,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env, default_reward):
+    def __init__(self, env, default_reward=0):
         if isinstance(env, gym.Wrapper):
             assert isinstance(env.unwrapped, PickAndPlaceEnv)
             self.unwrapped_env = env.unwrapped
@@ -101,3 +101,46 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])
+
+
+class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
+    def __init__(self, env: gym.Env, **kwargs):
+        self.time_step = 0
+        self.max_time_step = 0
+        self.surrogate_goal = None
+        self.success_streak = 0
+        self.max_success_streak = 1
+        super().__init__(env, **kwargs)
+
+    def step(self, action):
+        s2, r, t, info = self.env.step(action)
+        self.time_step += 1
+        if self.surrogate_goal is None:
+            goal = self.desired_goal()
+        else:
+            goal = self.surrogate_goal
+        new_s2 = State(obs=s2, goal=goal)
+        at_goal = self.at_goal(s2, goal)
+        if at_goal:
+            self.success_streak += 1
+        new_t = at_goal or t or self.time_step > self.max_time_step
+        if new_t:
+            if self.surrogate_goal is None:
+                info['log count'] = {'successes': at_goal}
+            self.time_step = 0
+            if self.surrogate_goal is None and not at_goal:
+                # if we failed on the main task
+                self.surrogate_goal = self.achieved_goal(s2)
+            if self.success_streak == self.max_success_streak:
+                # if we mastered the surrogate goal
+                self.success_streak = 0
+                self.max_time_step += 1
+                self.surrogate_goal = None
+                print('Mastered goal. Max time steps:', self.max_time_step)
+        return new_s2, float(at_goal), new_t, info
+
+    def reset(self):
+        if self.success_streak == self.max_success_streak:
+            self.success_streak = 0
+        return super().reset()
+

@@ -110,7 +110,7 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
         self.max_time_step = 0
         self.surrogate_goal = None
         self.success_streak = 0
-        self.max_success_streak = 2
+        self.max_success_streak = 1
         super().__init__(env, **kwargs)
 
     def step(self, action):

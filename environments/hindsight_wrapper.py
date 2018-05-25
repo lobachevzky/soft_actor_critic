@@ -91,8 +91,8 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             gripper=self.unwrapped_env.gripper_pos(last_obs),
             block=self.unwrapped_env.block_pos(last_obs))
 
-    def at_goal(self, obs, goal):
-        return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
+    def at_goal(self, obs, goal, geofence=None):
+        return any(self.unwrapped_env.at_goal(goal, o, geofence) for o in obs)
 
     def desired_goal(self):
         return self.unwrapped_env.goal()

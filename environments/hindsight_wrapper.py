@@ -107,9 +107,9 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env: gym.Env, **kwargs):
         self.prev_block_pos = None
         self.time_step = 0
-        self.max_time_step = 0
+        # self.max_time_step = 0
         self.surrogate_goal = None
-        self.success_streak = 0
+        # self.success_streak = 0
         self.max_success_streak = 2
         super().__init__(env, **kwargs)
 
@@ -122,9 +122,9 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
             goal = self.surrogate_goal
         new_s2 = State(obs=s2, goal=goal)
         at_goal = self.at_goal(s2, goal)
-        if at_goal:
-            self.success_streak += 1
-        new_t = at_goal or t or self.time_step > self.max_time_step
+        # if at_goal:
+        #     self.success_streak += 1
+        new_t = at_goal or t  # or self.time_step > self.max_time_step
         if new_t:
             if self.surrogate_goal is None:
                 info['log count'] = {'successes': at_goal}
@@ -137,16 +137,16 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
                 block_joint = self.env.unwrapped.sim.jnt_qposadr('block1joint')
                 self.prev_block_pos = (self.env.unwrapped.sim.qpos[block_joint + 3],
                                        self.env.unwrapped.sim.qpos[block_joint + 6])
-            if self.success_streak == self.max_success_streak:
+            # if self.success_streak == self.max_success_streak:
                 # if we mastered the surrogate goal
-                self.success_streak = 0
-                self.max_time_step += 1
-                print('Mastered goal. Max time steps:', self.max_time_step)
+                # self.success_streak = 0
+                # self.max_time_step += 1
+                # print('Mastered goal. Max time steps:', self.max_time_step)
         return new_s2, float(at_goal), new_t, info
 
     def reset(self):
-        if self.success_streak == self.max_success_streak:
-            self.success_streak = 0
+        # if self.success_streak == self.max_success_streak:
+        #     self.success_streak = 0
         s1 = super().reset()
         if self.surrogate_goal is not None:
             block_joint = self.env.unwrapped.sim.jnt_qposadr('block1joint')

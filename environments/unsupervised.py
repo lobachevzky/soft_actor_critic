@@ -38,7 +38,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
             list(self.observation_space.shape[1:])
         self._grad_clip = 1e6
 
-    def initialize(self, session: tf.Session(), buffer: ReplayBuffer):
+    def initialize(self, session: tf.Session, buffer: ReplayBuffer):
         with tf.variable_scope('env'):
             self.buffer = buffer
             self.sess = session

@@ -128,6 +128,8 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
         if new_t:
             if self.surrogate_goal is None:
                 info['log count'] = {'successes': at_goal}
+            else:
+                self.surrogate_goal = None
             self.time_step = 0
             if self.surrogate_goal is None and not at_goal:
                 # if we failed on the main task
@@ -139,7 +141,6 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
                 # if we mastered the surrogate goal
                 self.success_streak = 0
                 self.max_time_step += 1
-                self.surrogate_goal = None
                 print('Mastered goal. Max time steps:', self.max_time_step)
         return new_s2, float(at_goal), new_t, info
 

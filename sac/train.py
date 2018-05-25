@@ -133,7 +133,7 @@ class Trainer:
                         summary.value.add(
                             tag=k,
                             simple_value=episode_mean[k] / float(episode_timesteps))
-                    tb_writer.add_summary(summary, count['episode'])
+                    tb_writer.add_summary(summary, time_steps)
                     tb_writer.flush()
 
                 # zero out counters

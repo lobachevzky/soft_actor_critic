@@ -105,11 +105,12 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
 class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env: gym.Env, **kwargs):
+        self.prev_block_pos = None
         self.time_step = 0
         self.max_time_step = 0
         self.surrogate_goal = None
         self.success_streak = 0
-        self.max_success_streak = 1
+        self.max_success_streak = 2
         super().__init__(env, **kwargs)
 
     def step(self, action):
@@ -131,6 +132,9 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
             if self.surrogate_goal is None and not at_goal:
                 # if we failed on the main task
                 self.surrogate_goal = self.achieved_goal(s2)
+                block_joint = self.env.unwrapped.sim.jnt_qposadr('block1joint')
+                self.prev_block_pos = (self.env.unwrapped.sim.qpos[block_joint + 3],
+                                       self.env.unwrapped.sim.qpos[block_joint + 6])
             if self.success_streak == self.max_success_streak:
                 # if we mastered the surrogate goal
                 self.success_streak = 0
@@ -142,5 +146,11 @@ class ProgressiveWrapper(PickAndPlaceHindsightWrapper):
     def reset(self):
         if self.success_streak == self.max_success_streak:
             self.success_streak = 0
-        return super().reset()
+        s1 = super().reset()
+        if self.surrogate_goal is not None:
+            block_joint = self.env.unwrapped.sim.jnt_qposadr('block1joint')
+            self.env.unwrapped.sim.qpos[block_joint + 3] = self.prev_block_pos[0]
+            self.env.unwrapped.sim.qpos[block_joint + 6] = self.prev_block_pos[1]
+            self.env.unwrapped.sim.forward()
+        return s1
 

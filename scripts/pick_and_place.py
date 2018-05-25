@@ -84,7 +84,7 @@ def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discret
                     env=PickAndPlaceEnv(
                         discrete=discrete,
                         cheat_prob=cheat_prob,
-                        fixed_block=True,
+                        fixed_block=fixed_block,
                         min_lift_height=min_lift_height,
                         geofence=geofence))),
             seed=seed,

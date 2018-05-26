@@ -3,8 +3,7 @@ from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightPropagationTrainer, HindsightTrainer, TrajectoryTrainer, \
-    DoubleBufferHindsightTrainer
+from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability, str_to_activation
 
 
@@ -27,9 +26,6 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--default-reward', default=0, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
-@click.option('--hindsight', 'trainer', flag_value=HindsightTrainer, default=True)
-@click.option('--reward-prop', 'trainer', flag_value=HindsightPropagationTrainer)
-@click.option('--double-buffer', 'trainer', flag_value=DoubleBufferHindsightTrainer)
 @click.option('--discrete', is_flag=True)
 @click.option('--mimic-dir',  default=None, type=str)
 @click.option('--mimic-save-dir',  default=None, type=str)
@@ -37,14 +33,12 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(trainer: TrajectoryTrainer.__class__, default_reward, max_steps, discrete, fixed_block,
+def cli(default_reward, max_steps, discrete, fixed_block,
         min_lift_height, geofence, seed, device_num, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
-    print('Using', trainer.__name__)
-
-    trainer(
+    HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
             default_reward=default_reward,
             env=TimeLimit(

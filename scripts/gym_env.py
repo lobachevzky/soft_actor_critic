@@ -2,7 +2,7 @@ import click
 import gym
 import tensorflow as tf
 
-from sac.train import PropagationTrainer, Trainer
+from sac.train import Trainer
 
 
 def check_probability(ctx, param, value):
@@ -43,12 +43,10 @@ def str_to_activation(ctx, param, value):
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-@click.option('--reward-prop', is_flag=True)
-def cli(reward_prop, env, seed, buffer_size, activation, n_layers, layer_size,
+def cli(env, seed, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path,
         load_path, render):
-    trainer = PropagationTrainer if reward_prop else Trainer
-    trainer(
+    Trainer(
         env=gym.make(env),
         seed=seed,
         buffer_size=buffer_size,

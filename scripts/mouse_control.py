@@ -62,6 +62,12 @@ def cli(discrete, mimic_path):
             print('\rmoving:', moving)
         if lastkey is 'P':
             print(env.env.sim.qpos)
+            arm_joint = env.env.sim.jnt_qposadr('arm_flex_joint')
+            print('arm:', env.env.sim.qpos[arm_joint])
+            wrist_joint = env.env.sim.jnt_qposadr('wrist_roll_joint')
+            print('wrist:', env.env.sim.qpos[wrist_joint])
+            l_hand_joint = env.env.sim.jnt_qposadr('hand_l_proximal_joint')
+            print('hand:', env.env.sim.qpos[l_hand_joint])
 
         if not discrete:
             for k in range(10):

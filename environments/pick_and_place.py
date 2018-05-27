@@ -92,6 +92,15 @@ class PickAndPlaceEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
     def reset_qpos(self):
+        arm_joint = self.sim.jnt_qposadr('arm_flex_joint')
+        self.init_qpos[arm_joint] = np.random.uniform(-0.960114368248, 0.00101480673663)
+        wrist_joint = self.sim.jnt_qposadr('wrist_roll_joint')
+        self.init_qpos[wrist_joint] = np.random.uniform(-1.5744836894, 1.57448370861)
+        l_hand_joint = self.sim.jnt_qposadr('hand_l_proximal_joint')
+        self.init_qpos[l_hand_joint] = np.random.uniform(-0.00842414027907, 0.357219407462)
+        r_hand_joint = self.sim.jnt_qposadr('hand_r_proximal_joint')
+        self.init_qpos[r_hand_joint] = self.init_qpos[l_hand_joint]
+
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
 

@@ -78,22 +78,18 @@ class PickAndPlaceEnv(MujocoEnv):
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+        self._low = np.array([-15, -20, -20])
+        self._high = np.array([35, 20, 20])
+        self._action_shape = 3
         if discrete:
             self.action_space = spaces.Discrete(7)
         else:
             self.action_space = spaces.Box(
-                low=np.array([-15, -20, -20]),
-                high=np.array([35, 20, 20]),
+                low=self._low,
+                high=self._high,
                 dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
-
-        # self._n_block_orientations = n_orientations = 8
-        # self._block_orientations = np.random.uniform(0, 2 * np.pi,
-        # size=(n_orientations, 4))
-        # self._rewards = np.ones(n_orientations) * -np.inf
-        # self._usage = np.zeros(n_orientations)
-        # self._current_orienation = None
 
     def reset_qpos(self):
         if not self._fixed_block:
@@ -172,7 +168,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def step(self, action):
         if self._discrete:
-            a = np.zeros(4)
+            a = np.zeros(3)
             if action > 0:
                 action -= 1
                 joint = action // 2
@@ -183,7 +179,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 a[joint] = direction * joint_scale[joint]
                 self.grip = a[2]
             action = a
-        action = np.clip(action, self.action_space.low, self.action_space.high)
+        action = np.clip(action, self._low, self._high)
 
         mirrored = 'hand_l_proximal_motor'
         mirroring = 'hand_r_proximal_motor'
@@ -193,11 +189,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
-        if self._discrete:
-            action[mirroring_index] = action[mirrored_index]
-        else:
-            mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
-            action = np.insert(action, mirroring_index, action[mirrored_index])
+        mirroring_index = np.minimum(mirroring_index, self._action_shape)
+        action = np.insert(action, mirroring_index, action[mirrored_index])
         s, r, t, i = super().step(action)
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}

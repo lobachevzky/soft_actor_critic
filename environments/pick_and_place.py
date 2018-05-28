@@ -5,7 +5,7 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environments.base import at_goal, print1
+from environments.base import at_goal, print1, distance_between
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 

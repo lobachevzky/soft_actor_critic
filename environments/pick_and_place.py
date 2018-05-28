@@ -74,6 +74,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
+        self._initial_gripper_pos = np.copy(self.gripper_pos())
         obs_size = history_len * sum(map(np.size, self._obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
@@ -135,15 +136,14 @@ class PickAndPlaceEnv(MujocoEnv):
     def block_pos(self, qpos=None):
         return self.sim.get_body_xpos(self._goal_block_name, qpos)
 
-    def gripper_pos(self, qpos=None):
+    def gripper_pos(self, qpos=None) -> np.ndarray:
         finger1, finger2 = [
             self.sim.get_body_xpos(name, qpos) for name in self._finger_names
         ]
         return (finger1 + finger2) / 2.
 
     def goal(self):
-        goal_pos = self._initial_block_pos + \
-            np.array([0, 0, self._min_lift_height])
+        goal_pos = self._initial_gripper_pos
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):

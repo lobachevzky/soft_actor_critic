@@ -96,20 +96,22 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        # arm_joint = self.sim.jnt_qposadr('arm_flex_joint')
-        # self.init_qpos[arm_joint] = np.random.uniform(-0.960114368248, 0.00101480673663)
-        # wrist_joint = self.sim.jnt_qposadr('wrist_roll_joint')
-        # self.init_qpos[wrist_joint] = np.random.uniform(-1.5744836894, 1.57448370861)
-        # l_hand_joint = self.sim.jnt_qposadr('hand_l_proximal_joint')
-        # self.init_qpos[l_hand_joint] = np.random.uniform(-0.00842414027907, 0.357219407462)
-        # r_hand_joint = self.sim.jnt_qposadr('hand_r_proximal_joint')
-        # self.init_qpos[r_hand_joint] = self.init_qpos[l_hand_joint]
+        slide_y = self.sim.jnt_qposadr('slide_y')
+        self.init_qpos[slide_y] = np.random.uniform(-0.2, 0.2)
+        arm_joint = self.sim.jnt_qposadr('arm_flex_joint')
+        self.init_qpos[arm_joint] = np.random.uniform(-0.960114368248, 0.00101480673663)
+        wrist_joint = self.sim.jnt_qposadr('wrist_roll_joint')
+        self.init_qpos[wrist_joint] = np.random.uniform(-1.5744836894, 1.57448370861)
+        l_hand_joint = self.sim.jnt_qposadr('hand_l_proximal_joint')
+        self.init_qpos[l_hand_joint] = np.random.uniform(-0.00842414027907, 0.357219407462)
+        r_hand_joint = self.sim.jnt_qposadr('hand_r_proximal_joint')
+        self.init_qpos[r_hand_joint] = self.init_qpos[l_hand_joint]
 
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-
-            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
+            self.init_qpos[block_joint + 1] = np.random.uniform(-0.2, 0.2)
+            self.init_qpos[block_joint + 3] = np.random.uniform(-np.pi, np.pi)
+            self.init_qpos[block_joint + 6] = np.random.uniform(-np.pi, np.pi)
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))

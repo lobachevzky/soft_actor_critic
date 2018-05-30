@@ -1,5 +1,7 @@
 import random
 from collections import namedtuple
+from contextlib import contextmanager
+from copy import deepcopy
 from os.path import join
 
 import numpy as np
@@ -7,7 +9,6 @@ from gym import spaces
 
 from environments.base import at_goal, print1
 from environments.mujoco import MujocoEnv
-from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -68,7 +69,7 @@ class PickAndPlaceEnv(MujocoEnv):
             steps_per_action=20,
             image_dimensions=None)
 
-        self.initial_qpos = np.copy(self.init_qpos)
+        self.init_qpos = deepcopy(self.sim.get_state().qpos)
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
@@ -83,7 +84,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 low=np.array([-15, -20, -20, -10]),
                 high=np.array([35, 20, 20, 10]),
                 dtype=np.float32)
-        self._table_height = self.sim.get_body_xpos('pan')[2]
+        self._table_height = self.sim.data.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
 
         # self._n_block_orientations = n_orientations = 8
@@ -94,19 +95,19 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        slide_y = self.sim.jnt_qposadr('slide_y')
+        slide_y = self.sim.model.get_joint_qpos_addr('slide_y')
         self.init_qpos[slide_y] = np.random.uniform(-0.2, 0.2)
         arm_joint = self.sim.jnt_qposadr('arm_flex_joint')
         self.init_qpos[arm_joint] = np.random.uniform(-0.960114368248, 0.00101480673663)
-        wrist_joint = self.sim.jnt_qposadr('wrist_roll_joint')
+        wrist_joint = self.sim.model.get_joint_qpos_addr('wrist_roll_joint')
         self.init_qpos[wrist_joint] = np.random.uniform(-1.5744836894, 1.57448370861)
-        l_hand_joint = self.sim.jnt_qposadr('hand_l_proximal_joint')
+        l_hand_joint = self.sim.model.get_joint_qpos_addr('hand_l_proximal_joint')
         self.init_qpos[l_hand_joint] = np.random.uniform(-0.00842414027907, 0.357219407462)
-        r_hand_joint = self.sim.jnt_qposadr('hand_r_proximal_joint')
+        r_hand_joint = self.sim.model.get_joint_qpos_addr('hand_r_proximal_joint')
         self.init_qpos[r_hand_joint] = self.init_qpos[l_hand_joint]
 
         if not self._fixed_block:
-            block_joint = self.sim.jnt_qposadr('block1joint')
+            block_joint = self.sim.model.get_joint_qpos_addr('block1joint')
             self.init_qpos[block_joint + 1] = np.random.uniform(-0.2, 0.2)
             self.init_qpos[block_joint + 3] = np.random.uniform(-np.pi, np.pi)
             self.init_qpos[block_joint + 6] = np.random.uniform(-np.pi, np.pi)
@@ -115,7 +116,6 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
-            self.init_qpos = self.initial_qpos
 
         # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
         #     4) * 2 * np.pi
@@ -139,15 +139,29 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _obs(self):
-        return np.copy(self.sim.qpos)
+        return np.copy(self.sim.data.qpos)
+
+    @contextmanager
+    def substitute_qpos(self, qpos):
+        if qpos:
+            original_state = self.sim.get_state()
+            new_state = deepcopy(original_state)
+            new_state.qpos = qpos
+            self.sim.set_state(new_state)
+            yield
+            self.sim.set_state(original_state)
+        else:
+            yield
 
     def block_pos(self, qpos=None):
-        return self.sim.get_body_xpos(self._goal_block_name, qpos)
+        with self.substitute_qpos(qpos):
+            return self.sim.data.get_body_xpos(self._goal_block_name)
 
     def gripper_pos(self, qpos=None):
-        finger1, finger2 = [
-            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
+        with self.substitute_qpos(qpos):
+            finger1, finger2 = [
+                self.sim.data.get_body_xpos(name) for name in self._finger_names
+            ]
         return (finger1 + finger2) / 2.
 
     def goal(self):
@@ -195,7 +209,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
-            self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
+            self.sim.actuator_name2id(n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:

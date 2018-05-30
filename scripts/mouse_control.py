@@ -53,7 +53,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .1
+                action[i] += env.env.sim.get_mouse_dy() * .02
 
         if lastkey is 'R':
             env.reset()
@@ -61,15 +61,20 @@ def cli(discrete, mimic_path):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            slide_y = env.env.sim.jnt_qposadr('slide_y')
-            print('y-axis:', env.env.sim.qpos[slide_y])
-            print(env.env.sim.qpos)
-            arm_joint = env.env.sim.jnt_qposadr('arm_flex_joint')
-            print('arm:', env.env.sim.qpos[arm_joint])
-            wrist_joint = env.env.sim.jnt_qposadr('wrist_roll_joint')
-            print('wrist:', env.env.sim.qpos[wrist_joint])
-            l_hand_joint = env.env.sim.jnt_qposadr('hand_l_proximal_joint')
-            print('hand:', env.env.sim.qpos[l_hand_joint])
+            print('distance from goal')
+            _env = env.unwrapped
+            print('block:',
+                  distance_between(_env.block_pos(_env.sim.qpos),
+                                   _env.goal().block))
+            # slide_y = env.env.sim.jnt_qposadr('slide_y')
+            # print('y-axis:', env.env.sim.qpos[slide_y])
+            # print(env.env.sim.qpos)
+            # arm_joint = env.env.sim.jnt_qposadr('arm_flex_joint')
+            # print('arm:', env.env.sim.qpos[arm_joint])
+            # wrist_joint = env.env.sim.jnt_qposadr('wrist_roll_joint')
+            # print('wrist:', env.env.sim.qpos[wrist_joint])
+            # l_hand_joint = env.env.sim.jnt_qposadr('hand_l_proximal_joint')
+            # print('hand:', env.env.sim.qpos[l_hand_joint])
 
         if not discrete:
             for k in range(10):

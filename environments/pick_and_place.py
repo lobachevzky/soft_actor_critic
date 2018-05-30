@@ -162,7 +162,7 @@ class PickAndPlaceEnv(MujocoEnv):
         return False
 
     def at_goal(self, goal, qpos):
-        return at_goal(self.block_pos(qpos)[2], goal.block[2], self.geofence)
+        return self.block_pos(qpos)[2] > self._initial_block_pos[2] + self._min_lift_height
 
     def compute_terminal(self, goal, obs):
         return self.at_goal(goal, obs)

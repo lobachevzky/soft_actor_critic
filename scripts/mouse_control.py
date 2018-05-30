@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from click._unicodefun import click
 
-from environments.base import print1
+from environments.base import print1, distance_between
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
@@ -53,7 +53,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .5
+                action[i] += env.env.sim.get_mouse_dy() * .1
 
         if lastkey is 'R':
             env.reset()

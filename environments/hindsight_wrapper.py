@@ -5,6 +5,7 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
+from environments.base import at_goal, distance_between
 from environments.pick_and_place import Goal, PickAndPlaceEnv
 from sac.utils import Step
 
@@ -34,16 +35,10 @@ class HindsightWrapper(gym.Wrapper):
     def vectorize_state(state):
         return np.concatenate(state)
 
-    def _reward(self, state, goal):
-        return 1 if self.at_goal(state, goal) else self._default_reward
-
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         new_s2 = State(obs=s2, goal=self.desired_goal())
-        new_r = self._reward(s2, self.desired_goal())
-        new_t = self.at_goal(s2, self.desired_goal()) or t
-        info['base_reward'] = r
-        return new_s2, new_r, new_t, info
+        return new_s2, r, t, info
 
     def reset(self):
         return State(obs=self.env.reset(), goal=self.desired_goal())
@@ -54,13 +49,9 @@ class HindsightWrapper(gym.Wrapper):
         achieved_goal = self.achieved_goal(trajectory[final_state].s2.obs)
         for step in trajectory[:final_state]:
             new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
-            r = self._reward(step.s2.obs, achieved_goal)
-            yield Step(
-                s1=State(obs=step.s1.obs, goal=achieved_goal),
-                a=step.a,
-                r=r,
-                s2=State(obs=step.s2.obs, goal=achieved_goal),
-                t=new_t)
+            r = float(new_t)
+            yield (Step(s1=State(obs=step.s1.obs, goal=achieved_goal), a=step.a, r=r,
+                        s2=State(obs=step.s2.obs, goal=achieved_goal), t=new_t))
             if new_t:
                 break
 
@@ -96,7 +87,11 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             block=self.unwrapped_env.block_pos(obs))
 
     def at_goal(self, obs, goal):
-        return self.unwrapped_env.compute_terminal(goal, obs)
+        gripper_at_goal = at_goal(self.unwrapped_env.gripper_pos(obs), goal.gripper,
+                                  self.unwrapped_env.geofence)
+        block_at_goal = at_goal(self.unwrapped_env.block_pos(obs), goal.block,
+                                self.unwrapped_env.geofence)
+        return gripper_at_goal and block_at_goal
 
     def desired_goal(self):
         return self.unwrapped_env.goal()

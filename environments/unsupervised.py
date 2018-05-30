@@ -87,7 +87,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
         goal, = obs  # use current obs as goal
         s1 = self._add_goal_to_sample(obs=sample_steps.s1, goal=goal)
         s2 = self._add_goal_to_sample(obs=sample_steps.s2, goal=goal)
-        t = at_goal(sample_steps.s2, goal, self._geofence)
+        t = at_goal(sample_steps.s2, goal, self.geofence)
         return self.sess.run(
             [self.loss, self.train],
             feed_dict={

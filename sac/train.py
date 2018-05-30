@@ -10,6 +10,7 @@ import tensorflow as tf
 from collections import Counter
 from gym import spaces
 
+from environments.base import print1
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent
@@ -59,15 +60,16 @@ class Trainer:
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
         episode_mean = Counter()
-        evaluation_period = 10
+        evaluation_period = 1
         tick = time.time()
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
             a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
-                env.render()
+                env.render(labels=dict(g=s1.goal.gripper, b=s1.goal.block))
             s2, r, t, info = self.step(a)
+            s2 = s2._replace(goal=s1.goal)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -131,6 +133,8 @@ class Trainer:
 
                 # zero out counters
                 episode_count = Counter()
+
+
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -225,8 +229,15 @@ class HindsightTrainer(TrajectoryTrainer):
                                                                  final_state=final_state))
 
     def reset(self) -> State:
+        assert isinstance(self.env, HindsightWrapper)
         self.add_hindsight_trajectories()
-        return super().reset()
+        state = super().reset()
+        if len(self.buffer) > 1:
+            random_s = Step(*[x[0] for x in self.buffer.sample(1)]).s2
+            achieved_goal = self.env.achieved_goal(random_s.obs)
+            replace = state._replace(goal=achieved_goal)
+            return replace
+        return state
 
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)

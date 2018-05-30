@@ -33,6 +33,8 @@ class MujocoEnv(BaseEnv):
         return self.sim.qpos, self.sim.qvel
 
     def render(self, mode=None, camera_name=None, labels=None):
+        if labels is None:
+            labels = {}
         if mode == 'rgb_array':
             return self.sim.render_offscreen(height=256, width=256)
         self.sim.render(camera_name, labels)

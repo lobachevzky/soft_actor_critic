@@ -107,3 +107,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         state = State(*state)
         state_history = list(map(np.concatenate, state.obs))
         return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])
+
+    def render(self, **kwargs):
+        return self.env.unwrapped.render(**kwargs)
+

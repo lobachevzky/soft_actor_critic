@@ -10,15 +10,13 @@ import numpy as np
 class BaseEnv(gym.Env):
     """ The environments """
 
-    def __init__(self, history_len, image_dimensions, neg_reward, steps_per_action):
+    def __init__(self, image_dimensions, neg_reward, steps_per_action):
 
-        self._history_buffer = deque(maxlen=history_len)
         self._steps_per_action = steps_per_action
         self._step_num = 0
         self._neg_reward = neg_reward
         self._image_dimensions = image_dimensions
 
-        self._history_buffer += [self._obs()] * history_len
         self.observation_space = self.action_space = None
 
         # required for OpenAI code
@@ -42,8 +40,7 @@ class BaseEnv(gym.Env):
             reward += self.compute_reward(self.goal(), self._obs())
             step += 1
 
-        self._history_buffer.append(self._obs())
-        return deepcopy(self._history_buffer), reward, done, {}
+        return self._obs(), reward, done, {}
 
     def seed(self, seed=None):
         np.random.seed(seed)

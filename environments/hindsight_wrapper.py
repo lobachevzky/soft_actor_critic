@@ -90,14 +90,13 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             self.unwrapped_env = env
         super().__init__(env, default_reward)
 
-    def achieved_goal(self, history):
-        last_obs, = history[-1]
+    def achieved_goal(self, obs):
         return Goal(
-            gripper=self.unwrapped_env.gripper_pos(last_obs),
-            block=self.unwrapped_env.block_pos(last_obs))
+            gripper=self.unwrapped_env.gripper_pos(obs),
+            block=self.unwrapped_env.block_pos(obs))
 
     def at_goal(self, obs, goal):
-        return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
+        return self.unwrapped_env.compute_terminal(goal, obs)
 
     def desired_goal(self):
         return self.unwrapped_env.goal()
@@ -105,5 +104,4 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     @staticmethod
     def vectorize_state(state):
         state = State(*state)
-        state_history = list(map(np.concatenate, state.obs))
-        return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])
+        return np.concatenate([state.obs, (np.concatenate(state.goal))])

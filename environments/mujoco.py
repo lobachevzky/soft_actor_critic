@@ -20,6 +20,7 @@ class MujocoEnv(BaseEnv):
             fullpath = os.path.join(os.path.dirname(__file__), "assets", fullpath)
         model = mujoco_py.load_model_from_path(fullpath)
         self.sim = mujoco_py.MjSim(model, nsubsteps=frames_per_step)
+        self.sim.forward()
         # self.sim = mujoco.Sim(fullpath)
         self.viewer = None
 
@@ -67,12 +68,12 @@ class MujocoEnv(BaseEnv):
         return self.sim.render_offscreen(*self._image_dimensions, camera_name)
 
     def step(self, action):
-        assert np.shape(action) == np.shape(self.sim.ctrl)
+        assert np.shape(action) == np.shape(self.sim.data.ctrl)
         return super().step(action)
 
     def _perform_action(self, action):
-        assert np.shape(action) == np.shape(self.sim.ctrl)
-        self.sim.ctrl[:] = action
+        assert np.shape(action) == np.shape(self.sim.data.ctrl)
+        self.sim.data.ctrl[:] = action
         self.sim.step()
 
     def reset(self):
@@ -81,11 +82,11 @@ class MujocoEnv(BaseEnv):
 
         self._set_new_goal()
         qpos = self.reset_qpos()
-        qvel = self.initial_state + \
-            np.random.uniform(size=self.sim.nv, low=-0.01, high=0.01)
-        assert qpos.shape == (self.sim.nq, ) and qvel.shape == (self.sim.nv, )
-        self.sim.qpos[:] = qpos.copy()
-        self.sim.qvel[:] = qvel.copy()
+        qvel = self.initial_state.qvel + \
+            np.random.uniform(size=self.sim.model.nv, low=-0.01, high=0.01)
+        assert qpos.shape == (self.sim.model.nq, ) and qvel.shape == (self.sim.model.nv, )
+        self.sim.data.qpos[:] = qpos.copy()
+        self.sim.data.qvel[:] = qvel.copy()
         self.sim.forward()
         return self._obs()
 

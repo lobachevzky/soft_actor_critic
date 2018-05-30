@@ -97,7 +97,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def reset_qpos(self):
         slide_y = self.sim.model.get_joint_qpos_addr('slide_y')
         self.init_qpos[slide_y] = np.random.uniform(-0.2, 0.2)
-        arm_joint = self.sim.jnt_qposadr('arm_flex_joint')
+        arm_joint = self.sim.model.get_joint_qpos_addr('arm_flex_joint')
         self.init_qpos[arm_joint] = np.random.uniform(-0.960114368248, 0.00101480673663)
         wrist_joint = self.sim.model.get_joint_qpos_addr('wrist_roll_joint')
         self.init_qpos[wrist_joint] = np.random.uniform(-1.5744836894, 1.57448370861)
@@ -107,7 +107,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self.init_qpos[r_hand_joint] = self.init_qpos[l_hand_joint]
 
         if not self._fixed_block:
-            block_joint = self.sim.model.get_joint_qpos_addr('block1joint')
+            block_joint, _ = self.sim.model.get_joint_qpos_addr('block1joint')
             self.init_qpos[block_joint + 1] = np.random.uniform(-0.2, 0.2)
             self.init_qpos[block_joint + 3] = np.random.uniform(-np.pi, np.pi)
             self.init_qpos[block_joint + 6] = np.random.uniform(-np.pi, np.pi)
@@ -135,23 +135,20 @@ class PickAndPlaceEnv(MujocoEnv):
         #     'wrist_roll_joint')] = np.random.random() * 2 * np.pi
         return self.init_qpos
 
-    def _set_new_goal(self):
-        pass
-
     def _obs(self):
         return np.copy(self.sim.data.qpos)
 
     @contextmanager
     def substitute_qpos(self, qpos):
-        if qpos:
-            original_state = self.sim.get_state()
-            new_state = deepcopy(original_state)
-            new_state.qpos = qpos
-            self.sim.set_state(new_state)
+        if qpos is None:
             yield
-            self.sim.set_state(original_state)
         else:
+            original_state = self.sim.get_state()
+            original_qpos = original_state.qpos
+            self.sim.set_state(original_state._replace(qpos=qpos))
             yield
+            assert np.allclose(original_state.qpos, original_qpos)
+            self.sim.set_state(original_state)
 
     def block_pos(self, qpos=None):
         with self.substitute_qpos(qpos):
@@ -174,6 +171,9 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def _currently_failed(self):
         return False
+
+    def _set_new_goal(self):
+        pass
 
     def at_goal(self, goal, qpos):
         return self.block_pos(qpos)[2] > self._initial_block_pos[2] + self._min_lift_height
@@ -209,7 +209,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
-            self.sim.actuator_name2id(n) for n in [mirrored, mirroring]
+            self.sim.model.actuator_name2id(n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:

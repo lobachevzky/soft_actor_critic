@@ -19,17 +19,17 @@ class FetchReachHindsightWrapper(HindsightWrapper):
         assert isinstance(env.unwrapped, FetchReachEnv)
         super().__init__(env)
 
-    def achieved_goal(self, obs):
+    def _achieved_goal(self, obs):
         return obs[ACHIEVED_GOAL]
 
     def _reward(self, obs, goal):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
-    def at_goal(self, obs, goal):
+    def _is_success(self, obs, goal):
         return goal_distance(obs[ACHIEVED_GOAL],
                              goal) < self.env.unwrapped.distance_threshold
 
-    def desired_goal(self):
+    def _desired_goal(self):
         return self.env.unwrapped.goal.copy()
 
     @staticmethod

@@ -32,7 +32,7 @@ class NavigateEnv(BaseEnv):
         self._set_new_goal()
         self._action_multiplier = action_multiplier
         self._continuous = continuous
-        obs_shape = history_len * np.size(self._obs()) + np.size(self.goal())
+        obs_shape = history_len * np.size(self._get_obs()) + np.size(self.goal())
         self.observation_space = spaces.Box(-np.inf, np.inf, shape=obs_shape)
 
         if continuous:
@@ -50,7 +50,7 @@ class NavigateEnv(BaseEnv):
         assert np.all(low <= goal) and np.all(goal <= high)
         self.__goal = goal
 
-    def _obs(self):
+    def _get_obs(self):
         return [self.sim.qpos]
 
     def goal(self):

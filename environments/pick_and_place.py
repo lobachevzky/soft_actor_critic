@@ -7,7 +7,6 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environments.base import at_goal, print1
 from environments.mujoco import MujocoEnv
 
 CHEAT_STARTS = [[
@@ -73,7 +72,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._obs()))
+        obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
@@ -86,13 +85,6 @@ class PickAndPlaceEnv(MujocoEnv):
                 dtype=np.float32)
         self._table_height = self.sim.data.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
-
-        # self._n_block_orientations = n_orientations = 8
-        # self._block_orientations = np.random.uniform(0, 2 * np.pi,
-        # size=(n_orientations, 4))
-        # self._rewards = np.ones(n_orientations) * -np.inf
-        # self._usage = np.zeros(n_orientations)
-        # self._current_orienation = None
 
     def reset_qpos(self):
         slide_y = self.sim.model.get_joint_qpos_addr('slide_y')
@@ -116,49 +108,18 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
-
-        # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
-        #     4) * 2 * np.pi
-        # rotate_around_x = [np.random.uniform(0, 1), np.random.uniform(-1, 1), 0, 0]
-        # rotate_around_z = [np.random.uniform(0, 1), 0, 0, np.random.uniform(-1, 1)]
-        # w, x, y, z = quaternion_multiply(rotate_around_z, rotate_around_x)
-        # self.init_qpos[block_joint + 3] = w
-        # self.init_qpos[block_joint + 4] = x
-        # self.init_qpos[block_joint + 5] = y
-        # self.init_qpos[block_joint + 6] = z
-        # mean_rewards = self._rewards / np.maximum(self._usage, 1)
-        # self._current_orienation = i = np.argmin(mean_rewards)
-        # print('rewards:', mean_rewards, 'argmin:', i)
-        # self._usage[i] += 1
-        # self.init_qpos[block_joint + 3:block_joint + 7] = self._block_orientations[i]
-        # self.init_qpos[self.sim.jnt_qposadr(
-        #     'wrist_roll_joint')] = np.random.random() * 2 * np.pi
         return self.init_qpos
 
-    def _obs(self):
+    def _get_obs(self):
         return np.copy(self.sim.data.qpos)
 
-    @contextmanager
-    def substitute_qpos(self, qpos):
-        if qpos is None:
-            yield
-        else:
-            original_state = self.sim.get_state()
-            original_qpos = original_state.qpos
-            self.sim.set_state(original_state._replace(qpos=qpos))
-            yield
-            assert np.allclose(original_state.qpos, original_qpos)
-            self.sim.set_state(original_state)
+    def block_pos(self):
+        return self.sim.data.get_body_xpos(self._goal_block_name)
 
-    def block_pos(self, qpos=None):
-        with self.substitute_qpos(qpos):
-            return self.sim.data.get_body_xpos(self._goal_block_name)
-
-    def gripper_pos(self, qpos=None):
-        with self.substitute_qpos(qpos):
-            finger1, finger2 = [
-                self.sim.data.get_body_xpos(name) for name in self._finger_names
-            ]
+    def gripper_pos(self):
+        finger1, finger2 = [
+            self.sim.data.get_body_xpos(name) for name in self._finger_names
+        ]
         return (finger1 + finger2) / 2.
 
     def goal(self):
@@ -169,20 +130,11 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def _currently_failed(self):
-        return False
-
     def _set_new_goal(self):
         pass
 
-    def at_goal(self, goal, qpos):
-        return self.block_pos(qpos)[2] > self._initial_block_pos[2] + self._min_lift_height
-
-    def compute_terminal(self, goal, obs):
-        return self.at_goal(goal, obs)
-
-    def compute_reward(self, goal, obs):
-        if self.at_goal(goal, obs):
+    def compute_reward(self):
+        if self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height:
             return 1
         elif self._neg_reward:
             return -.0001

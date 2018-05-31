@@ -21,7 +21,6 @@ class MujocoEnv(BaseEnv):
         model = mujoco_py.load_model_from_path(fullpath)
         self.sim = mujoco_py.MjSim(model, nsubsteps=frames_per_step)
         self.sim.forward()
-        # self.sim = mujoco.Sim(fullpath)
         self.viewer = None
 
         self.metadata = {
@@ -30,9 +29,6 @@ class MujocoEnv(BaseEnv):
         }
 
         self.initial_state = deepcopy(self.sim.get_state())
-        # self.init_qpos = self.sim.qpos.ravel().copy()
-        # self.init_qvel = self.sim.qvel.ravel().copy()
-        # self._frames_per_step = frames_per_step
         super().__init__(
             image_dimensions=image_dimensions,
             neg_reward=neg_reward,
@@ -56,9 +52,6 @@ class MujocoEnv(BaseEnv):
             return data[::-1, :, :]
         elif mode == 'human':
             self._get_viewer().render()
-        # if mode == 'rgb_array':
-        #     return self.sim.render_offscreen(height=256, width=256)
-        # self.sim.render(camera_name, labels)
 
     @property
     def dt(self):
@@ -71,7 +64,7 @@ class MujocoEnv(BaseEnv):
         assert np.shape(action) == np.shape(self.sim.data.ctrl)
         return super().step(action)
 
-    def _perform_action(self, action):
+    def _set_action(self, action):
         assert np.shape(action) == np.shape(self.sim.data.ctrl)
         self.sim.data.ctrl[:] = action
         self.sim.step()
@@ -88,7 +81,7 @@ class MujocoEnv(BaseEnv):
         self.sim.data.qpos[:] = qpos.copy()
         self.sim.data.qvel[:] = qvel.copy()
         self.sim.forward()
-        return self._obs()
+        return self._get_obs()
 
     @abstractmethod
     def reset_qpos(self):

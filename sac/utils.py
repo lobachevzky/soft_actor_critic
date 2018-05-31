@@ -53,12 +53,10 @@ def component(function):
 State = Any
 
 
-class Step(NamedTuple):
-    s1: State
-    a: Union[int, np.ndarray]
-    r: float
-    s2: State
-    t: bool
+class Step(namedtuple('Step', 's1 a r s2 t')):
+    def replace(self, **kwargs):
+        # noinspection PyProtectedMember
+        return super()._replace(**kwargs)
 
 
 class PropStep(Step, NamedTuple):

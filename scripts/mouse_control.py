@@ -113,7 +113,7 @@ def run_tests(env, obs):
     assert np.shape(env._goal()) == np.shape(env.obs_to_goal(obs))
     goal, obs_history = env.destructure_mlp_input(obs)
     assert_equal(env._goal(), goal)
-    assert_equal(env._obs(), obs_history[-1])
+    assert_equal(env._get_obs(), obs_history[-1])
     assert_equal((goal, obs_history),
                  env.destructure_mlp_input(env.mlp_input(goal, obs_history)))
     assert_equal(obs, env.mlp_input(*env.destructure_mlp_input(obs)))

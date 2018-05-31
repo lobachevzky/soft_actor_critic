@@ -42,7 +42,9 @@ class HindsightWrapper(gym.Wrapper):
         new_s2 = State(observation=s2,
                        desired_goal=self._desired_goal(),
                        achieved_goal=self._achieved_goal())
-        return new_s2, r, t, info
+        new_t = self._is_success(self._achieved_goal(), self._desired_goal())
+        new_r = float(new_t)
+        return new_s2, new_r, t or new_t, info
 
     def reset(self):
         observation = self.env.reset()

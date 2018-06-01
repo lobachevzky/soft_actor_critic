@@ -84,7 +84,7 @@ class Trainer:
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
                         step = self.agent.train_step(
-                            sample_steps._replace(
+                            sample_steps.replace(
                                 s1=list(map(self.vectorize_state, sample_steps.s1)),
                                 s2=list(map(self.vectorize_state, sample_steps.s2)),
                             ))
@@ -222,7 +222,7 @@ class HindsightTrainer(TrajectoryTrainer):
             assert isinstance(final_states, np.ndarray)
             for final_state in final_states:
                 self.buffer.extend(self.env.recompute_trajectory(self.trajectory,
-                                                                 final_state=final_state))
+                                                                 final_index=final_state))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

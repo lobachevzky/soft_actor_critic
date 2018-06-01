@@ -58,7 +58,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
-        self._geofence = geofence
+        self.geofence = geofence
         self._discrete = discrete
 
         super().__init__(
@@ -72,7 +72,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._obs()))
+        obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
@@ -127,7 +127,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def _set_new_goal(self):
         pass
 
-    def _obs(self):
+    def _get_obs(self):
         return np.copy(self.sim.qpos)
 
     def block_pos(self, qpos=None):
@@ -147,19 +147,11 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def _currently_failed(self):
-        return False
+    def _set_new_goal(self):
+        pass
 
-    def at_goal(self, goal, qpos):
-        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
-        return gripper_at_goal and block_at_goal
-
-    def compute_terminal(self, goal, obs):
-        return self.at_goal(goal, obs)
-
-    def compute_reward(self, goal, obs):
-        if self.at_goal(goal, obs):
+    def compute_reward(self):
+        if self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height:
             return 1
         elif self._neg_reward:
             return -.0001

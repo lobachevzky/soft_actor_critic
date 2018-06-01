@@ -162,10 +162,7 @@ class Trainer:
             action = np.tanh(action)
             hi, lo = self.env.action_space.high, self.env.action_space.low
             # noinspection PyTypeChecker
-            tick = time.time()
-            step = self.env.step((action + 1) / 2 * (hi - lo) + lo)
-            print(time.time() - tick)
-            return step
+            return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
     def vectorize_state(self, state: State) -> np.ndarray:
         """ Preprocess state before feeding to network """

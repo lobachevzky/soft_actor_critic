@@ -84,7 +84,7 @@ class Trainer:
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
                         step = self.agent.train_step(
-                            sample_steps._replace(
+                            sample_steps.replace(
                                 s1=list(map(self.vectorize_state, sample_steps.s1)),
                                 s2=list(map(self.vectorize_state, sample_steps.s2)),
                             ))
@@ -130,7 +130,7 @@ class Trainer:
                     tb_writer.flush()
 
                 # zero out counters
-                episode_count = Counter()
+                episode_count = episode_mean = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -162,10 +162,7 @@ class Trainer:
             action = np.tanh(action)
             hi, lo = self.env.action_space.high, self.env.action_space.low
             # noinspection PyTypeChecker
-            tick = time.time()
-            step = self.env.step((action + 1) / 2 * (hi - lo) + lo)
-            print(time.time() - tick)
-            return step
+            return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
     def vectorize_state(self, state: State) -> np.ndarray:
         """ Preprocess state before feeding to network """
@@ -225,7 +222,7 @@ class HindsightTrainer(TrajectoryTrainer):
             assert isinstance(final_states, np.ndarray)
             for final_state in final_states:
                 self.buffer.extend(self.env.recompute_trajectory(self.trajectory,
-                                                                 final_state=final_state))
+                                                                 final_index=final_state))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

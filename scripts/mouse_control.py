@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 from click._unicodefun import click
 
-from environments.base import print1
+from environments.base import print1, distance_between
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
@@ -53,7 +53,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .5
+                action[i] += env.env.sim.get_mouse_dy() * .02
 
         if lastkey is 'R':
             env.reset()
@@ -61,15 +61,20 @@ def cli(discrete, mimic_path):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            slide_y = env.env.sim.jnt_qposadr('slide_y')
-            print('y-axis:', env.env.sim.qpos[slide_y])
-            print(env.env.sim.qpos)
-            arm_joint = env.env.sim.jnt_qposadr('arm_flex_joint')
-            print('arm:', env.env.sim.qpos[arm_joint])
-            wrist_joint = env.env.sim.jnt_qposadr('wrist_roll_joint')
-            print('wrist:', env.env.sim.qpos[wrist_joint])
-            l_hand_joint = env.env.sim.jnt_qposadr('hand_l_proximal_joint')
-            print('hand:', env.env.sim.qpos[l_hand_joint])
+            print('distance from goal')
+            _env = env.unwrapped
+            print('block:',
+                  distance_between(_env.block_pos(_env.sim.qpos),
+                                   _env.goal().block))
+            # slide_y = env.env.sim.jnt_qposadr('slide_y')
+            # print('y-axis:', env.env.sim.qpos[slide_y])
+            # print(env.env.sim.qpos)
+            # arm_joint = env.env.sim.jnt_qposadr('arm_flex_joint')
+            # print('arm:', env.env.sim.qpos[arm_joint])
+            # wrist_joint = env.env.sim.jnt_qposadr('wrist_roll_joint')
+            # print('wrist:', env.env.sim.qpos[wrist_joint])
+            # l_hand_joint = env.env.sim.jnt_qposadr('hand_l_proximal_joint')
+            # print('hand:', env.env.sim.qpos[l_hand_joint])
 
         if not discrete:
             for k in range(10):
@@ -108,7 +113,7 @@ def run_tests(env, obs):
     assert np.shape(env._goal()) == np.shape(env.obs_to_goal(obs))
     goal, obs_history = env.destructure_mlp_input(obs)
     assert_equal(env._goal(), goal)
-    assert_equal(env._obs(), obs_history[-1])
+    assert_equal(env._get_obs(), obs_history[-1])
     assert_equal((goal, obs_history),
                  env.destructure_mlp_input(env.mlp_input(goal, obs_history)))
     assert_equal(obs, env.mlp_input(*env.destructure_mlp_input(obs)))

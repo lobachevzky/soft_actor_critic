@@ -26,18 +26,8 @@ class BaseEnv(gym.Env):
 
     def step(self, action):
         self._step_num += 1
-        step = 0
-        reward = 0
-        done = False
-
-        while not done and step < self._steps_per_action:
-            self._set_action(action)
-            if self.compute_terminal():
-                done = True
-            reward += self.compute_reward()
-            step += 1
-
-        return self._get_obs(), reward, done, {}
+        self._set_action(action)
+        return self._get_obs(), self.compute_reward(), self.compute_terminal(), {}
 
     def seed(self, seed=None):
         np.random.seed(seed)

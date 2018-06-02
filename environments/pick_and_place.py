@@ -149,9 +149,6 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def _currently_failed(self):
-        return False
-
     def at_goal(self, goal, obs):
         qpos, = obs
         gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self._geofence)

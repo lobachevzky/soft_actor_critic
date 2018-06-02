@@ -32,6 +32,7 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
+        self.render = render
 
         if mimic_dir:
             for path in Path(mimic_dir).iterdir():
@@ -40,14 +41,7 @@ class Trainer:
                         self.buffer.extend(pickle.load(f))
                 print('Loaded mimic file {} into buffer.'.format(path))
 
-        s1 = self.reset()
-
         self.agent = agent = self.build_agent(**kwargs)
-
-        if isinstance(env.unwrapped, UnsupervisedEnv):
-            # noinspection PyUnresolvedReferences
-            env.unwrapped.initialize(agent.sess, self.buffer)
-
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -57,74 +51,73 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        episode_count = Counter()
-        episode_mean = Counter()
-        evaluation_period = 10
+        self.episode_count = self.episode_mean = Counter()
         tick = time.time()
+        s1 = self.reset()
 
-        for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
-            a = agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
-            if render:
-                env.render()
-            s2, r, t, info = self.step(a)
-            if 'print' in info:
-                print('Time step:', time_steps, info['print'])
-            if 'log count' in info:
-                episode_count.update(Counter(info['log count']))
-            if 'log mean' in info:
-                episode_mean.update(Counter(info['log mean']))
-
-            if save_path and time_steps % 5000 == 0:
-                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            if not is_eval_period:
-                self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-                if self.buffer_full() and not load_path:
-                    for i in range(self.num_train_steps):
-                        step = self.agent.train_step(self.sample_buffer())
-                        episode_mean.update(
-                            Counter({
-                                        k: getattr(step, k.replace(' ', '_'))
-                                        for k in [
-                                            'entropy',
-                                            'V loss',
-                                            'Q loss',
-                                            'pi loss',
-                                            'V grad',
-                                            'Q grad',
-                                            'pi grad',
-                                        ]
-                                        }))
+        for timesteps in itertools.count():
+            is_eval_period = timesteps % 100 == 0 or load_path is not None
+            s2, r, t, i = self.step(s1=s1, is_eval_period=is_eval_period)
             s1 = s2
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+
+            count += Counter(reward=r)
+            self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, timesteps=1))
+            if save_path and timesteps % 5000 == 0:
+                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if t:
                 s1 = self.reset()
-                episode_reward = episode_count['reward']
-                episode_timesteps = episode_count['timesteps']
-                count.update(Counter(reward=episode_reward, episode=1))
+                count += Counter(episode=1)
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
-                    episode_reward))
+                    'EVAL' if is_eval_period else 'TRAIN', count['episode'],
+                    timesteps, self.episode_count['reward']))
                 if logdir:
                     summary = tf.Summary()
                     if is_eval_period:
-                        summary.value.add(tag='eval reward', simple_value=episode_reward)
-                    summary.value.add(
-                        tag='average reward',
-                        simple_value=(count['reward'] / float(count['episode'])))
-                    for k in episode_count:
-                        summary.value.add(tag=k, simple_value=episode_count[k])
-                    for k in episode_mean:
+                        summary.value.add(tag='eval reward',
+                                          simple_value=self.episode_count['reward'])
+                    for k in self.episode_count:
+                        summary.value.add(tag=k, simple_value=self.episode_count[k])
+                    episode_timesteps = self.episode_count['timesteps']
+                    for k in self.episode_mean:
                         summary.value.add(
                             tag=k,
-                            simple_value=episode_mean[k] / float(episode_timesteps))
-                    tb_writer.add_summary(summary, time_steps)
+                            simple_value=self.episode_mean[k] / float(episode_timesteps))
+                    tb_writer.add_summary(summary, timesteps)
                     tb_writer.flush()
 
                 # zero out counters
-                episode_count = episode_mean = Counter()
+                self.episode_count = self.episode_mean = Counter()
+
+    def step(self, is_eval_period, s1):
+        a = self.agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
+        if self.render:
+            self.env.render()
+        s2, r, t, info = self.step_env(a)
+        if 'log count' in info:
+            self.episode_count.update(Counter(info['log count']))
+        if 'log mean' in info:
+            self.episode_mean.update(Counter(info['log mean']))
+        if not is_eval_period:
+            self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
+            if self.buffer_full():
+                for i in range(self.num_train_steps):
+                    step = self.agent.train_step(self.sample_buffer())
+                    self.episode_mean.update(
+                        Counter({
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
+        self.episode_count.update(Counter(reward=r, timesteps=1))
+        return s2, r, t, info
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -147,7 +140,7 @@ class Trainer:
     def reset(self) -> State:
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+    def step_env(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker

@@ -17,7 +17,7 @@ if __name__ == '__main__':
         rand_action = np.random.rand(2) - 0.5  # [forward, rotate]
         # rand_action *= 10
 
-        _, _, done, _ = env.step(rand_action)
+        _, _, done, _ = env.step_env(rand_action)
 
         if done:
             env._reset()

@@ -8,6 +8,7 @@ from gym.spaces import Box
 from environments.base import distance_between
 from environments.pick_and_place import Goal
 from sac.utils import Step
+from typing import Iterable, List, Union
 
 
 class State(namedtuple('State', 'achieved_goal desired_goal observation')):
@@ -19,7 +20,7 @@ class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         vector_state = self.vectorize_state(self.reset())
-        self.observation_space = Box(-1, 1, vector_state.shape)
+        self.observation_space = Box(-1, 1, vector_state.shape[1:])
 
     @abstractmethod
     def _achieved_goal(self):
@@ -52,11 +53,11 @@ class HindsightWrapper(gym.Wrapper):
                      desired_goal=self._desired_goal(),
                      observation=observation)
 
-    def recompute_trajectory(self, trajectory, final_index=-1):
+    def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
         if not trajectory:
             return ()
-        achieved_goal = trajectory[final_index].s2.achieved_goal
-        for step in trajectory[:final_index]:
+        achieved_goal = final_step.s2.achieved_goal
+        for step in trajectory:
             new_t = self._is_success(step.s2.achieved_goal, achieved_goal) or step.t
             r = float(new_t)
             s1 = step.s1.replace(desired_goal=achieved_goal)
@@ -70,7 +71,8 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
-    #TODO: this is cheating
+
+    # TODO: this is cheating
     def step(self, action):
         s, r, t, i = super().step(action)
         return s, max(r, 0), t, i
@@ -108,6 +110,29 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return self.env.unwrapped.goal()
 
     @staticmethod
-    def vectorize_state(state: State):
-        return np.concatenate((state.observation,) + state.desired_goal)
+    def vectorize_state(states: List[State]):
+        """
+        :returns
+        >>> np.stack([np.concatenate(
+        >>>    [state.observation, state.desired_goal.gripper, state.desired_goal.block])
+        >>>     for state in states])
+        """
+        if isinstance(states, State):
+            states = [states]
+        state0 = states[0]  # type: State
+
+        # Collect the input arrays and associated data
+        arrays = [state0.observation,
+                  state0.desired_goal.gripper,
+                  state0.desired_goal.block]
+        sizes = [0] + [np.size(a) for a in arrays]
+        slices = np.cumsum(sizes)
+
+        # build state vector
+        state_vector = np.empty((len(states), sum(sizes)))
+        for i, state in enumerate(states):
+            for (start, stop), array in zip(zip(slices, slices[1:]), arrays):
+                state_vector[i, start:stop] = array
+
+        return state_vector
 

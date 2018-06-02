@@ -32,7 +32,8 @@ class BaseEnv(gym.Env):
 
         while not done and step < self._steps_per_action:
             self._set_action(action)
-            done = False
+            if self.compute_terminal():
+                done = True
             reward += self.compute_reward()
             step += 1
 
@@ -77,6 +78,10 @@ class BaseEnv(gym.Env):
 
     @abstractmethod
     def goal_3d(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def compute_terminal(self):
         raise NotImplementedError
 
     @abstractmethod

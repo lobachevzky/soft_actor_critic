@@ -109,6 +109,5 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     @staticmethod
     def vectorize_state(state: State):
-        return np.concatenate([state.observation,
-                               np.concatenate(state.desired_goal)])
+        return np.concatenate((state.observation,) + state.desired_goal)
 

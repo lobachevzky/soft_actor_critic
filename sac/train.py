@@ -178,8 +178,8 @@ class TrajectoryTrainer(Trainer):
         super().__init__(**kwargs)
         self.s1 = self.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
-        s2, r, t, i = super().step(action)
+    def env_step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+        s2, r, t, i = super().env_step(action)
         self.trajectory.append(Step(s1=self.s1, a=action, r=r, s2=s2, t=t))
         self.s1 = s2
         return s2, r, t, i

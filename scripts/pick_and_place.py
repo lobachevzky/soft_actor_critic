@@ -67,3 +67,6 @@ def cli(default_reward, max_steps, discrete, fixed_block,
         save_path=save_path,
         load_path=load_path,
         render=render)
+
+if __name__ == '__main__':
+    cli()

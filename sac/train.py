@@ -81,13 +81,7 @@ class Trainer:
                 self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
                 if self.buffer_full() and not load_path:
                     for i in range(self.num_train_steps):
-                        sample_steps = self.sample_buffer()
-                        # noinspection PyProtectedMember
-                        step = self.agent.train_step(
-                            sample_steps.replace(
-                                s1=list(map(self.vectorize_state, sample_steps.s1)),
-                                s2=list(map(self.vectorize_state, sample_steps.s2)),
-                            ))
+                        step = self.agent.train_step(self.sample_buffer())
                         episode_mean.update(
                             Counter({
                                 k: getattr(step, k.replace(' ', '_'))
@@ -170,7 +164,10 @@ class Trainer:
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
-        self.buffer.append(step)
+        self.buffer.append(step.replace(
+            s1=self.vectorize_state(step.s1),
+            s2=self.vectorize_state(step.s2),
+        ))
 
     def buffer_full(self):
         return len(self.buffer) >= self.batch_size
@@ -216,7 +213,8 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.env, HindsightWrapper)
-        self.buffer.extend(self.env.recompute_trajectory(self.trajectory))
+        for step in self.env.recompute_trajectory(self.trajectory):
+            self.add_to_buffer(step)
         if self.n_goals - 1 and self.trajectory:
             final_states = np.random.randint(1, len(self.trajectory), size=self.n_goals - 1)
             assert isinstance(final_states, np.ndarray)

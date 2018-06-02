@@ -18,7 +18,7 @@ class BaseEnv(gym.Env):
         self._neg_reward = neg_reward
         self._image_dimensions = image_dimensions
 
-        self._history_buffer += [self._obs()] * history_len
+        self._history_buffer += [self._get_obs()] * history_len
         self.observation_space = self.action_space = None
 
         # required for OpenAI code
@@ -33,16 +33,16 @@ class BaseEnv(gym.Env):
         done = False
 
         while not done and step < self._steps_per_action:
-            self._perform_action(action)
+            self._set_action(action)
             done = False
-            if self.compute_terminal(self.goal(), self._obs()):
+            if self.compute_terminal(self.goal(), self._get_obs()):
                 done = True
             elif self._currently_failed():
                 done = True
-            reward += self.compute_reward(self.goal(), self._obs())
+            reward += self.compute_reward(self.goal(), self._get_obs())
             step += 1
 
-        self._history_buffer.append(self._obs())
+        self._history_buffer.append(self._get_obs())
         return deepcopy(self._history_buffer), reward, done, {}
 
     def seed(self, seed=None):
@@ -55,7 +55,7 @@ class BaseEnv(gym.Env):
         pass
 
     @abstractmethod
-    def _perform_action(self, action):
+    def _set_action(self, action):
         raise NotImplementedError
 
     @abstractmethod
@@ -75,7 +75,7 @@ class BaseEnv(gym.Env):
         raise NotImplementedError
 
     @abstractmethod
-    def _obs(self):
+    def _get_obs(self):
         raise NotImplementedError
 
     @abstractmethod

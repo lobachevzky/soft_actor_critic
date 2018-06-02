@@ -19,15 +19,15 @@ class HindsightWrapper(gym.Wrapper):
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
-    def achieved_goal(self, obs):
+    def _achieved_goal(self, obs):
         raise NotImplementedError
 
     @abstractmethod
-    def at_goal(self, obs, goal):
+    def _is_success(self, obs, goal):
         raise NotImplementedError
 
     @abstractmethod
-    def desired_goal(self):
+    def _desired_goal(self):
         raise NotImplementedError
 
     @staticmethod
@@ -35,25 +35,25 @@ class HindsightWrapper(gym.Wrapper):
         return np.concatenate(state)
 
     def _reward(self, state, goal):
-        return 1 if self.at_goal(state, goal) else self._default_reward
+        return 1 if self._is_success(state, goal) else self._default_reward
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(obs=s2, goal=self.desired_goal())
-        new_r = self._reward(s2, self.desired_goal())
-        new_t = self.at_goal(s2, self.desired_goal()) or t
+        new_s2 = State(obs=s2, goal=self._desired_goal())
+        new_r = self._reward(s2, self._desired_goal())
+        new_t = self._is_success(s2, self._desired_goal()) or t
         info['base_reward'] = r
         return new_s2, new_r, new_t, info
 
     def reset(self):
-        return State(obs=self.env.reset(), goal=self.desired_goal())
+        return State(obs=self.env.reset(), goal=self._desired_goal())
 
     def recompute_trajectory(self, trajectory, final_state=-1):
         if not trajectory:
             return ()
-        achieved_goal = self.achieved_goal(trajectory[final_state].s2.obs)
+        achieved_goal = self._achieved_goal(trajectory[final_state].s2.obs)
         for step in trajectory[:final_state]:
-            new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
+            new_t = self._is_success(step.s2.obs, achieved_goal) or step.t
             r = self._reward(step.s2.obs, achieved_goal)
             yield Step(
                 s1=State(obs=step.s1.obs, goal=achieved_goal),
@@ -70,13 +70,13 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
-    def achieved_goal(self, obs):
+    def _achieved_goal(self, obs):
         return np.array([obs[0]])
 
-    def at_goal(self, obs, goal):
+    def _is_success(self, obs, goal):
         return obs[0] >= goal[0]
 
-    def desired_goal(self):
+    def _desired_goal(self):
         return np.array([0.45])
 
 
@@ -90,16 +90,16 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             self.unwrapped_env = env
         super().__init__(env, default_reward)
 
-    def achieved_goal(self, history):
+    def _achieved_goal(self, history):
         last_obs, = history[-1]
         return Goal(
             gripper=self.unwrapped_env.gripper_pos(last_obs),
             block=self.unwrapped_env.block_pos(last_obs))
 
-    def at_goal(self, obs, goal):
+    def _is_success(self, obs, goal):
         return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
 
-    def desired_goal(self):
+    def _desired_goal(self):
         return self.unwrapped_env.goal()
 
     @staticmethod

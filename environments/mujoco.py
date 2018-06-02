@@ -44,7 +44,7 @@ class MujocoEnv(BaseEnv):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         return super().step(action)
 
-    def _perform_action(self, action):
+    def _set_action(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         self.sim.ctrl[:] = action
         for _ in range(self._frames_per_step):

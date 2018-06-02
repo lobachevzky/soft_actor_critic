@@ -74,7 +74,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = history_len * sum(map(np.size, self._obs()))
+        obs_size = history_len * sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
@@ -129,7 +129,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def _set_new_goal(self):
         pass
 
-    def _obs(self):
+    def _get_obs(self):
         return np.copy(self.sim.qpos),
 
     def block_pos(self, qpos=None):

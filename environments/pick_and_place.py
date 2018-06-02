@@ -130,12 +130,12 @@ class PickAndPlaceEnv(MujocoEnv):
     def _get_obs(self):
         return np.copy(self.sim.qpos)
 
-    def block_pos(self, qpos=None):
-        return self.sim.get_body_xpos(self._goal_block_name, qpos)
+    def block_pos(self):
+        return self.sim.get_body_xpos(self._goal_block_name)
 
-    def gripper_pos(self, qpos=None):
+    def gripper_pos(self):
         finger1, finger2 = [
-            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+            self.sim.get_body_xpos(name) for name in self._finger_names
         ]
         return (finger1 + finger2) / 2.
 

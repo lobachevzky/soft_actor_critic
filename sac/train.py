@@ -63,6 +63,8 @@ class Trainer:
             count += Counter(reward=r)
             self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
+            if timesteps == 1000:
+                exit()
             if save_path and timesteps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             if t:

@@ -97,7 +97,6 @@ class Trainer:
                                         }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
-            print(str(time.time() - tick) + ',')
             tick = time.time()
             episode_count.update(Counter(reward=r, timesteps=1))
             if t:

@@ -18,6 +18,7 @@ setup(
     entry_points=dict(console_scripts=[
         'gym-env=scripts.gym_env:cli',
         'pick-and-place=scripts.pick_and_place:cli',
+        'fetch-reach=scripts.fetch_reach:cli',
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',

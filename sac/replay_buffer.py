@@ -1,42 +1,45 @@
-from collections import deque
+from collections import deque, Iterable
 
 import numpy as np
 
+from sac.utils import Step
 
-class RollingBuffer:
-    def __init__(self, maxlen):
+
+class ReplayBuffer:
+    def __init__(self, maxlen: int):
         self.maxlen = maxlen
-        self.rolling_buffer = [None for _ in range(maxlen)]
+        self.buffer = np.empty(maxlen, dtype=Step)
         self.pos = 0
         self.full = False
         self.empty = True
 
     def append(self, x):
         self.empty = False
-        self.rolling_buffer[self.pos] = x
+        self.buffer[self.pos] = x
         self.pos += 1
         if self.pos >= self.maxlen:
             self.full = True
             self.pos = 0
 
-    def extend(self, xs):
+    def extend(self, xs: Iterable):
         for x in xs:
             self.append(x)
 
-    def sample(self, batch_size):
+    def sample(self, batch_size: int):
         top_pos = self.maxlen if self.full else self.pos
-        indices = np.random.randint(0, top_pos, size=batch_size)
+        indices = np.random.randint(0, top_pos, size=batch_size)  # type: np.ndarray
         samples = []
         for idx in indices:
-            sample = self.rolling_buffer[idx]
+            sample = self.buffer[idx]
             samples.append(sample)
-        return samples
+        return tuple(map(list, zip(*samples)))
 
     def __len__(self):
         return self.maxlen if self.full else self.pos
 
-
-class ReplayBuffer(RollingBuffer):
-    def sample(self, batch_size):
-        sample = super().sample(batch_size)
-        return tuple(map(list, zip(*sample)))
+    def __getitem__(self, item):
+        if isinstance(item, slice):
+            return (self.buffer[i] for i in
+                    range(item.start or 0, item.stop or len(self), item.step or 1))
+        else:
+            return self.buffer[item]

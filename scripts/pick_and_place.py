@@ -21,7 +21,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.04, type=float)
+@click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)

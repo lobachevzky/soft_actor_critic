@@ -150,8 +150,14 @@ class PickAndPlaceEnv(MujocoEnv):
     def _set_new_goal(self):
         pass
 
+    def _is_success(self):
+        return self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height
+
+    def compute_terminal(self):
+        return self._is_success()
+
     def compute_reward(self):
-        if self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height:
+        if self._is_success():
             return 1
         elif self._neg_reward:
             return -.0001

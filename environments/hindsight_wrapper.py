@@ -12,8 +12,7 @@ State = namedtuple('State', 'obs goal')
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env, default_reward=0):
-        self._default_reward = default_reward
+    def __init__(self, env):
         super().__init__(env)
         vector_state = self.vectorize_state(self.reset())
         self.observation_space = Box(-1, 1, vector_state.shape)
@@ -35,7 +34,7 @@ class HindsightWrapper(gym.Wrapper):
         return np.concatenate(state)
 
     def _reward(self, state, goal):
-        return 1 if self._is_success(state, goal) else self._default_reward
+        return float(self._is_success(state, goal))
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
@@ -81,26 +80,20 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env, default_reward):
-        if isinstance(env, gym.Wrapper):
-            assert isinstance(env.unwrapped, PickAndPlaceEnv)
-            self.unwrapped_env = env.unwrapped
-        else:
-            assert isinstance(env, PickAndPlaceEnv)
-            self.unwrapped_env = env
-        super().__init__(env, default_reward)
+    def __init__(self, env):
+        super().__init__(env)
 
     def _achieved_goal(self, history):
         last_obs, = history[-1]
         return Goal(
-            gripper=self.unwrapped_env.gripper_pos(last_obs),
-            block=self.unwrapped_env.block_pos(last_obs))
+            gripper=self.env.unwrapped.gripper_pos(last_obs),
+            block=self.env.unwrapped.block_pos(last_obs))
 
     def _is_success(self, obs, goal):
-        return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
+        return any(self.env.unwrapped.compute_terminal(goal, o) for o in obs)
 
     def _desired_goal(self):
-        return self.unwrapped_env.goal()
+        return self.env.unwrapped.goal()
 
     @staticmethod
     def vectorize_state(state):

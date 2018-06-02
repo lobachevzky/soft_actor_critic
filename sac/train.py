@@ -90,7 +90,7 @@ class Trainer:
                 self.episode_count = self.episode_mean = Counter()
 
     def step(self, is_eval_period, s1):
-        a = self.agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
+        a = self.agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
         if self.render:
             self.env.render()
         s2, r, t, info = self.step_env(a)
@@ -102,7 +102,11 @@ class Trainer:
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
             if self.buffer_full():
                 for i in range(self.num_train_steps):
-                    step = self.agent.train_step(self.sample_buffer())
+                    sample_steps = self.sample_buffer()
+                    step = self.agent.train_step(sample_steps._replace(
+                        s1=list(map(self.vectorize_state, sample_steps.s1)),
+                        s2=list(map(self.vectorize_state, sample_steps.s2)),
+                    ))
                     self.episode_mean.update(
                         Counter({
                                     k: getattr(step, k.replace(' ', '_'))

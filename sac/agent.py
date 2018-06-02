@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 
 from sac.utils import PropStep, Step
+from tensorflow.python.client import timeline
 
 
 def mlp(inputs, layer_size, n_layers, activation):
@@ -112,7 +113,7 @@ class AbstractAgent:
                 soft_update_xi_bar_ops = [
                     tf.assign(xbar, tau * x + (1 - tau) * xbar)
                     for (xbar, x) in zip(xi_bar, xi)
-                ]
+                    ]
                 self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
                 self.check = tf.add_check_numerics_ops()
                 self.entropy = self.compute_entropy()
@@ -120,7 +121,7 @@ class AbstractAgent:
 
             config = tf.ConfigProto(allow_soft_placement=True)
             config.gpu_options.allow_growth = True
-            config.inter_op_parallelism_threads=1
+            config.inter_op_parallelism_threads = 1
             self.sess = sess = tf.Session(config=config)
             sess.run(tf.global_variables_initializer())
 
@@ -139,8 +140,16 @@ class AbstractAgent:
                 self.S2: step.s2,
                 self.T: step.t
             }
-        return TrainStep(*self.sess.run([getattr(self, attr)
-                                         for attr in TRAIN_VALUES], feed_dict))
+        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
+        train_step = TrainStep(*self.sess.run(
+            [getattr(self, attr) for attr in TRAIN_VALUES], feed_dict,
+            options=options, run_metadata=run_metadata))
+        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+        with open('timeline_01.json', 'w') as f:
+            f.write(chrome_trace)
+        return train_step
 
     def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
         if sample:

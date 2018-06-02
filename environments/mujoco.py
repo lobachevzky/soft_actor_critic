@@ -11,7 +11,6 @@ from environments.base import BaseEnv
 class MujocoEnv(BaseEnv):
     def __init__(self,
                  xml_filepath,
-                 history_len,
                  image_dimensions,
                  neg_reward,
                  steps_per_action,
@@ -24,7 +23,6 @@ class MujocoEnv(BaseEnv):
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._frames_per_step = frames_per_step
         super().__init__(
-            history_len=history_len,
             image_dimensions=image_dimensions,
             neg_reward=neg_reward,
             steps_per_action=steps_per_action)
@@ -62,7 +60,7 @@ class MujocoEnv(BaseEnv):
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = qvel.copy()
         self.sim.forward()
-        return deepcopy(self._history_buffer)
+        return self._get_obs()
 
     @abstractmethod
     def reset_qpos(self):

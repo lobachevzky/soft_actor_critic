@@ -59,11 +59,10 @@ class Trainer:
         count = Counter(reward=0, episode=0)
         episode_count = Counter()
         episode_mean = Counter()
-        evaluation_period = 10
         tick = time.time()
 
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
+            is_eval_period = count['episode'] % 100 == 99
             a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()

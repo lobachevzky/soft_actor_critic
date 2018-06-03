@@ -76,9 +76,12 @@ class HindsightWrapper(gym.Wrapper):
         if not trajectory:
             return ()
         achieved_goal = self._achieved_goal(trajectory[final_state].s2.observation)
+        assert goals_equal(achieved_goal, trajectory[final_state].s2.achieved_goal)
         for step in trajectory[:final_state]:
             new_t = self._is_success(step.s2.observation, achieved_goal) or step.t
+            assert new_t == self._is_success2(step.s2.achieved_goal, achieved_goal)
             r = self._reward(step.s2.observation, achieved_goal)
+            assert np.isclose(r, float(new_t))
             yield Step(
                 s1=step.s1._replace(desired_goal=achieved_goal),
                 a=step.a,

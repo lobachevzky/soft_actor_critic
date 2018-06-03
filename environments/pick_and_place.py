@@ -55,10 +55,10 @@ class PickAndPlaceEnv(MujocoEnv):
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
+        self.geofence = geofence
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
-        self._geofence = geofence
         self._discrete = discrete
 
         super().__init__(
@@ -148,8 +148,8 @@ class PickAndPlaceEnv(MujocoEnv):
         return self.goal()[0]
 
     def at_goal(self, goal, qpos):
-        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
+        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self.geofence)
+        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self.geofence)
         return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):

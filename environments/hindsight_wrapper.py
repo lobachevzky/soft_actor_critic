@@ -24,11 +24,11 @@ class HindsightWrapper(gym.Wrapper):
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
-    def _achieved_goal2(self):
+    def _achieved_goal(self):
         raise NotImplementedError
 
     @abstractmethod
-    def _is_success2(self, achieved_goal, desired_goal):
+    def _is_success(self, achieved_goal, desired_goal):
         raise NotImplementedError
 
     @abstractmethod
@@ -41,27 +41,27 @@ class HindsightWrapper(gym.Wrapper):
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        achieved_goal2 = self._achieved_goal2()
-        desired_goal = self._desired_goal()
         new_s2 = State(observation=s2,
-                       desired_goal=desired_goal,
-                       achieved_goal=achieved_goal2)
-        is_success2 = self._is_success2(achieved_goal2, desired_goal)
-        new_t = is_success2 or t
+                       desired_goal=self._desired_goal(),
+                       achieved_goal=self._achieved_goal())
+        is_success = self._is_success(new_s2.achieved_goal,
+                                      new_s2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
         info['base_reward'] = r
-        return new_s2, float(is_success2), new_t, info
+        return new_s2, new_r, new_t, info
 
     def reset(self):
         return State(observation=self.env.reset(),
                      desired_goal=self._desired_goal(),
-                     achieved_goal=self._achieved_goal2())
+                     achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory, final_state=-1):
         if not trajectory:
             return ()
         achieved_goal = trajectory[final_state].s2.achieved_goal
         for step in trajectory[:final_state]:
-            new_t = self._is_success2(step.s2.achieved_goal, achieved_goal)
+            new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
             r = float(new_t)
             yield Step(
                 s1=step.s1._replace(desired_goal=achieved_goal),
@@ -78,42 +78,28 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
-    # TODO: this is cheating
-    def step(self, action):
-        s, r, t, i = super().step(action)
-        return s, max(r, 0), t, i
+    def _achieved_goal(self):
+        return self.env.unwrapped.state[0]
 
-    def _achieved_goal(self, obs):
-        return np.array([obs[0]])
-
-    def _is_success(self, obs, goal):
-        return obs[0] >= goal[0]
+    def _is_success(self):
+        return self.env.unwrapped.state[0] >= self._desired_goal()
 
     def _desired_goal(self):
-        return np.array([0.45])
+        return 0.45
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def _is_success2(self, achieved_goal, desired_goal):
-        geofence = self.env.unwrapped._geofence
-        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-               distance_between(achieved_goal.gripper, desired_goal.gripper) < geofence
-
-    def _achieved_goal2(self):
-        return Goal(
-            gripper=self.env.unwrapped.gripper_pos(),
-            block=self.env.unwrapped.block_pos())
-
     def __init__(self, env):
         super().__init__(env)
 
-    def _achieved_goal(self, obs):
-        return Goal(
-            gripper=self.env.unwrapped.gripper_pos(obs),
-            block=self.env.unwrapped.block_pos(obs))
+    def _is_success(self, achieved_goal, desired_goal):
+        geofence = self.env.unwrapped.geofence
+        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
+               distance_between(achieved_goal.gripper, desired_goal.gripper) < geofence
 
-    def _is_success(self, obs, goal):
-        return self.env.unwrapped.compute_terminal(goal, obs)
+    def _achieved_goal(self):
+        return Goal(gripper=self.env.unwrapped.gripper_pos(),
+                    block=self.env.unwrapped.block_pos())
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()

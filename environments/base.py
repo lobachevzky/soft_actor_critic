@@ -26,17 +26,12 @@ class BaseEnv(gym.Env):
 
     def step(self, action):
         self._step_num += 1
-        step = 0
         reward = 0
         done = False
 
-        while not done and step < self._steps_per_action:
-            self._set_action(action)
-            done = False
-            if self.compute_terminal(self.goal(), self._get_obs()):
-                done = True
-            reward += self.compute_reward(self.goal(), self._get_obs())
-            step += 1
+        self._set_action(action)
+        done = self.compute_terminal(self.goal(), self._get_obs())
+        reward = self.compute_reward(self.goal(), self._get_obs())
 
         return self._get_obs(), reward, done, {}
 

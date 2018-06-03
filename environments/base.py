@@ -25,14 +25,9 @@ class BaseEnv(gym.Env):
         self.spec = None
 
     def step(self, action):
-        self._step_num += 1
-        reward = 0
-        done = False
-
         self._set_action(action)
         done = self.compute_terminal(self.goal(), self._get_obs())
         reward = self.compute_reward(self.goal(), self._get_obs())
-
         return self._get_obs(), reward, done, {}
 
     def seed(self, seed=None):

@@ -57,7 +57,7 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        episode_count = Counter()
+        episode_mean = episode_count = Counter()
         episode_mean = Counter()
         evaluation_period = 10
         tick = time.time()

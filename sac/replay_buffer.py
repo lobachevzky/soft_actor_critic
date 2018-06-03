@@ -40,3 +40,29 @@ class ReplayBuffer(RollingBuffer):
     def sample(self, batch_size):
         sample = super().sample(batch_size)
         return tuple(map(list, zip(*sample)))
+
+
+class Trajectory:
+    def __init__(self, buffer: ReplayBuffer):
+        self.buffer = buffer
+        self.pos = self.buffer.pos
+        self.iter_pos = None
+
+    def __iter__(self):
+        self.iter_pos = self.pos
+        return self
+
+    def __next__(self):
+        if self.pos == self.buffer.pos:
+            self.pos = self.iter_pos  # reset start of trajectory
+            self.iter_pos = None
+            raise StopIteration
+        self.iter_pos += 1
+        return self.buffer[self.iter_pos]
+
+    def __getitem__(self, item):
+        if isinstance(item, slice):
+            item = slice(item.start + self.pos,
+                         item.stop + self.pos,
+                         item.step)
+        return self.buffer[item]

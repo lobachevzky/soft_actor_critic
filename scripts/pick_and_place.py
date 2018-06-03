@@ -64,4 +64,7 @@ def cli(max_steps, discrete, fixed_block,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=render)
+        render=render).train()
+
+if __name__ == '__main__':
+    cli()

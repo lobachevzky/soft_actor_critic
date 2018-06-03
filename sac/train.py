@@ -2,7 +2,8 @@ import itertools
 import pickle
 import time
 from pathlib import Path
-from typing import Optional, Tuple
+from pprint import pprint
+from typing import Optional, Tuple, Generator, Iterable
 
 import gym
 import numpy as np
@@ -40,8 +41,6 @@ class Trainer:
                         self.buffer.extend(pickle.load(f))
                 print('Loaded mimic file {} into buffer.'.format(path))
 
-        s1 = self.reset()
-
         self.agent = agent = self.build_agent(**kwargs)
 
         if isinstance(env.unwrapped, UnsupervisedEnv):
@@ -57,10 +56,12 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        episode_count = Counter()
-        episode_mean = Counter()
+        self.episode_count = episode_count = Counter()
+        self.episode_mean = episode_mean = Counter()
         evaluation_period = 10
         tick = time.time()
+
+        s1 = self.reset()
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
@@ -77,30 +78,29 @@ class Trainer:
 
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            if not is_eval_period:
-                self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-                if self.buffer_full() and not load_path:
-                    for i in range(self.num_train_steps):
-                        sample_steps = self.sample_buffer()
-                        # noinspection PyProtectedMember
-                        step = self.agent.train_step(
-                            sample_steps._replace(
-                                s1=list(map(self.vectorize_state, sample_steps.s1)),
-                                s2=list(map(self.vectorize_state, sample_steps.s2)),
-                            ))
-                        episode_mean.update(
-                            Counter({
-                                k: getattr(step, k.replace(' ', '_'))
-                                for k in [
-                                    'entropy',
-                                    'V loss',
-                                    'Q loss',
-                                    'pi loss',
-                                    'V grad',
-                                    'Q grad',
-                                    'pi grad',
-                                ]
-                            }))
+            self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
+            if self.buffer_full() and not load_path:
+                for i in range(self.num_train_steps):
+                    sample_steps = self.sample_buffer()
+                    # noinspection PyProtectedMember
+                    step = self.agent.train_step(
+                        sample_steps._replace(
+                            s1=list(map(self.vectorize_state, sample_steps.s1)),
+                            s2=list(map(self.vectorize_state, sample_steps.s2)),
+                        ))
+                    episode_mean.update(
+                        Counter({
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -188,14 +188,16 @@ class TrajectoryTrainer(Trainer):
             path.mkdir(parents=True, exist_ok=True)
         self.mimic_num = 0
         self.trajectory = []
+        self.stem_num = 0
         super().__init__(**kwargs)
         self.s1 = self.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
-        s2, r, t, i = super().step(action)
-        self.trajectory.append(Step(s1=self.s1, a=action, r=r, s2=s2, t=t))
-        self.s1 = s2
-        return s2, r, t, i
+    def add_to_buffer(self, step: Step):
+        super().add_to_buffer(step)
+        self.trajectory.append(step)
+
+    def trajectory(self) -> Iterable:
+        return self.buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:
         if self.mimic_save_dir is not None:
@@ -204,8 +206,36 @@ class TrajectoryTrainer(Trainer):
                 pickle.dump(self.trajectory, f)
             self.mimic_num += 1
         self.trajectory = []
+        self.stem_num = 0
         self.s1 = super().reset()
         return self.s1
+
+    def timesteps(self):
+        return self.episode_count['timesteps']
+
+    def _trajectory(self) -> Iterable:
+        if self.timesteps():
+            return self.buffer[-self.timesteps():]
+        return ()
+
+
+def steps_are_same(step1, step2):
+    if step1 is None or step2 is None:
+        return False
+    return all([
+        np.allclose(step1.s1.obs, step2.s1.obs),
+        np.allclose(step1.s1.goal.gripper, step2.s1.goal.gripper),
+        np.allclose(step1.s1.goal.block, step2.s1.goal.block),
+
+        np.allclose(step1.a, step2.a),
+
+        np.allclose(step1.r, step2.r),
+
+        np.allclose(step1.t, step2.t),
+
+        np.allclose(step1.s2.obs, step2.s2.obs),
+        np.allclose(step1.s2.goal.gripper, step2.s2.goal.gripper),
+        np.allclose(step1.s2.goal.block, step2.s2.goal.block)])
 
 
 class HindsightTrainer(TrajectoryTrainer):
@@ -215,14 +245,43 @@ class HindsightTrainer(TrajectoryTrainer):
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
+        for i, (step1, step2) in enumerate(zip(self.trajectory, self._trajectory())):
+            print(steps_are_same(step1, step2))
+            if step1 is None:
+                print('step', i, 'in self.trajectory is None')
+            if step2 is None:
+                print('step', i, 'in buffer slice is None')
+            if not steps_are_same(step2, self.buffer[-self.timesteps() + i]):
+                print('issue with indexing')
+                print('step in buffer slice:')
+                pprint(step2)
+                print('step in buffer index (self.buffer[{}])'.format(i))
+                pprint(self.buffer[i])
+                exit()
+
+            if not steps_are_same(step1, step2):
+                print('encountered difference at step', i)
+                print('step in self.trajectory:')
+                pprint(step1)
+                print('step in buffer slice:')
+                pprint(step2)
+                print('same as i - 1', steps_are_same(self.buffer[i - 1], step1))
+                print('same as i', steps_are_same(self.buffer[i], step1))
+                print('same as i + 1', steps_are_same(self.buffer[i + 1], step1))
+                exit()
+
         assert isinstance(self.env, HindsightWrapper)
-        self.buffer.extend(self.env.recompute_trajectory(self.trajectory))
-        if self.n_goals - 1 and self.trajectory:
-            final_states = np.random.randint(1, len(self.trajectory), size=self.n_goals - 1)
-            assert isinstance(final_states, np.ndarray)
-            for final_state in final_states:
-                self.buffer.extend(self.env.recompute_trajectory(self.trajectory,
-                                                                 final_state=final_state))
+        if self.trajectory:
+            assert steps_are_same(self.buffer[-1], self.trajectory[-1])
+        self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
+                                                         final_step=self.buffer[-1]))
+        if self.n_goals - 1 and self.timesteps() > 0:
+            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
+            assert isinstance(final_indexes, np.ndarray)
+
+            for final_state in self.buffer[final_indexes]:
+                self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
+                                                                 final_step=final_state))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

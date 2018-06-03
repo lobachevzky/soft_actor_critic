@@ -3,17 +3,17 @@ from collections import deque
 import numpy as np
 
 
-class RollingBuffer:
+class ReplayBuffer:
     def __init__(self, maxlen):
         self.maxlen = maxlen
-        self.rolling_buffer = [None for _ in range(maxlen)]
+        self.buffer = [None for _ in range(maxlen)]
         self.pos = 0
         self.full = False
         self.empty = True
 
     def append(self, x):
         self.empty = False
-        self.rolling_buffer[self.pos] = x
+        self.buffer[self.pos] = x
         self.pos += 1
         if self.pos >= self.maxlen:
             self.full = True
@@ -28,15 +28,24 @@ class RollingBuffer:
         indices = np.random.randint(0, top_pos, size=batch_size)
         samples = []
         for idx in indices:
-            sample = self.rolling_buffer[idx]
+            sample = self.buffer[idx]
             samples.append(sample)
-        return samples
+        return tuple(map(list, zip(*samples)))
 
     def __len__(self):
         return self.maxlen if self.full else self.pos
 
+    def __getitem__(self, item):
+        def get_item(index):
+            return self.buffer[(self.pos + index) % self.maxlen]
 
-class ReplayBuffer(RollingBuffer):
-    def sample(self, batch_size):
-        sample = super().sample(batch_size)
-        return tuple(map(list, zip(*sample)))
+        if isinstance(item, slice):
+            return map(get_item,
+                       range(item.start or 0,
+                             item.stop or (0 if item.start < 0 else self.maxlen),
+                             item.step or 1))
+        else:
+            try:
+                return map(get_item, item)
+            except TypeError:
+                return get_item(item)

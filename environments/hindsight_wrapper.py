@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections import namedtuple
+from collections import namedtuple, Iterable
 
 import gym
 import numpy as np
@@ -47,11 +47,11 @@ class HindsightWrapper(gym.Wrapper):
     def reset(self):
         return State(obs=self.env.reset(), goal=self._desired_goal())
 
-    def recompute_trajectory(self, trajectory, final_state=-1):
-        if not trajectory:
-            return ()
-        achieved_goal = self._achieved_goal(trajectory[final_state].s2.obs)
-        for step in trajectory[:final_state]:
+    def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
+        achieved_goal = None
+        for step in trajectory:
+            if achieved_goal is None:
+                achieved_goal = self._achieved_goal(final_step.s2.obs)
             new_t = self._is_success(step.s2.obs, achieved_goal) or step.t
             r = self._reward(step.s2.obs, achieved_goal)
             yield Step(

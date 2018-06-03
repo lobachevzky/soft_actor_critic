@@ -24,15 +24,7 @@ class HindsightWrapper(gym.Wrapper):
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
-    def _achieved_goal(self, obs):
-        raise NotImplementedError
-
-    @abstractmethod
     def _achieved_goal2(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def _is_success(self, obs, goal):
         raise NotImplementedError
 
     @abstractmethod
@@ -47,25 +39,17 @@ class HindsightWrapper(gym.Wrapper):
     def vectorize_state(state):
         return np.concatenate(state)
 
-    def _reward(self, state, goal):
-        return float(self._is_success(state, goal))
-
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         achieved_goal2 = self._achieved_goal2()
-        achieved_goal = self._achieved_goal(s2)
-        assert goals_equal(achieved_goal, achieved_goal2)
         desired_goal = self._desired_goal()
         new_s2 = State(observation=s2,
                        desired_goal=desired_goal,
-                       achieved_goal=achieved_goal)
-        new_r = self._reward(s2, desired_goal)
+                       achieved_goal=achieved_goal2)
         is_success2 = self._is_success2(achieved_goal2, desired_goal)
-        assert np.isclose(new_r, float(is_success2))
-        new_t = self._is_success(s2, desired_goal) or t
-        assert new_t == (is_success2 or t)
+        new_t = is_success2 or t
         info['base_reward'] = r
-        return new_s2, new_r, new_t, info
+        return new_s2, float(is_success2), new_t, info
 
     def reset(self):
         return State(observation=self.env.reset(),
@@ -75,13 +59,10 @@ class HindsightWrapper(gym.Wrapper):
     def recompute_trajectory(self, trajectory, final_state=-1):
         if not trajectory:
             return ()
-        achieved_goal = self._achieved_goal(trajectory[final_state].s2.observation)
-        assert goals_equal(achieved_goal, trajectory[final_state].s2.achieved_goal)
+        achieved_goal = trajectory[final_state].s2.achieved_goal
         for step in trajectory[:final_state]:
-            new_t = self._is_success(step.s2.observation, achieved_goal) or step.t
-            assert new_t == self._is_success2(step.s2.achieved_goal, achieved_goal)
-            r = self._reward(step.s2.observation, achieved_goal)
-            assert np.isclose(r, float(new_t))
+            new_t = self._is_success2(step.s2.achieved_goal, achieved_goal)
+            r = float(new_t)
             yield Step(
                 s1=step.s1._replace(desired_goal=achieved_goal),
                 a=step.a,

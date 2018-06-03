@@ -21,9 +21,8 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.04, type=float)
+@click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
-@click.option('--default-reward', default=0, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--discrete', is_flag=True)
@@ -33,14 +32,13 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(default_reward, max_steps, discrete, fixed_block,
+def cli(max_steps, discrete, fixed_block,
         min_lift_height, geofence, seed, device_num, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
-            default_reward=default_reward,
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=PickAndPlaceEnv(

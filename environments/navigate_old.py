@@ -52,7 +52,7 @@ class NavigateEnv(BaseEnv):
 
         cnn_space = Box(0, 1, shape=(list(image_dimensions) + [3 * history_len]))
         obs_size = history_len * \
-            sum(map(np.size, self._obs())) + sum(map(np.size, self.goal()))
+            sum(map(np.size, self._get_obs())) + sum(map(np.size, self.goal()))
         mlp_space = Box(
             np.min(self._world_lower_bound),
             np.min(self._world_upper_bound),
@@ -82,7 +82,7 @@ class NavigateEnv(BaseEnv):
     def _set_new_goal(self):
         self.__goal = self._get_new_pos()
 
-    def _obs(self):
+    def _get_obs(self):
         obs = [self._pos(), self._orientation()]
         if self._use_camera:
             obs += [self.image()]

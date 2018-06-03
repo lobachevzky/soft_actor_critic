@@ -31,16 +31,14 @@ class BaseEnv(gym.Env):
         done = False
 
         while not done and step < self._steps_per_action:
-            self._perform_action(action)
+            self._set_action(action)
             done = False
-            if self.compute_terminal(self.goal(), self._obs()):
+            if self.compute_terminal(self.goal(), self._get_obs()):
                 done = True
-            elif self._currently_failed():
-                done = True
-            reward += self.compute_reward(self.goal(), self._obs())
+            reward += self.compute_reward(self.goal(), self._get_obs())
             step += 1
 
-        return self._obs(), reward, done, {}
+        return self._get_obs(), reward, done, {}
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -52,7 +50,7 @@ class BaseEnv(gym.Env):
         pass
 
     @abstractmethod
-    def _perform_action(self, action):
+    def _set_action(self, action):
         raise NotImplementedError
 
     @abstractmethod
@@ -72,7 +70,7 @@ class BaseEnv(gym.Env):
         raise NotImplementedError
 
     @abstractmethod
-    def _obs(self):
+    def _get_obs(self):
         raise NotImplementedError
 
     @abstractmethod
@@ -81,10 +79,6 @@ class BaseEnv(gym.Env):
 
     @abstractmethod
     def goal_3d(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def _currently_failed(self):
         raise NotImplementedError
 
     @abstractmethod

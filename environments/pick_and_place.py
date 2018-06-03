@@ -58,7 +58,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
-        self.geofence = geofence
+        self._geofence = geofence
         self._discrete = discrete
 
         super().__init__(
@@ -72,7 +72,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._obs()))
+        obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
@@ -80,8 +80,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.action_space = spaces.Discrete(7)
         else:
             self.action_space = spaces.Box(
-                low=np.array([-15, -20, -20, -10]),
-                high=np.array([35, 20, 20, 10]),
+                low=np.array([-15, -20, -20]),
+                high=np.array([35, 20, 20]),
                 dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
@@ -94,22 +94,11 @@ class PickAndPlaceEnv(MujocoEnv):
         # self._current_orienation = None
 
     def reset_qpos(self):
-        slide_y = self.sim.jnt_qposadr('slide_y')
-        self.init_qpos[slide_y] = np.random.uniform(-0.2, 0.2)
-        arm_joint = self.sim.jnt_qposadr('arm_flex_joint')
-        self.init_qpos[arm_joint] = np.random.uniform(-0.960114368248, 0.00101480673663)
-        wrist_joint = self.sim.jnt_qposadr('wrist_roll_joint')
-        self.init_qpos[wrist_joint] = np.random.uniform(-1.5744836894, 1.57448370861)
-        l_hand_joint = self.sim.jnt_qposadr('hand_l_proximal_joint')
-        self.init_qpos[l_hand_joint] = np.random.uniform(-0.00842414027907, 0.357219407462)
-        r_hand_joint = self.sim.jnt_qposadr('hand_r_proximal_joint')
-        self.init_qpos[r_hand_joint] = self.init_qpos[l_hand_joint]
-
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-            self.init_qpos[block_joint + 1] = np.random.uniform(-0.2, 0.2)
-            self.init_qpos[block_joint + 3] = np.random.uniform(-np.pi, np.pi)
-            self.init_qpos[block_joint + 6] = np.random.uniform(-np.pi, np.pi)
+
+            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
@@ -138,7 +127,7 @@ class PickAndPlaceEnv(MujocoEnv):
     def _set_new_goal(self):
         pass
 
-    def _obs(self):
+    def _get_obs(self):
         return np.copy(self.sim.qpos)
 
     def block_pos(self, qpos=None):
@@ -158,13 +147,13 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def _currently_failed(self):
-        return False
-
     def at_goal(self, goal, qpos):
-        return self.block_pos(qpos)[2] > self._initial_block_pos[2] + self._min_lift_height
+        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self._geofence)
+        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
+        return gripper_at_goal and block_at_goal
 
     def compute_terminal(self, goal, obs):
+        # return False
         return self.at_goal(goal, obs)
 
     def compute_reward(self, goal, obs):

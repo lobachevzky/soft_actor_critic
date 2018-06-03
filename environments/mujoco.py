@@ -1,6 +1,5 @@
 import os
 from abc import abstractmethod
-from copy import deepcopy
 
 import numpy as np
 
@@ -18,7 +17,7 @@ class MujocoEnv(BaseEnv):
         fullpath = os.path.join(os.path.dirname(__file__), xml_filepath)
         if not fullpath.startswith("/"):
             fullpath = os.path.join(os.path.dirname(__file__), "assets", fullpath)
-        self.sim = mujoco.Sim(fullpath)
+        self.sim = mujoco.Sim(fullpath, n_substeps=frames_per_step)
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._frames_per_step = frames_per_step

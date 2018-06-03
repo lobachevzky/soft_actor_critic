@@ -26,9 +26,7 @@ class BaseEnv(gym.Env):
 
     def step(self, action):
         self._set_action(action)
-        done = self.compute_terminal(self.goal(), self._get_obs())
-        reward = self.compute_reward(self.goal(), self._get_obs())
-        return self._get_obs(), reward, done, {}
+        return self._get_obs(), self.compute_reward(), self.compute_terminal(), {}
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -72,11 +70,11 @@ class BaseEnv(gym.Env):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_terminal(self, goal, obs):
+    def compute_terminal(self):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_reward(self, goal, obs):
+    def compute_reward(self):
         raise NotImplementedError
 
 

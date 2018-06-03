@@ -93,13 +93,10 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
 
     def _is_success(self, achieved_goal, desired_goal):
-        geofence = self.env.unwrapped.geofence
-        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-               distance_between(achieved_goal.gripper, desired_goal.gripper) < geofence
+        return self.env.unwrapped.is_success(achieved_goal, desired_goal)
 
     def _achieved_goal(self):
-        return Goal(gripper=self.env.unwrapped.gripper_pos(),
-                    block=self.env.unwrapped.block_pos())
+        return self.env.unwrapped.achieved_goal()
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()

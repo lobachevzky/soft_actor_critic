@@ -130,7 +130,7 @@ class Trainer:
                     tb_writer.flush()
 
                 # zero out counters
-                episode_count = Counter()
+                episode_mean = episode_count = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape

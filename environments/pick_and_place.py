@@ -48,6 +48,7 @@ Goal = namedtuple('Goal', 'gripper block')
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  fixed_block,
+                 steps_per_action,
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
@@ -66,7 +67,7 @@ class PickAndPlaceEnv(MujocoEnv):
             xml_filepath=join('models', 'pick-and-place', 'discrete.xml'
                               if discrete else 'world.xml'),
             neg_reward=neg_reward,
-            steps_per_action=20,
+            steps_per_action=steps_per_action,
             image_dimensions=None)
 
         self.init_qpos = deepcopy(self.sim.get_state().qpos)

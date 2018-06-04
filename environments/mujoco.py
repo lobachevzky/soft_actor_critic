@@ -13,13 +13,12 @@ class MujocoEnv(BaseEnv):
                  xml_filepath,
                  image_dimensions,
                  neg_reward,
-                 steps_per_action,
-                 frames_per_step=20):
+                 steps_per_action):
         fullpath = os.path.join(os.path.dirname(__file__), xml_filepath)
         if not fullpath.startswith("/"):
             fullpath = os.path.join(os.path.dirname(__file__), "assets", fullpath)
         model = mujoco_py.load_model_from_path(fullpath)
-        self.sim = mujoco_py.MjSim(model, nsubsteps=frames_per_step)
+        self.sim = mujoco_py.MjSim(model, nsubsteps=steps_per_action)
         self.sim.forward()
         self.viewer = None
 
@@ -31,8 +30,7 @@ class MujocoEnv(BaseEnv):
         self.initial_state = deepcopy(self.sim.get_state())
         super().__init__(
             image_dimensions=image_dimensions,
-            neg_reward=neg_reward,
-            steps_per_action=steps_per_action)
+            neg_reward=neg_reward)
 
     def server_values(self):
         return self.sim.qpos, self.sim.qvel

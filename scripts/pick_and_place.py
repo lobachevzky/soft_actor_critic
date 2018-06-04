@@ -13,11 +13,12 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--activation', default='relu', callback=str_to_activation)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=2e-4, type=float)
+@click.option('--learning-rate', default=3e-4, type=float)
 @click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=4, type=int)
+@click.option('--steps-per-action', default=300, type=int)
 @click.option('--batch-size', default=32, type=int)
-@click.option('--reward-scale', default=9e3, type=float)
+@click.option('--reward-scale', default=6e3, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
@@ -34,7 +35,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--render', is_flag=True)
 def cli(max_steps, discrete, fixed_block,
         min_lift_height, geofence, seed, device_num, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+        learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action,
         mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
     HindsightTrainer(
@@ -44,6 +45,7 @@ def cli(max_steps, discrete, fixed_block,
                 env=PickAndPlaceEnv(
                     discrete=discrete,
                     cheat_prob=cheat_prob,
+                    steps_per_action=steps_per_action,
                     fixed_block=fixed_block,
                     min_lift_height=min_lift_height,
                     geofence=geofence))),

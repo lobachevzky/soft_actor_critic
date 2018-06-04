@@ -10,9 +10,8 @@ import numpy as np
 class BaseEnv(gym.Env):
     """ The environments """
 
-    def __init__(self, image_dimensions, neg_reward, steps_per_action):
+    def __init__(self, image_dimensions, neg_reward,):
 
-        self._steps_per_action = steps_per_action
         self._step_num = 0
         self._neg_reward = neg_reward
         self._image_dimensions = image_dimensions

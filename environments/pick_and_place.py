@@ -1,13 +1,14 @@
 import random
 from collections import namedtuple
+from contextlib import contextmanager
+from copy import deepcopy
 from os.path import join
 
 import numpy as np
 from gym import spaces
 
-from environments.base import at_goal, print1, distance_between
+from environments.base import distance_between, at_goal
 from environments.mujoco import MujocoEnv
-from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -47,6 +48,7 @@ Goal = namedtuple('Goal', 'gripper block')
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  fixed_block,
+                 steps_per_action,
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
@@ -55,20 +57,20 @@ class PickAndPlaceEnv(MujocoEnv):
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
-        self.geofence = geofence
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
+        self.geofence = geofence
         self._discrete = discrete
 
         super().__init__(
             xml_filepath=join('models', 'pick-and-place', 'discrete.xml'
                               if discrete else 'world.xml'),
             neg_reward=neg_reward,
-            steps_per_action=20,
+            steps_per_action=steps_per_action,
             image_dimensions=None)
 
-        self.initial_qpos = np.copy(self.init_qpos)
+        self.init_qpos = deepcopy(self.sim.get_state().qpos)
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
@@ -83,59 +85,34 @@ class PickAndPlaceEnv(MujocoEnv):
                 low=np.array([-15, -20, -20]),
                 high=np.array([35, 20, 20]),
                 dtype=np.float32)
-        self._table_height = self.sim.get_body_xpos('pan')[2]
+        self._table_height = self.sim.data.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
-
-        # self._n_block_orientations = n_orientations = 8
-        # self._block_orientations = np.random.uniform(0, 2 * np.pi,
-        # size=(n_orientations, 4))
-        # self._rewards = np.ones(n_orientations) * -np.inf
-        # self._usage = np.zeros(n_orientations)
-        # self._current_orienation = None
 
     def reset_qpos(self):
         if not self._fixed_block:
-            block_joint = self.sim.jnt_qposadr('block1joint')
-
-            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+            block_joint, _ = self.sim.model.get_joint_qpos_addr('block1joint')
+            self.init_qpos[block_joint + 3] = np.random.uniform(-1, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
-            self.init_qpos = self.initial_qpos
-
-        # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
-        #     4) * 2 * np.pi
-        # rotate_around_x = [np.random.uniform(0, 1), np.random.uniform(-1, 1), 0, 0]
-        # rotate_around_z = [np.random.uniform(0, 1), 0, 0, np.random.uniform(-1, 1)]
-        # w, x, y, z = quaternion_multiply(rotate_around_z, rotate_around_x)
-        # self.init_qpos[block_joint + 3] = w
-        # self.init_qpos[block_joint + 4] = x
-        # self.init_qpos[block_joint + 5] = y
-        # self.init_qpos[block_joint + 6] = z
-        # mean_rewards = self._rewards / np.maximum(self._usage, 1)
-        # self._current_orienation = i = np.argmin(mean_rewards)
-        # print('rewards:', mean_rewards, 'argmin:', i)
-        # self._usage[i] += 1
-        # self.init_qpos[block_joint + 3:block_joint + 7] = self._block_orientations[i]
-        # self.init_qpos[self.sim.jnt_qposadr(
-        #     'wrist_roll_joint')] = np.random.random() * 2 * np.pi
+            self.init_qpos = self.initial_state.qpos
         return self.init_qpos
 
     def _set_new_goal(self):
         pass
 
     def _get_obs(self):
-        return np.copy(self.sim.qpos)
+        return np.copy(self.sim.data.qpos)
 
-    def block_pos(self, qpos=None):
-        return self.sim.get_body_xpos(self._goal_block_name, qpos)
+    def block_pos(self):
+        return self.sim.data.get_body_xpos(self._goal_block_name)
 
-    def gripper_pos(self, qpos=None):
+    def gripper_pos(self):
         finger1, finger2 = [
-            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
+            self.sim.data.get_body_xpos(name) for name in self._finger_names
         ]
         return (finger1 + finger2) / 2.
 
@@ -147,25 +124,17 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def achieved_goal(self):
-        return Goal(gripper=self.gripper_pos(),
-                    block=self.block_pos())
-
-    def is_success(self, achieved_goal, desired_goal):
-        return distance_between(achieved_goal.block, desired_goal.block) < self.geofence and \
-               distance_between(achieved_goal.gripper, desired_goal.gripper) < self.geofence
-
-    def at_goal(self, goal, qpos):
-        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self.geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self.geofence)
+    def at_goal(self, goal):
+        gripper_at_goal = at_goal(self.gripper_pos(), goal.gripper, self.geofence)
+        block_at_goal = at_goal(self.block_pos(), goal.block, self.geofence)
         return gripper_at_goal and block_at_goal
 
-    def compute_terminal(self):
+    def compute_terminal(self, goal, obs):
         # return False
-        return self.is_success(self.achieved_goal(), self.goal())
+        return self.at_goal(goal)
 
-    def compute_reward(self):
-        if self.is_success(self.achieved_goal(), self.goal()):
+    def compute_reward(self, goal, obs):
+        if self.at_goal(goal):
             return 1
         elif self._neg_reward:
             return -.0001
@@ -192,7 +161,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
-            self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
+            self.sim.model.actuator_name2id(n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:

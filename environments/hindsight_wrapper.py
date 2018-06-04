@@ -56,11 +56,11 @@ class HindsightWrapper(gym.Wrapper):
                      desired_goal=self._desired_goal(),
                      achieved_goal=self._achieved_goal())
 
-    def recompute_trajectory(self, trajectory, final_state=-1):
-        if not trajectory:
-            return ()
-        achieved_goal = trajectory[final_state].s2.achieved_goal
-        for step in trajectory[:final_state]:
+    def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
+        achieved_goal = None
+        for step in trajectory:
+            if achieved_goal is None:
+                achieved_goal = final_step.s2.achieved_goal
             new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
             r = float(new_t)
             yield Step(
@@ -81,7 +81,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]
 
-    def _is_success(self):
+    def _is_success(self, achieved_goal, desired_goal):
         return self.env.unwrapped.state[0] >= self._desired_goal()
 
     def _desired_goal(self):
@@ -93,10 +93,13 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
 
     def _is_success(self, achieved_goal, desired_goal):
-        return self.env.unwrapped.is_success(achieved_goal, desired_goal)
+        geofence = self.env.unwrapped.geofence
+        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
+               distance_between(achieved_goal.gripper, desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
-        return self.env.unwrapped.achieved_goal()
+        return Goal(gripper=self.env.unwrapped.gripper_pos(),
+                    block=self.env.unwrapped.block_pos())
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()

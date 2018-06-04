@@ -1,10 +1,14 @@
 from collections import namedtuple
+from os.path import join
 
 import numpy as np
 import tensorflow as tf
+from gym import spaces
 
 from environments.base import at_goal
+from environments.mujoco import MujocoEnv
 from environments.pick_and_place import PickAndPlaceEnv
+from mujoco import ObjType
 from sac.agent import mlp
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import Step

@@ -12,7 +12,6 @@ from collections import Counter
 from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
-from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -42,10 +41,6 @@ class Trainer:
                 print('Loaded mimic file {} into buffer.'.format(path))
 
         self.agent = agent = self.build_agent(**kwargs)
-
-        if isinstance(env.unwrapped, UnsupervisedEnv):
-            # noinspection PyUnresolvedReferences
-            env.unwrapped.initialize(agent.sess, self.buffer)
 
         saver = tf.train.Saver()
         tb_writer = None
@@ -78,29 +73,28 @@ class Trainer:
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-            if self.buffer_full() and not load_path:
+            if self.buffer_full() and not load_path and not is_eval_period:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     # noinspection PyProtectedMember
-                    if not evaluation_period:
-                        step = self.agent.train_step(
-                            sample_steps._replace(
-                                s1=list(map(self.vectorize_state, sample_steps.s1)),
-                                s2=list(map(self.vectorize_state, sample_steps.s2)),
-                            ))
-                        episode_mean.update(
-                            Counter({
-                                        k: getattr(step, k.replace(' ', '_'))
-                                        for k in [
-                                            'entropy',
-                                            'V loss',
-                                            'Q loss',
-                                            'pi loss',
-                                            'V grad',
-                                            'Q grad',
-                                            'pi grad',
-                                        ]
-                                        }))
+                    step = self.agent.train_step(
+                        sample_steps._replace(
+                            s1=list(map(self.vectorize_state, sample_steps.s1)),
+                            s2=list(map(self.vectorize_state, sample_steps.s2)),
+                        ))
+                    episode_mean.update(
+                        Counter({
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -207,7 +201,7 @@ class TrajectoryTrainer(Trainer):
                 pickle.dump(self.trajectory, f)
             self.mimic_num += 1
         self.trajectory = []
-        return = super().reset()
+        return super().reset()
 
     def timesteps(self):
         return self.episode_count['timesteps']
@@ -222,8 +216,8 @@ def steps_are_same(step1, step2):
     if step1 is None or step2 is None:
         return False
     return all([
-        np.allclose(step1.s1.obs, step2.s1.obs),
-        np.allclose(step1.s2.obs, step2.s2.obs)])
+        np.allclose(step1.s1.observation, step2.s1.observation),
+        np.allclose(step1.s2.observation, step2.s2.observation)])
 
 
 class HindsightTrainer(TrajectoryTrainer):

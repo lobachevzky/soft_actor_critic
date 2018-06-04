@@ -58,13 +58,12 @@ class Trainer:
         count = Counter(reward=0, episode=0)
         self.episode_count = episode_count = Counter()
         self.episode_mean = episode_mean = Counter()
-        evaluation_period = 10
         tick = time.time()
 
         s1 = self.reset()
 
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
+            is_eval_period = count['episode'] % 100 == 99
             a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
@@ -83,24 +82,25 @@ class Trainer:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     # noinspection PyProtectedMember
-                    step = self.agent.train_step(
-                        sample_steps._replace(
-                            s1=list(map(self.vectorize_state, sample_steps.s1)),
-                            s2=list(map(self.vectorize_state, sample_steps.s2)),
-                        ))
-                    episode_mean.update(
-                        Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                    if not evaluation_period:
+                        step = self.agent.train_step(
+                            sample_steps._replace(
+                                s1=list(map(self.vectorize_state, sample_steps.s1)),
+                                s2=list(map(self.vectorize_state, sample_steps.s2)),
+                            ))
+                        episode_mean.update(
+                            Counter({
+                                        k: getattr(step, k.replace(' ', '_'))
+                                        for k in [
+                                            'entropy',
+                                            'V loss',
+                                            'Q loss',
+                                            'pi loss',
+                                            'V grad',
+                                            'Q grad',
+                                            'pi grad',
+                                        ]
+                                        }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -191,7 +191,6 @@ class TrajectoryTrainer(Trainer):
         self.trajectory = []
         self.stem_num = 0
         super().__init__(**kwargs)
-        self.s1 = self.reset()
 
     def add_to_buffer(self, step: Step):
         super().add_to_buffer(step)
@@ -208,9 +207,7 @@ class TrajectoryTrainer(Trainer):
                 pickle.dump(self.trajectory, f)
             self.mimic_num += 1
         self.trajectory = []
-        self.stem_num = 0
-        self.s1 = super().reset()
-        return self.s1
+        return = super().reset()
 
     def timesteps(self):
         return self.episode_count['timesteps']

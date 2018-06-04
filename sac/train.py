@@ -226,18 +226,7 @@ def steps_are_same(step1, step2):
         return False
     return all([
         np.allclose(step1.s1.obs, step2.s1.obs),
-        np.allclose(step1.s1.goal.gripper, step2.s1.goal.gripper),
-        np.allclose(step1.s1.goal.block, step2.s1.goal.block),
-
-        np.allclose(step1.a, step2.a),
-
-        np.allclose(step1.r, step2.r),
-
-        np.allclose(step1.t, step2.t),
-
-        np.allclose(step1.s2.obs, step2.s2.obs),
-        np.allclose(step1.s2.goal.gripper, step2.s2.goal.gripper),
-        np.allclose(step1.s2.goal.block, step2.s2.goal.block)])
+        np.allclose(step1.s2.obs, step2.s2.obs)])
 
 
 class HindsightTrainer(TrajectoryTrainer):
@@ -248,7 +237,6 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         for i, (step1, step2) in enumerate(zip(self.trajectory, self._trajectory())):
-            print(steps_are_same(step1, step2))
             if step1 is None:
                 print('step', i, 'in self.trajectory is None')
             if step2 is None:

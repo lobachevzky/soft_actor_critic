@@ -56,15 +56,14 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        self.episode_count = episode_count = Counter()
-        self.episode_mean = episode_mean = Counter()
-        evaluation_period = 10
+        episode_count = Counter()
+        episode_mean = Counter()
         tick = time.time()
 
         s1 = self.reset()
 
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % evaluation_period == evaluation_period - 1
+            is_eval_period = count['episode'] % 100 == 99
             a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
             if render:
                 env.render()
@@ -131,7 +130,8 @@ class Trainer:
                     tb_writer.flush()
 
                 # zero out counters
-                episode_mean = episode_count = Counter()
+                episode_count = Counter()
+                episode_mean = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape

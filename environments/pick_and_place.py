@@ -5,7 +5,7 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environments.base import at_goal, print1
+from environments.base import at_goal, print1, distance_between
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 
@@ -55,10 +55,10 @@ class PickAndPlaceEnv(MujocoEnv):
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
+        self.geofence = geofence
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height + geofence
-        self._geofence = geofence
         self._discrete = discrete
 
         super().__init__(
@@ -147,17 +147,25 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
+    def achieved_goal(self):
+        return Goal(gripper=self.gripper_pos(),
+                    block=self.block_pos())
+
+    def is_success(self, achieved_goal, desired_goal):
+        return distance_between(achieved_goal.block, desired_goal.block) < self.geofence and \
+               distance_between(achieved_goal.gripper, desired_goal.gripper) < self.geofence
+
     def at_goal(self, goal, qpos):
-        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self._geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self._geofence)
+        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self.geofence)
+        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self.geofence)
         return gripper_at_goal and block_at_goal
 
-    def compute_terminal(self, goal, obs):
+    def compute_terminal(self):
         # return False
-        return self.at_goal(goal, obs)
+        return self.is_success(self.achieved_goal(), self.goal())
 
-    def compute_reward(self, goal, obs):
-        if self.at_goal(goal, obs):
+    def compute_reward(self):
+        if self.is_success(self.achieved_goal(), self.goal()):
             return 1
         elif self._neg_reward:
             return -.0001

@@ -71,9 +71,8 @@ class Trainer:
 
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            if not is_eval_period:
-                self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-                if self.buffer_full() and not load_path:
+            self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
+            if not is_eval_period and self.buffer_full() and not load_path:
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember

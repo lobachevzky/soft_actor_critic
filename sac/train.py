@@ -130,7 +130,8 @@ class Trainer:
                     tb_writer.flush()
 
                 # zero out counters
-                episode_count = Counter()
+                self.episode_count = episode_count = Counter()
+                episode_mean = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -197,6 +198,7 @@ class TrajectoryTrainer(Trainer):
         self.trajectory.append(step)
 
     def trajectory(self) -> Iterable:
+        assert len(self.trajectory) == self.episode_count['timesteps']
         return self.buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:

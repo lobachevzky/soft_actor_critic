@@ -39,7 +39,6 @@ class Trainer:
                         self.buffer.extend(pickle.load(f))
                 print('Loaded mimic file {} into buffer.'.format(path))
 
-        s1 = self.reset()
 
         self.agent = agent = self.build_agent(**kwargs)
 
@@ -56,9 +55,15 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
 
+        s1 = self.reset()
+
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
+            _s1 = [self.vectorize_state(s1)]
+            assert np.shape(_s1) == np.shape(np.vstack(_s1)), (np.shape(_s1), np.shape(np.vstack(_s1)))
+            assert np.allclose(np.vstack(_s1), self.vectorize_state2(s1))
+
+            a = agent.get_actions(_s1, sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -76,11 +81,17 @@ class Trainer:
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         # noinspection PyProtectedMember
+                        _s1 = list(map(self.vectorize_state, sample_steps.s1))
+                        _s2 = list(map(self.vectorize_state, sample_steps.s2))
+                        assert np.shape(_s1) == np.shape(np.vstack(_s1)), (np.shape(_s1), np.shape(np.vstack(_s1)))
+                        a = np.vstack(_s1)
+                        b = self.vectorize_state2(sample_steps.s1)
+                        assert np.allclose(a, b), (a,b)
+                        assert np.allclose(np.vstack(_s2), self.vectorize_state2(sample_steps.s2))
+                        assert np.allclose(_s1, self.vectorize_state2(sample_steps.s1))
+                        assert np.allclose(_s2, self.vectorize_state2(sample_steps.s2))
                         step = self.agent.train_step(
-                            sample_steps._replace(
-                                s1=list(map(self.vectorize_state, sample_steps.s1)),
-                                s2=list(map(self.vectorize_state, sample_steps.s2)),
-                            ))
+                            sample_steps._replace(s1=_s1, s2=_s2,))
                         episode_mean.update(
                             Counter({
                                 k: getattr(step, k.replace(' ', '_'))
@@ -162,6 +173,10 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
+    def vectorize_state2(self, state: State) -> np.ndarray:
+        """ Preprocess state before feeding to network """
+        return state
+
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
         self.buffer.append(step)
@@ -225,3 +240,7 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
+
+    def vectorize_state2(self, state: State) -> np.ndarray:
+        assert isinstance(self.env, HindsightWrapper)
+        return self.env.vectorize_state2(state)

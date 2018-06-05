@@ -6,8 +6,8 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
-from environments.base import distance_between
-from environments.pick_and_place import Goal, PickAndPlaceEnv
+from environments.mujoco import distance_between
+from environments.pick_and_place import Goal
 from sac.utils import Step
 
 State = namedtuple('State', 'observation achieved_goal desired_goal')

@@ -1,14 +1,12 @@
 #! /usr/bin/env python3
 """Agent that executes random actions"""
 # import gym
-import argparse
 import pickle
 from pathlib import Path
 
 import numpy as np
 from click._unicodefun import click
 
-from environments.base import print1, distance_between
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
@@ -26,7 +24,7 @@ def cli(discrete, mimic_path):
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
     env = PickAndPlaceHindsightWrapper(
-        default_reward=0, env=PickAndPlaceEnv(fixed_block=True, discrete=discrete))
+        env=PickAndPlaceEnv(fixed_block=True, steps_per_action=600, discrete=discrete))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 

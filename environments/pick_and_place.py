@@ -5,8 +5,7 @@ from os.path import join
 import numpy as np
 from gym import spaces
 
-from environments.base import distance_between, at_goal
-from environments.mujoco import MujocoEnv
+from environments.mujoco import MujocoEnv, at_goal
 from mujoco import ObjType
 
 CHEAT_STARTS = [[
@@ -86,6 +85,8 @@ class PickAndPlaceEnv(MujocoEnv):
                 dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
+        self.unwrapped = self
+
 
     def reset_qpos(self):
         if not self._fixed_block:

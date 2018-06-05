@@ -59,7 +59,11 @@ class Trainer:
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
+            _s1 = [self.vectorize_state(s1)]
+            assert np.shape(_s1) == np.shape(np.vstack(_s1)), (np.shape(_s1), np.shape(np.vstack(_s1)))
+            assert np.allclose(np.vstack(_s1), self.vectorize_state2(s1))
+
+            a = agent.get_actions(_s1, sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -73,28 +77,34 @@ class Trainer:
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-            if self.buffer_full() and not load_path and not is_eval_period:
-                for i in range(self.num_train_steps):
-                    sample_steps = self.sample_buffer()
-                    # noinspection PyProtectedMember
-                    step = self.agent.train_step(
-                        sample_steps._replace(
-                            s1=list(map(self.vectorize_state, sample_steps.s1)),
-                            s2=list(map(self.vectorize_state, sample_steps.s2)),
-                        ))
-                    episode_mean.update(
-                        Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+            if not is_eval_period and self.buffer_full() and not load_path:
+                    for i in range(self.num_train_steps):
+                        sample_steps = self.sample_buffer()
+                        # noinspection PyProtectedMember
+                        _s1 = list(map(self.vectorize_state, sample_steps.s1))
+                        _s2 = list(map(self.vectorize_state, sample_steps.s2))
+                        assert np.shape(_s1) == np.shape(np.vstack(_s1)), (np.shape(_s1), np.shape(np.vstack(_s1)))
+                        a = np.vstack(_s1)
+                        b = self.vectorize_state2(sample_steps.s1)
+                        assert np.allclose(a, b), (a,b)
+                        assert np.allclose(np.vstack(_s2), self.vectorize_state2(sample_steps.s2))
+                        assert np.allclose(_s1, self.vectorize_state2(sample_steps.s1))
+                        assert np.allclose(_s2, self.vectorize_state2(sample_steps.s2))
+                        step = self.agent.train_step(
+                            sample_steps._replace(s1=_s1, s2=_s2,))
+                        episode_mean.update(
+                            Counter({
+                                k: getattr(step, k.replace(' ', '_'))
+                                for k in [
+                                    'entropy',
+                                    'V loss',
+                                    'Q loss',
+                                    'pi loss',
+                                    'V grad',
+                                    'Q grad',
+                                    'pi grad',
+                                ]
+                            }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -163,6 +173,10 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
+    def vectorize_state2(self, state: State) -> np.ndarray:
+        """ Preprocess state before feeding to network """
+        return state
+
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
         self.buffer.append(step)
@@ -183,7 +197,6 @@ class TrajectoryTrainer(Trainer):
             path.mkdir(parents=True, exist_ok=True)
         self.mimic_num = 0
         self.trajectory = []
-        self.stem_num = 0
         super().__init__(**kwargs)
 
     def add_to_buffer(self, step: Step):
@@ -271,3 +284,7 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
+
+    def vectorize_state2(self, state: State) -> np.ndarray:
+        assert isinstance(self.env, HindsightWrapper)
+        return self.env.vectorize_state2(state)

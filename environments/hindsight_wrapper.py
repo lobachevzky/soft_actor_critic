@@ -1,5 +1,6 @@
 from abc import abstractmethod
-from collections import namedtuple, Iterable
+from collections import namedtuple
+from typing import List, Iterable
 
 import gym
 import numpy as np
@@ -107,3 +108,27 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     @staticmethod
     def vectorize_state(state):
         return np.concatenate([state.observation, np.concatenate(state.desired_goal)])
+
+    @staticmethod
+    def vectorize_state2(states: List[State]):
+        """
+        :returns
+        >>> np.stack([np.concatenate(
+        >>>    [state.observation, state.desired_goal.gripper, state.desired_goal.block])
+        >>>     for state in states])
+        """
+        if isinstance(states, State):
+            states = [states]
+
+        def get_arrays(s: State):
+            return [s.observation,
+                    s.desired_goal.gripper,
+                    s.desired_goal.block]
+
+        slices = np.cumsum([0] + [np.size(a) for a in get_arrays(states[0])])
+        state_vector = np.empty((len(states), slices[-1]))
+        for i, state in enumerate(states):
+            for (start, stop), array in zip(zip(slices, slices[1:]), get_arrays(state)):
+                state_vector[i, start:stop] = array
+
+        return state_vector

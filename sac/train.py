@@ -59,11 +59,7 @@ class Trainer:
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
-            _s1 = [self.vectorize_state(s1)]
-            assert np.shape(_s1) == np.shape(np.vstack(_s1)), (np.shape(_s1), np.shape(np.vstack(_s1)))
-            assert np.allclose(np.vstack(_s1), self.vectorize_state2(s1))
-
-            a = agent.get_actions(_s1, sample=(not is_eval_period))
+            a = agent.get_actions(self.vectorize_state2(s1), sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -80,18 +76,9 @@ class Trainer:
             if not is_eval_period and self.buffer_full() and not load_path:
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
-                        # noinspection PyProtectedMember
-                        _s1 = list(map(self.vectorize_state, sample_steps.s1))
-                        _s2 = list(map(self.vectorize_state, sample_steps.s2))
-                        assert np.shape(_s1) == np.shape(np.vstack(_s1)), (np.shape(_s1), np.shape(np.vstack(_s1)))
-                        a = np.vstack(_s1)
-                        b = self.vectorize_state2(sample_steps.s1)
-                        assert np.allclose(a, b), (a,b)
-                        assert np.allclose(np.vstack(_s2), self.vectorize_state2(sample_steps.s2))
-                        assert np.allclose(_s1, self.vectorize_state2(sample_steps.s1))
-                        assert np.allclose(_s2, self.vectorize_state2(sample_steps.s2))
                         step = self.agent.train_step(
-                            sample_steps._replace(s1=_s1, s2=_s2,))
+                            sample_steps._replace(s1=self.vectorize_state2(sample_steps.s1),
+                                                  s2=self.vectorize_state2(sample_steps.s2),))
                         episode_mean.update(
                             Counter({
                                 k: getattr(step, k.replace(' ', '_'))
@@ -196,24 +183,20 @@ class TrajectoryTrainer(Trainer):
             print('Using model dir', path.absolute())
             path.mkdir(parents=True, exist_ok=True)
         self.mimic_num = 0
-        self.trajectory = []
         super().__init__(**kwargs)
 
     def add_to_buffer(self, step: Step):
         super().add_to_buffer(step)
-        self.trajectory.append(step)
 
     def trajectory(self) -> Iterable:
-        assert len(self.trajectory) == self.episode_count['timesteps']
         return self.buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:
         if self.mimic_save_dir is not None:
             path = Path(self.mimic_save_dir, str(self.mimic_num) + '.pkl')
             with path.open(mode='wb') as f:
-                pickle.dump(self.trajectory, f)
+                pickle.dump(self._trajectory(), f)
             self.mimic_num += 1
-        self.trajectory = []
         return super().reset()
 
     def timesteps(self):
@@ -225,14 +208,6 @@ class TrajectoryTrainer(Trainer):
         return ()
 
 
-def steps_are_same(step1, step2):
-    if step1 is None or step2 is None:
-        return False
-    return all([
-        np.allclose(step1.s1.observation, step2.s1.observation),
-        np.allclose(step1.s2.observation, step2.s2.observation)])
-
-
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
@@ -240,33 +215,7 @@ class HindsightTrainer(TrajectoryTrainer):
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
-        for i, (step1, step2) in enumerate(zip(self.trajectory, self._trajectory())):
-            if step1 is None:
-                print('step', i, 'in self.trajectory is None')
-            if step2 is None:
-                print('step', i, 'in buffer slice is None')
-            if not steps_are_same(step2, self.buffer[-self.timesteps() + i]):
-                print('issue with indexing')
-                print('step in buffer slice:')
-                pprint(step2)
-                print('step in buffer index (self.buffer[{}])'.format(i))
-                pprint(self.buffer[i])
-                exit()
-
-            if not steps_are_same(step1, step2):
-                print('encountered difference at step', i)
-                print('step in self.trajectory:')
-                pprint(step1)
-                print('step in buffer slice:')
-                pprint(step2)
-                print('same as i - 1', steps_are_same(self.buffer[i - 1], step1))
-                print('same as i', steps_are_same(self.buffer[i], step1))
-                print('same as i + 1', steps_are_same(self.buffer[i + 1], step1))
-                exit()
-
         assert isinstance(self.env, HindsightWrapper)
-        if self.trajectory:
-            assert steps_are_same(self.buffer[-1], self.trajectory[-1])
         self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
                                                          final_step=self.buffer[-1]))
         if self.n_goals - 1 and self.timesteps() > 0:

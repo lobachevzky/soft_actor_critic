@@ -20,7 +20,11 @@ class MultiTaskEnv(PickAndPlaceEnv):
             dtype=np.float32)
 
     def _set_new_goal(self):
-        goal = np.random.uniform(low=[-0.161, - 0.233,  0.457],
-                                 high=[0.107, 0.201, 0.613])
-        self._goal = Goal(gripper=goal, block=goal)
+        self._goal = np.random.uniform(low=[-0.161, - 0.233, 0.457],
+                                       high=[0.107, 0.201, 0.613])
 
+    def goal(self):
+        return Goal(gripper=self._goal, block=self._goal)
+
+    def goal_3d(self):
+        return self._goal

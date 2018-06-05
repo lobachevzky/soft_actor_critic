@@ -24,7 +24,7 @@ def cli(discrete, mimic_path):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = MultiTaskEnv(600)
+    env = MultiTaskEnv(steps_per_action=600, geofence=.1)
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -51,7 +51,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .5
+                action[i] += env.env.sim.get_mouse_dy() * .05
 
         if lastkey is 'R':
             env.reset()
@@ -61,7 +61,6 @@ def cli(discrete, mimic_path):
         if lastkey is 'P':
             print(env.env.sim.qpos)
             print(env.unwrapped.gripper_pos())
-
 
         if not discrete:
             for k in range(10):

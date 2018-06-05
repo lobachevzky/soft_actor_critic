@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv, at_goal
+from environments.mujoco import MujocoEnv, at_goal, print1
 from mujoco import ObjType
 
 CHEAT_STARTS = [[

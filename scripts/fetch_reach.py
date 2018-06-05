@@ -1,15 +1,12 @@
-import argparse
-
 import click
 import gym
 import numpy as np
-import tensorflow as tf
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import cast_to_int, str_to_activation
+from scripts.gym_env import str_to_activation
 
 ACHIEVED_GOAL = 'achieved_goal'
 

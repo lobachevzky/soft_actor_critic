@@ -43,9 +43,8 @@ def str_to_activation(ctx, param, value):
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(env, seed, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path,
-        load_path, render):
+def cli(env, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
+        reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render):
     Trainer(
         env=gym.make(env),
         seed=seed,

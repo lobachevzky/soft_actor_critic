@@ -87,7 +87,6 @@ class PickAndPlaceEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
-
     def reset_qpos(self):
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
@@ -113,9 +112,7 @@ class PickAndPlaceEnv(MujocoEnv):
         return self.sim.get_body_xpos(self._goal_block_name)
 
     def gripper_pos(self):
-        finger1, finger2 = [
-            self.sim.get_body_xpos(name) for name in self._finger_names
-        ]
+        finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
 
     def goal(self):

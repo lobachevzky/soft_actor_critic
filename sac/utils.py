@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, NamedTuple, Union
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -56,4 +56,3 @@ State = Any
 class Step(namedtuple('Step', 's1 a r s2 t')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
-

@@ -27,16 +27,16 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--discrete', is_flag=True)
-@click.option('--mimic-dir',  default=None, type=str)
-@click.option('--mimic-save-dir',  default=None, type=str)
+@click.option('--mimic-dir', default=None, type=str)
+@click.option('--mimic-save-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(max_steps, discrete, fixed_block,
-        min_lift_height, geofence, seed, device_num, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action,
-        mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
+def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
+        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
+        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, mimic_dir,
+        mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -67,6 +67,7 @@ def cli(max_steps, discrete, fixed_block,
         save_path=save_path,
         load_path=load_path,
         render=render)
+
 
 if __name__ == '__main__':
     cli()

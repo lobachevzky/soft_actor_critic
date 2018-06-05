@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Callable, Iterable, Sequence, Tuple, Union
+from typing import Callable, Iterable, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
@@ -60,7 +60,8 @@ class AbstractAgent:
             # constructing V loss
             with tf.control_dependencies([self.A_sampled1]):
                 v1 = self.compute_v1()
-                q1 = self.q_network(self.S1, self.transform_action_sample(A_sampled1), 'Q')
+                q1 = self.q_network(self.S1, self.transform_action_sample(A_sampled1),
+                                    'Q')
                 log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, 'pi', reuse=True)
                 self.V_loss = V_loss = tf.reduce_mean(
                     0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
@@ -68,7 +69,8 @@ class AbstractAgent:
             # constructing Q loss
             with tf.control_dependencies([self.V_loss]):
                 v2 = self.compute_v2()
-                q = self.q_network(self.S1, self.transform_action_sample(A), 'Q', reuse=True)
+                q = self.q_network(
+                    self.S1, self.transform_action_sample(A), 'Q', reuse=True)
                 # noinspection PyTypeChecker
                 self.Q_loss = Q_loss = tf.reduce_mean(
                     0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
@@ -120,7 +122,7 @@ class AbstractAgent:
 
             config = tf.ConfigProto(allow_soft_placement=True)
             config.gpu_options.allow_growth = True
-            config.inter_op_parallelism_threads=1
+            config.inter_op_parallelism_threads = 1
             self.sess = sess = tf.Session(config=config)
             sess.run(tf.global_variables_initializer())
 
@@ -217,4 +219,3 @@ class AbstractAgent:
     def get_best_action(self, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             return self.policy_parameters_to_max_likelihood_action(self.parameters)
-

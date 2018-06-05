@@ -1,16 +1,13 @@
 import os
 from abc import abstractmethod
 
-import mujoco
 import numpy as np
+
+import mujoco
 
 
 class MujocoEnv:
-    def __init__(self,
-                 xml_filepath,
-                 image_dimensions,
-                 neg_reward,
-                 steps_per_action):
+    def __init__(self, xml_filepath, image_dimensions, neg_reward, steps_per_action):
         fullpath = os.path.join(os.path.dirname(__file__), xml_filepath)
         if not fullpath.startswith("/"):
             fullpath = os.path.join(os.path.dirname(__file__), "assets", fullpath)
@@ -61,8 +58,8 @@ class MujocoEnv:
         self._set_new_goal()
         qpos = self.reset_qpos()
         qvel = self.init_qvel + \
-               np.random.uniform(size=self.sim.nv, low=-0.01, high=0.01)
-        assert qpos.shape == (self.sim.nq,) and qvel.shape == (self.sim.nv,)
+            np.random.uniform(size=self.sim.nv, low=-0.01, high=0.01)
+        assert qpos.shape == (self.sim.nq, ) and qvel.shape == (self.sim.nv, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = qvel.copy()
         self.sim.forward()
@@ -136,7 +133,7 @@ def at_goal(pos, goal, geofence, verbose=False):
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \
-           or np.any(pos < world_lower_bound)
+        or np.any(pos < world_lower_bound)
 
 
 def get_limits(pos, size):

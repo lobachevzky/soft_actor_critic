@@ -3,7 +3,7 @@ import pickle
 import time
 from collections import Counter
 from pathlib import Path
-from typing import Optional, Tuple, Iterable
+from typing import Iterable, Optional, Tuple
 
 import gym
 import numpy as np
@@ -76,21 +76,23 @@ class Trainer:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     step = self.agent.train_step(
-                        sample_steps.replace(s1=self.vectorize_state(sample_steps.s1),
-                                             s2=self.vectorize_state(sample_steps.s2), ))
+                        sample_steps.replace(
+                            s1=self.vectorize_state(sample_steps.s1),
+                            s2=self.vectorize_state(sample_steps.s2),
+                        ))
                     episode_mean.update(
                         Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in [
+                                'entropy',
+                                'V loss',
+                                'Q loss',
+                                'pi loss',
+                                'V grad',
+                                'Q grad',
+                                'pi grad',
+                            ]
+                        }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -134,10 +136,7 @@ class Trainer:
 
         class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(
-                    s_shape=s_shape,
-                    a_shape=a_shape,
-                    **kwargs)
+                super(Agent, self).__init__(s_shape=s_shape, a_shape=a_shape, **kwargs)
 
         return Agent(state_shape, action_shape)
 
@@ -211,15 +210,16 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.env, HindsightWrapper)
-        self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
-                                                         final_step=self.buffer[-1]))
+        self.buffer.extend(
+            self.env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:
-                self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
-                                                                 final_step=final_state))
+                self.buffer.extend(
+                    self.env.recompute_trajectory(
+                        self._trajectory(), final_step=final_state))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

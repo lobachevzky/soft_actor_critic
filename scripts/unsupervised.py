@@ -1,12 +1,9 @@
 import click
-import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environments.pick_and_place import PickAndPlaceEnv
 from environments.unsupervised import UnsupervisedEnv
-from sac.train import HindsightPropagationTrainer, HindsightTrainer, Trainer
-from scripts.gym_env import cast_to_int, str_to_activation
+from sac.train import Trainer
+from scripts.gym_env import str_to_activation
 
 
 @click.command()

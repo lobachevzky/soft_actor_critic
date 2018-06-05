@@ -19,19 +19,18 @@ from scripts.gym_env import str_to_activation
 @click.option('--reward-scale', default=1e4, type=float)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--grad-clip', default=2e4, type=float)
-@click.option('--mimic-dir',  default=None, type=str)
-@click.option('--mimic-save-dir',  default=None, type=str)
+@click.option('--mimic-dir', default=None, type=str)
+@click.option('--mimic-save-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(seed, device_num, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, grad_clip, batch_size, num_train_steps,
-        mimic_dir, mimic_save_dir, logdir, save_path, load_path, render, n_goals):
+def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
+        reward_scale, grad_clip, batch_size, num_train_steps, mimic_dir, mimic_save_dir,
+        logdir, save_path, load_path, render, n_goals):
 
     HindsightTrainer(
-        env=MountaincarHindsightWrapper(
-            gym.make('MountainCarContinuous-v0')),
+        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,
@@ -51,6 +50,6 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size,
         load_path=load_path,
         render=render)
 
+
 if __name__ == '__main__':
     cli()
-

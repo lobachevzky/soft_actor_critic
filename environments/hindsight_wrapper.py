@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import List, Iterable
+from typing import Iterable, List
 
 import gym
 import numpy as np
@@ -37,20 +37,21 @@ class HindsightWrapper(gym.Wrapper):
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(observation=s2,
-                       desired_goal=self._desired_goal(),
-                       achieved_goal=self._achieved_goal())
-        is_success = self._is_success(new_s2.achieved_goal,
-                                      new_s2.desired_goal)
+        new_s2 = State(
+            observation=s2,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        is_success = self._is_success(new_s2.achieved_goal, new_s2.desired_goal)
         new_t = is_success or t
         new_r = float(is_success)
         info['base_reward'] = r
         return new_s2, new_r, new_t, info
 
     def reset(self):
-        return State(observation=self.env.reset(),
-                     desired_goal=self._desired_goal(),
-                     achieved_goal=self._achieved_goal())
+        return State(
+            observation=self.env.reset(),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
         achieved_goal = None
@@ -87,8 +88,8 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def vectorize_state(states: List[State]):
         if isinstance(states, State):
             states = [states]
-        return np.stack(np.append(state.observation, state.desired_goal)
-                        for state in states)
+        return np.stack(
+            np.append(state.observation, state.desired_goal) for state in states)
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
@@ -98,11 +99,13 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         geofence = self.env.unwrapped.geofence
         return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-               distance_between(achieved_goal.gripper, desired_goal.gripper) < geofence
+            distance_between(achieved_goal.gripper,
+                             desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
-        return Goal(gripper=self.env.unwrapped.gripper_pos(),
-                    block=self.env.unwrapped.block_pos())
+        return Goal(
+            gripper=self.env.unwrapped.gripper_pos(),
+            block=self.env.unwrapped.block_pos())
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
@@ -119,9 +122,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             states = [states]
 
         def get_arrays(s: State):
-            return [s.observation,
-                    s.desired_goal.gripper,
-                    s.desired_goal.block]
+            return [s.observation, s.desired_goal.gripper, s.desired_goal.block]
 
         slices = np.cumsum([0] + [np.size(a) for a in get_arrays(states[0])])
         state_vector = np.empty((len(states), slices[-1]))

@@ -15,7 +15,7 @@
             <geom rgba=".7 .7 .7 1"/>
         </default>
         <default class="clear">
-            <geom rgba=".7 .7 .7 .1"/>
+            <geom rgba=".7 .7 .7 .2"/>
         </default>
         <default class="cubby">
             <geom rgba=".9 .9 .7 1"/>
@@ -77,11 +77,9 @@
         <body name="pan" pos="0 0 .4">
             <geom type="box" size=".1905 .2667 .005" class="box"/>
             <geom type="box" size=".001  .2667 .0627" pos=".1905 0  .06"  class="clear"/>
-            <geom type="box" size=".001  .2667 .0127" pos="-.1905 0 .01" class="clear"/>
+            <geom type="box" size=".001  .2667 .04" pos="-.1905 0 .04" class="clear"/>
             <geom type="box" size=".1905 .001  .0627" pos="0 .2667  .06"  class="clear"/>
             <geom type="box" size=".1905 .001  .0627" pos="0 -.2667 .06" class="clear"/>
-
-            <!--<geom type="box" size=".001  .13335 .0627" pos="-.1905 0 .06" class="clear"/>-->
         </body>
 
         <!--<body name="cubby" pos="0 .6 .5">-->

@@ -8,6 +8,7 @@ import numpy as np
 from click._unicodefun import click
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 from sac.utils import Step
@@ -23,8 +24,7 @@ def cli(discrete, mimic_path):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = PickAndPlaceHindsightWrapper(
-        env=PickAndPlaceEnv(fixed_block=True, steps_per_action=600, discrete=discrete))
+    env = MultiTaskEnv(600)
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -60,6 +60,8 @@ def cli(discrete, mimic_path):
             print('\rmoving:', moving)
         if lastkey is 'P':
             print(env.env.sim.qpos)
+            print(env.unwrapped.gripper_pos())
+
 
         if not discrete:
             for k in range(10):

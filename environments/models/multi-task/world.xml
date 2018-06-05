@@ -73,6 +73,7 @@
     </asset>
     <worldbody>
         <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+        <geom name="floor" type="plane" size="2 2 2" pos="0 0 0" class="floor"/>
 
         <body name="pan" pos="0 0 .4">
             <geom type="box" size=".17 .2667 .005" class="box"/>
@@ -82,7 +83,7 @@
             <geom type="box" size=".17 .001  .0627" pos="0 -.2667 .06" class="clear"/>
 
             <!--<geom type="box" size=".001  .1 .0627" pos="-.1905 .167 .06" class="clear"/>-->
-            <geom type="box" size=".17 .001  .04" pos="0 .13  .04"  class="clear"/>
+            <geom type="box" size=".17 .001  .04" pos="0 .1  .04"  class="clear"/>
         </body>
 
         <!--<body name="cubby" pos="0 .6 .5">-->

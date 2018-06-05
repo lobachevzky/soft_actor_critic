@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from click._unicodefun import click
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper, MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
@@ -24,7 +24,8 @@ def cli(discrete, mimic_path):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = MultiTaskEnv(steps_per_action=600, geofence=.1)
+    env = MultiTaskHindsightWrapper(
+        MultiTaskEnv(steps_per_action=600, geofence=.1, min_lift_height=.02))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -59,8 +60,18 @@ def cli(discrete, mimic_path):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            print(env.env.sim.qpos)
-            print(env.unwrapped.gripper_pos())
+            print(env.gripper_pos())
+            for joint in ['slide_x', 'slide_y', 'arm_flex_joint',
+                          'wrist_roll_joint', 'hand_l_proximal_joint']:
+                print(joint, env.sim.qpos[env.sim.jnt_qposadr(joint)])
+        # self.init_qpos[[self.sim.jnt_qposadr('slide_x'),
+        #                 self.sim.jnt_qposadr('slide_y'),
+        #                 self.sim.jnt_qposadr('arm_flex_joint'),
+        #                 self.sim.jnt_qposadr('wrist_roll_joint'),
+        #                 self.sim.jnt_qposadr('hand_l_proximal_joint'),
+        #                 ]] = np.random.uniform(low=[-.13, -.23, -63, -90, 0],
+        #                                        high=[.23, .25, 0, 90, 20])
+
 
         if not discrete:
             for k in range(10):
@@ -73,6 +84,13 @@ def cli(discrete, mimic_path):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
             s2, r, done, _ = env.step(action)
+
+            achieved_goal = env._achieved_goal().block
+            if achieved_goal[2] > env.unwrapped.lift_height:
+                print('lifted')
+            if achieved_goal[1] > .1:
+                print('in box')
+
             if discrete:
                 action = 0
 

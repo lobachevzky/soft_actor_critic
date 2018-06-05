@@ -10,7 +10,10 @@ from environments.mujoco import distance_between
 from environments.pick_and_place import Goal
 from sac.utils import Step
 
-State = namedtuple('State', 'observation achieved_goal desired_goal')
+
+class State(namedtuple('State', 'observation achieved_goal desired_goal')):
+    def replace(self, **kwargs):
+        return super()._replace(**kwargs)
 
 
 class HindsightWrapper(gym.Wrapper):
@@ -61,10 +64,10 @@ class HindsightWrapper(gym.Wrapper):
             new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
             r = float(new_t)
             yield Step(
-                s1=step.s1._replace(desired_goal=achieved_goal),
+                s1=step.s1.replace(desired_goal=achieved_goal),
                 a=step.a,
                 r=r,
-                s2=step.s2._replace(desired_goal=achieved_goal),
+                s2=step.s2.replace(desired_goal=achieved_goal),
                 t=new_t)
             if new_t:
                 break
@@ -99,8 +102,8 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         geofence = self.env.unwrapped.geofence
         return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-            distance_between(achieved_goal.gripper,
-                             desired_goal.gripper) < geofence
+               distance_between(achieved_goal.gripper,
+                                desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
         return Goal(
@@ -131,3 +134,36 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
                 state_vector[i, start:stop] = array
 
         return state_vector
+
+
+class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def recompute_trajectory(self, reverse_trajectory: Iterable, initial_step: Step):
+        achieved_goals = []
+        last_goal = True
+        for step in reverse_trajectory:
+            assert isinstance(step, Step)
+            achieved_goal = step.s2.achieved_goal.block
+
+            if last_goal:
+                last_goal = False
+                if np.random.uniform(0, 1) < .1:
+                    achieved_goals.append(achieved_goal)
+
+            block_lifted = achieved_goal[2] > self.env.lift_height
+            in_box = achieved_goal[1] > .1 and not block_lifted
+            if block_lifted or in_box:
+                achieved_goals.append(achieved_goal)
+
+            for achieved_goal in achieved_goals:
+                new_t = self._is_success(achieved_goal=step.s2.achieved_goal,
+                                         desired_goal=achieved_goal)
+                r = float(new_t)
+                yield Step(
+                    s1=step.s1.replace(desired_goal=achieved_goal),
+                    a=step.a,
+                    r=r,
+                    s2=step.s2.replace(desired_goal=achieved_goal),
+                    t=new_t)

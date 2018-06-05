@@ -1,9 +1,8 @@
 import click
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability, str_to_activation
 
@@ -24,6 +23,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.1, type=float)
+@click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--mimic-dir', default=None, type=str)
 @click.option('--mimic-save-dir', default=None, type=str)
@@ -31,18 +31,19 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(max_steps, geofence, seed, device_num,
+def cli(max_steps, geofence, min_lift_height, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, mimic_dir,
         mimic_save_dir, logdir, save_path, load_path, render, n_goals):
 
     HindsightTrainer(
-        env=PickAndPlaceHindsightWrapper(
+        env=MultiTaskHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(
                     steps_per_action=steps_per_action,
-                    geofence=geofence))),
+                    geofence=geofence,
+                    min_lift_height=min_lift_height))),
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,

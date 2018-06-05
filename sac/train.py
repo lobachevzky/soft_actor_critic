@@ -1,17 +1,16 @@
 import itertools
 import pickle
 import time
+from collections import Counter
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Iterable
 
 import gym
 import numpy as np
 import tensorflow as tf
-from collections import Counter
 from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
-from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -32,7 +31,6 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
-        self.render = render
 
         if mimic_dir:
             for path in Path(mimic_dir).iterdir():
@@ -42,6 +40,7 @@ class Trainer:
                 print('Loaded mimic file {} into buffer.'.format(path))
 
         self.agent = agent = self.build_agent(**kwargs)
+
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -51,59 +50,35 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0)
-        self.episode_count = self.episode_mean = Counter()
+        self.episode_count = episode_count = Counter()
+        self.episode_mean = episode_mean = Counter()
         tick = time.time()
+
         s1 = self.reset()
 
-        for timesteps in itertools.count():
-            is_eval_period = timesteps % 100 == 0 or load_path is not None
-            s2, r, t, i = self.step(s1=s1, is_eval_period=is_eval_period)
-            s1 = s2
+        for time_steps in itertools.count():
+            is_eval_period = count['episode'] % 100 == 99
+            a = agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
+            if render:
+                env.render()
+            s2, r, t, info = self.step(a)
+            if 'print' in info:
+                print('Time step:', time_steps, info['print'])
+            if 'log count' in info:
+                episode_count.update(Counter(info['log count']))
+            if 'log mean' in info:
+                episode_mean.update(Counter(info['log mean']))
 
-            count += Counter(reward=r)
-            self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
-            tick = time.time()
-            if save_path and timesteps % 5000 == 0:
+            if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            if t:
-                s1 = self.reset()
-                count += Counter(episode=1)
-                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', count['episode'],
-                    timesteps, self.episode_count['reward']))
-                if logdir:
-                    summary = tf.Summary()
-                    if is_eval_period:
-                        summary.value.add(tag='eval reward',
-                                          simple_value=self.episode_count['reward'])
-                    for k in self.episode_count:
-                        summary.value.add(tag=k, simple_value=self.episode_count[k])
-                    episode_timesteps = self.episode_count['timesteps']
-                    for k in self.episode_mean:
-                        summary.value.add(
-                            tag=k,
-                            simple_value=self.episode_mean[k] / float(episode_timesteps))
-                    tb_writer.add_summary(summary, timesteps)
-                    tb_writer.flush()
-
-                # zero out counters
-                self.episode_count = self.episode_mean = Counter()
-
-    def step(self, is_eval_period, s1):
-        a = self.agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
-        if self.render:
-            self.env.render()
-        s2, r, t, info = self.step_env(a)
-        if 'log count' in info:
-            self.episode_count.update(Counter(info['log count']))
-        if 'log mean' in info:
-            self.episode_mean.update(Counter(info['log mean']))
-        if not is_eval_period:
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-            if self.buffer_full():
+            if not is_eval_period and self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
-                    step = self.agent.train_step(self.sample_buffer())
-                    self.episode_mean.update(
+                    sample_steps = self.sample_buffer()
+                    step = self.agent.train_step(
+                        sample_steps.replace(s1=self.vectorize_state(sample_steps.s1),
+                                             s2=self.vectorize_state(sample_steps.s2), ))
+                    episode_mean.update(
                         Counter({
                                     k: getattr(step, k.replace(' ', '_'))
                                     for k in [
@@ -116,8 +91,37 @@ class Trainer:
                                         'pi grad',
                                     ]
                                     }))
-        self.episode_count.update(Counter(reward=r, timesteps=1))
-        return s2, r, t, info
+            s1 = s2
+            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            tick = time.time()
+            episode_count.update(Counter(reward=r, timesteps=1))
+            if t:
+                s1 = self.reset()
+                episode_reward = episode_count['reward']
+                episode_timesteps = episode_count['timesteps']
+                count.update(Counter(reward=episode_reward, episode=1))
+                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
+                    'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
+                    episode_reward))
+                if logdir:
+                    summary = tf.Summary()
+                    if is_eval_period:
+                        summary.value.add(tag='eval reward', simple_value=episode_reward)
+                    summary.value.add(
+                        tag='average reward',
+                        simple_value=(count['reward'] / float(count['episode'])))
+                    for k in episode_count:
+                        summary.value.add(tag=k, simple_value=episode_count[k])
+                    for k in episode_mean:
+                        summary.value.add(
+                            tag=k,
+                            simple_value=episode_mean[k] / float(episode_timesteps))
+                    tb_writer.add_summary(summary, time_steps)
+                    tb_writer.flush()
+
+                # zero out counters
+                self.episode_count = episode_count = Counter()
+                episode_mean = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -140,7 +144,7 @@ class Trainer:
     def reset(self) -> State:
         return self.env.reset()
 
-    def step_env(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
@@ -162,12 +166,8 @@ class Trainer:
     def buffer_full(self):
         return len(self.buffer) >= self.batch_size
 
-    def sample_buffer(self):
-        step = Step(*self.buffer.sample(self.batch_size))
-        return step.replace(
-            s1=self.vectorize_state(step.s1),
-            s2=self.vectorize_state(step.s2),
-        )
+    def sample_buffer(self) -> Step:
+        return Step(*self.buffer.sample(self.batch_size))
 
 
 class TrajectoryTrainer(Trainer):
@@ -178,23 +178,29 @@ class TrajectoryTrainer(Trainer):
             print('Using model dir', path.absolute())
             path.mkdir(parents=True, exist_ok=True)
         self.mimic_num = 0
-        self.trajectory_start = None
         super().__init__(**kwargs)
-        self.s1 = self.reset()
+
+    def add_to_buffer(self, step: Step):
+        super().add_to_buffer(step)
+
+    def trajectory(self) -> Iterable:
+        return self.buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:
         if self.mimic_save_dir is not None:
             path = Path(self.mimic_save_dir, str(self.mimic_num) + '.pkl')
-            trajectory = list(self.buffer[self.trajectory_start: self.buffer.pos])
             with path.open(mode='wb') as f:
-                pickle.dump(trajectory, f)
+                pickle.dump(self._trajectory(), f)
             self.mimic_num += 1
-        self.trajectory_start = self.buffer.pos
-        self.s1 = super().reset()
-        return self.s1
+        return super().reset()
 
-    def get_nth_step(self, n: int):
-        return self.buffer[(self.trajectory_start + n) % self.buffer.maxlen]
+    def timesteps(self):
+        return self.episode_count['timesteps']
+
+    def _trajectory(self) -> Iterable:
+        if self.timesteps():
+            return self.buffer[-self.timesteps():]
+        return ()
 
 
 class HindsightTrainer(TrajectoryTrainer):
@@ -205,22 +211,15 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.env, HindsightWrapper)
-        start = self.trajectory_start
-        stop = self.buffer.pos
-        if start and stop and stop > start:
-            trajectory = self.buffer[start: stop]
-            final_state = self.get_nth_step(stop - start - 1)
-            for step in self.env.recompute_trajectory(trajectory, final_state):
-                self.add_to_buffer(step)
-            if self.n_goals - 1 > 0:
-                stop_indexes = np.random.randint(1, stop - start - 1, size=self.n_goals - 1)
-                assert isinstance(stop_indexes, np.ndarray)
-                for stop in stop_indexes:
-                    trajectory = self.buffer[start: stop]
-                    final_state = self.get_nth_step(stop)
-                    for step in self.env.recompute_trajectory(trajectory,
-                                                              final_step=final_state):
-                        self.add_to_buffer(step)
+        self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
+                                                         final_step=self.buffer[-1]))
+        if self.n_goals - 1 and self.timesteps() > 0:
+            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
+            assert isinstance(final_indexes, np.ndarray)
+
+            for final_state in self.buffer[final_indexes]:
+                self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
+                                                                 final_step=final_state))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

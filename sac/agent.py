@@ -5,7 +5,7 @@ from typing import Callable, Iterable, Sequence, Tuple, Union
 import numpy as np
 import tensorflow as tf
 
-from sac.utils import PropStep, Step
+from sac.utils import Step
 
 
 def mlp(inputs, layer_size, n_layers, activation):
@@ -218,25 +218,3 @@ class AbstractAgent:
         with tf.variable_scope(name, reuse=reuse):
             return self.policy_parameters_to_max_likelihood_action(self.parameters)
 
-
-# noinspection PyAbstractClass
-class PropagationAgent(AbstractAgent):
-    def __init__(self, **kwargs):
-        self.sampled_V2 = tf.placeholder(tf.float32, [None], name='V2')
-        super().__init__(**kwargs)
-
-    def compute_v2(self) -> tf.Tensor:
-        return tf.maximum(self.reward_scale * self.sampled_V2, super().compute_v2())
-
-    def train_step(self, step: PropStep, feed_dict: dict = None) -> TrainStep:
-        assert isinstance(step, PropStep)
-        if feed_dict is None:
-            feed_dict = {
-                self.S1: step.s1,
-                self.A: step.a,
-                self.R: step.r,
-                self.S2: step.s2,
-                self.T: step.t,
-                self.sampled_V2: step.v2,
-            }
-        return super().train_step(step, feed_dict)

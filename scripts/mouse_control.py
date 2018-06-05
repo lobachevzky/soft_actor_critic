@@ -26,7 +26,7 @@ def cli(discrete, mimic_path):
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
     env = PickAndPlaceHindsightWrapper(
-        default_reward=0, env=PickAndPlaceEnv(fixed_block=False, discrete=discrete))
+        default_reward=0, env=PickAndPlaceEnv(fixed_block=True, discrete=discrete))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -53,7 +53,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .02
+                action[i] += env.env.sim.get_mouse_dy() * .5
 
         if lastkey is 'R':
             env.reset()
@@ -61,20 +61,7 @@ def cli(discrete, mimic_path):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            print('distance from goal')
-            _env = env.unwrapped
-            print('block:',
-                  distance_between(_env.block_pos(_env.sim.qpos),
-                                   _env.goal().block))
-            # slide_y = env.env.sim.jnt_qposadr('slide_y')
-            # print('y-axis:', env.env.sim.qpos[slide_y])
-            # print(env.env.sim.qpos)
-            # arm_joint = env.env.sim.jnt_qposadr('arm_flex_joint')
-            # print('arm:', env.env.sim.qpos[arm_joint])
-            # wrist_joint = env.env.sim.jnt_qposadr('wrist_roll_joint')
-            # print('wrist:', env.env.sim.qpos[wrist_joint])
-            # l_hand_joint = env.env.sim.jnt_qposadr('hand_l_proximal_joint')
-            # print('hand:', env.env.sim.qpos[l_hand_joint])
+            print(env.env.sim.qpos)
 
         if not discrete:
             for k in range(10):

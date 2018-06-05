@@ -10,9 +10,8 @@ import numpy as np
 class BaseEnv(gym.Env):
     """ The environments """
 
-    def __init__(self, image_dimensions, neg_reward, steps_per_action):
+    def __init__(self, image_dimensions, neg_reward,):
 
-        self._steps_per_action = steps_per_action
         self._step_num = 0
         self._neg_reward = neg_reward
         self._image_dimensions = image_dimensions
@@ -25,9 +24,10 @@ class BaseEnv(gym.Env):
         self.spec = None
 
     def step(self, action):
-        self._step_num += 1
         self._set_action(action)
-        return self._get_obs(), self.compute_reward(), self.compute_terminal(), {}
+        done = self.compute_terminal(self.goal(), self._get_obs())
+        reward = self.compute_reward(self.goal(), self._get_obs())
+        return self._get_obs(), reward, done, {}
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -71,11 +71,11 @@ class BaseEnv(gym.Env):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_terminal(self):
+    def compute_terminal(self, goal, obs):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_reward(self):
+    def compute_reward(self, goal, obs):
         raise NotImplementedError
 
 

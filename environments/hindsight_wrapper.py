@@ -22,7 +22,7 @@ class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         vector_state = self.vectorize_state(self.reset())
-        self.observation_space = Box(-1, 1, vector_state.shape)
+        self.observation_space = Box(-1, 1, vector_state.shape[1:])
 
     @abstractmethod
     def _achieved_goal(self):
@@ -106,11 +106,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return self.env.unwrapped.goal()
 
     @staticmethod
-    def vectorize_state(state):
-        return np.concatenate([state.observation, np.concatenate(state.desired_goal)])
-
-    @staticmethod
-    def vectorize_state2(states: List[State]):
+    def vectorize_state(states: List[State]):
         """
         :returns
         >>> np.stack([np.concatenate(

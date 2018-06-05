@@ -59,7 +59,7 @@ class Trainer:
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions(self.vectorize_state2(s1), sample=(not is_eval_period))
+            a = agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -77,8 +77,8 @@ class Trainer:
                     for i in range(self.num_train_steps):
                         sample_steps = self.sample_buffer()
                         step = self.agent.train_step(
-                            sample_steps._replace(s1=self.vectorize_state2(sample_steps.s1),
-                                                  s2=self.vectorize_state2(sample_steps.s2),))
+                            sample_steps._replace(s1=self.vectorize_state(sample_steps.s1),
+                                                  s2=self.vectorize_state(sample_steps.s2), ))
                         episode_mean.update(
                             Counter({
                                 k: getattr(step, k.replace(' ', '_'))
@@ -160,10 +160,6 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    def vectorize_state2(self, state: State) -> np.ndarray:
-        """ Preprocess state before feeding to network """
-        return state
-
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
         self.buffer.append(step)
@@ -233,7 +229,3 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
-
-    def vectorize_state2(self, state: State) -> np.ndarray:
-        assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize_state2(state)

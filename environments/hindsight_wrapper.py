@@ -13,11 +13,6 @@ from sac.utils import Step
 State = namedtuple('State', 'observation achieved_goal desired_goal')
 
 
-def goals_equal(goal1, goal2):
-    return all([np.allclose(a, b) for a, b in [(goal1.block, goal2.block),
-                                               (goal1.gripper, goal2.gripper)]])
-
-
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -87,6 +82,13 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return 0.45
+
+    @staticmethod
+    def vectorize_state(states: List[State]):
+        if isinstance(states, State):
+            states = [states]
+        return np.stack(np.append(state.observation, state.desired_goal)
+                        for state in states)
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):

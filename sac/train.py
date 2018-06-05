@@ -1,14 +1,13 @@
 import itertools
 import pickle
 import time
+from collections import Counter
 from pathlib import Path
-from pprint import pprint
-from typing import Optional, Tuple, Generator, Iterable
+from typing import Optional, Tuple, Iterable
 
 import gym
 import numpy as np
 import tensorflow as tf
-from collections import Counter
 from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
@@ -74,24 +73,24 @@ class Trainer:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
             if not is_eval_period and self.buffer_full() and not load_path:
-                    for i in range(self.num_train_steps):
-                        sample_steps = self.sample_buffer()
-                        step = self.agent.train_step(
-                            sample_steps._replace(s1=self.vectorize_state(sample_steps.s1),
-                                                  s2=self.vectorize_state(sample_steps.s2), ))
-                        episode_mean.update(
-                            Counter({
-                                k: getattr(step, k.replace(' ', '_'))
-                                for k in [
-                                    'entropy',
-                                    'V loss',
-                                    'Q loss',
-                                    'pi loss',
-                                    'V grad',
-                                    'Q grad',
-                                    'pi grad',
-                                ]
-                            }))
+                for i in range(self.num_train_steps):
+                    sample_steps = self.sample_buffer()
+                    step = self.agent.train_step(
+                        sample_steps.replace(s1=self.vectorize_state(sample_steps.s1),
+                                             s2=self.vectorize_state(sample_steps.s2), ))
+                    episode_mean.update(
+                        Counter({
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -167,7 +166,7 @@ class Trainer:
     def buffer_full(self):
         return len(self.buffer) >= self.batch_size
 
-    def sample_buffer(self):
+    def sample_buffer(self) -> Step:
         return Step(*self.buffer.sample(self.batch_size))
 
 

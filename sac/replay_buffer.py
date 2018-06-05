@@ -26,6 +26,7 @@ class ReplayBuffer:
     def sample(self, batch_size):
         top_pos = self.maxlen if self.full else self.pos
         indices = np.random.randint(0, top_pos, size=batch_size)
+        assert isinstance(indices, np.ndarray)
         samples = []
         for idx in indices:
             sample = self.buffer[idx]

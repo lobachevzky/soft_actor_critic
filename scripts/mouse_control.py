@@ -8,6 +8,7 @@ import numpy as np
 from click._unicodefun import click
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper, MultiTaskHindsightWrapper
+from environments.mujoco import print1
 from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
@@ -52,7 +53,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy()
+                action[i] += env.env.sim.get_mouse_dy() * .05
 
         if lastkey is 'R':
             env.reset()
@@ -83,6 +84,7 @@ def cli(discrete, mimic_path):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
+            print1(action)
             s2, r, done, _ = env.step(action)
 
             achieved_goal = env._achieved_goal().block

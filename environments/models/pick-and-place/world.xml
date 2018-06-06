@@ -1,5 +1,5 @@
 <mujoco model="pick_and_place">
-    <option impratio="2.5"/> 
+    <option impratio="2.5" timestep="0.002"/>
     <default>
         <default class="wall">
             <geom rgba="2 2 2 1"/>
@@ -73,13 +73,17 @@
     </asset>
     <worldbody>
         <light diffuse=".5 .5 .5" pos="0 0 3" dir="0 0 -1"/>
+        <geom name="floor" type="plane" size="2 2 2" pos="0 0 0" class="floor"/>
 
         <body name="pan" pos="0 0 .4">
-            <geom type="box" size=".1905 .2667 .005" class="box"/>
-            <geom type="box" size=".001  .2667 .0627" pos=".1905 0  .06"  class="clear"/>
-            <geom type="box" size=".001  .2667 .04" pos="-.1905 0 .04" class="clear"/>
-            <geom type="box" size=".1905 .001  .0627" pos="0 .2667  .06"  class="clear"/>
-            <geom type="box" size=".1905 .001  .0627" pos="0 -.2667 .06" class="clear"/>
+            <geom type="box" size=".17 .2667 .005" class="box"/>
+            <geom type="box" size=".001  .2667 .0627" pos=".17 0  .06"  class="clear"/>
+            <!--<geom type="box" size=".001  .2667 .04" pos="-.1905 0 .04" class="clear"/>-->
+            <geom type="box" size=".17 .001  .0627" pos="0 .2667  .06"  class="clear"/>
+            <geom type="box" size=".17 .001  .0627" pos="0 -.2667 .06" class="clear"/>
+
+            <!--<geom type="box" size=".001  .1 .0627" pos="-.1905 .167 .06" class="clear"/>-->
+            <geom type="box" size=".17 .001  .04" pos="0 .1  .04"  class="clear"/>
         </body>
 
         <!--<body name="cubby" pos="0 .6 .5">-->
@@ -108,18 +112,26 @@
         <include file="hsr.mjcf"/>
     </worldbody>
     <actuator>
-        <!--<motor gear="1000.0" name="slide_x_motor" joint="slide_x"/>-->
-        <!--<motor gear="1000.0" name="slide_y_motor" joint="slide_y"/>-->
-        <!--<position gear="1" kp="1000" name="slide_x_motor" joint="slide_x"-->
-                  <!--forcelimited="true" forcerange="-15 35"/>-->
-        <!--<position gear="1" kp="1000" name="slide_y_motor" joint="slide_y"-->
-                  <!--forcelimited="true" forcerange="-15 35"/>-->
+        <!--<motor gear="100.0" name="slide_x_motor" joint="slide_x"-->
+        <!--forcelimited="true" forcerange="-10 10"/>-->
+        <!--<motor gear="100.0" name="slide_y_motor" joint="slide_y"-->
+        <!--forcelimited="true" forcerange="-10 10"/>-->
+        <!--<motor gear="1000.0" name="arm_lift_motor" joint="arm_lift_joint"/>-->
+        <!--<motor gear="100.0" name="arm_flex_motor" joint="arm_flex_joint"-->
+        <!--forcelimited="true" forcerange="-15 35"/>-->
+        <!--<motor gear="1000.0" name="wrist_flex_motor" joint="wrist_flex_joint"/>-->
+        <!--<motor gear="100.0" name="wrist_roll_motor" joint="wrist_roll_joint" forcelimited="true" forcerange="-.03 .03"/>/>-->
+        <!--<motor gear="100.0" name="hand_l_proximal_motor" joint="hand_l_proximal_joint"-->
+        <!--forcelimited="true" forcerange="-20 20"/>-->
+        <!--<motor gear="100.0" name="hand_r_proximal_motor" joint="hand_r_proximal_joint"-->
+        <!--forcelimited="true" forcerange="-20 20"/>-->
+
+        <!--<position gear="1" kp="50" name="slide_x_motor" joint="slide_x"-->
+                  <!--forcelimited="true" forcerange="-50 50"/>-->
+        <!--<position gear="1" kp="50" name="slide_y_motor" joint="slide_y"-->
+                  <!--forcelimited="true" forcerange="-50 50"/>-->
         <position gear="1" kp="1000" name="arm_flex_motor" joint="arm_flex_joint"
                   forcelimited="true" forcerange="-15 35"/>
-        <!--<motor gear="1000.0" name="arm_lift_motor" joint="arm_lift_joint"/>-->
-        <!--<motor gear="1000.0" name="arm_roll_motor" joint="arm_roll_joint"/>-->
-        <!--<motor gear="1000.0" name="wrist_flex_motor" joint="wrist_flex_joint"/>-->
-        <!--<motor gear="1000.0" name="wrist_roll_motor" joint="wrist_roll_joint" forcelimited="true" forcerange="-.03 .03"/>/>-->
         <position gear="1" kp="1000" name="wrist_roll_motor" joint="wrist_roll_joint"
                   forcelimited="true" forcerange="-20 20"/>
         <position gear="1" kp="1000" name="hand_l_proximal_motor" joint="hand_l_proximal_joint"
@@ -127,8 +139,6 @@
         <position gear="1" kp="1000" name="hand_r_proximal_motor" joint="hand_r_proximal_joint"
                   forcelimited="true" forcerange="-20 20"/>
 
-        <!--<motor gear="1000.0" name="hand_l_distal_motor" joint="hand_l_distal_joint"/>-->
-        <!--<motor gear="1000.0" name="hand_r_distal_motor" joint="hand_r_distal_joint"/>-->
     </actuator>
     <contact>
         <exclude body1="base_link" body2="arm_lift_link"/>

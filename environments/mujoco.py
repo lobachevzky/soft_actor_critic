@@ -34,6 +34,8 @@ class MujocoEnv:
     def render(self, mode=None, camera_name=None, labels=None):
         if mode == 'rgb_array':
             return self.sim.render_offscreen(height=256, width=256)
+        if labels is None:
+            labels = dict(x=self.goal_3d())
         self.sim.render(camera_name, labels)
 
     def image(self, camera_name='rgb'):

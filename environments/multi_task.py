@@ -36,7 +36,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
                         self.sim.jnt_qposadr('slide_y'),
                         self.sim.jnt_qposadr('arm_flex_joint'),
                         self.sim.jnt_qposadr('wrist_roll_joint'),
-                        self.sim.jnt_qposadr('hand_l_proximal_joint'),
+                        self.sim.jnt_qposadr('hand_l_proximal_joint')
                         ]] = np.random.uniform(low=[-.13, -.23, -1.1, -1.575, -0.0083],
                                                high=[.11, .25, .001, 1.575, 0.357])
         r = self.sim.jnt_qposadr('hand_r_proximal_joint')

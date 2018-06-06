@@ -114,7 +114,7 @@ class AbstractAgent:
                 soft_update_xi_bar_ops = [
                     tf.assign(xbar, tau * x + (1 - tau) * xbar)
                     for (xbar, x) in zip(xi_bar, xi)
-                ]
+                    ]
                 self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
                 self.check = tf.add_check_numerics_ops()
                 self.entropy = self.compute_entropy()
@@ -219,3 +219,27 @@ class AbstractAgent:
     def get_best_action(self, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             return self.policy_parameters_to_max_likelihood_action(self.parameters)
+
+
+class ValuePredictionAgent(AbstractAgent):
+    def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable, reward_scale: float, n_layers: int,
+                 layer_size: int, learning_rate: float, grad_clip: float, device_num: int):
+        super().__init__(s_shape, a_shape, activation, reward_scale, n_layers, layer_size, learning_rate, grad_clip,
+                         device_num)
+
+        with tf.variable_scope('loss_prediction'):
+            sa = tf.concat([self.S1, self.A], axis=1)
+            pred = tf.layers.dense(self.mlp(sa), 1, name='prediction')
+        self.pred_loss = .5 * tf.square(pred - tf.stop_gradient(self.Q_loss))
+
+        var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                     scope='loss_prediction/')
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        gradients, variables = zip(
+            *optimizer.compute_gradients(self.pred_loss, var_list=var_list))
+        if grad_clip:
+            gradients, self.pred_grad = tf.clip_by_global_norm(gradients, grad_clip)
+        else:
+            self.pred_grad = tf.global_norm(gradients)
+        self.train_pred = optimizer.apply_gradients(zip(gradients, variables))
+        TRAIN_VALUES.extend(['train_pred', 'pred_loss', 'pred_grad'])

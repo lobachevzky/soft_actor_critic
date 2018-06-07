@@ -29,6 +29,7 @@ class Trainer:
 
         self.logdir = logdir
         self.save_path = save_path
+        self.load_path = load_path
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
@@ -56,6 +57,7 @@ class Trainer:
         self.episode_count = Counter()
         self.episode_mean = Counter()
 
+    def train(self):
         tick = time.time()
         s1 = self.reset()
         for time_steps in itertools.count():
@@ -72,7 +74,8 @@ class Trainer:
                 self.episode_mean.update(Counter(info['log mean']))
 
             if self.save_path and time_steps % 5000 == 0:
-                print("model saved in path:", self.saver.save(self.agent.sess, save_path=self.save_path))
+                print("model saved in path:", self.saver.save(self.agent.sess,
+                                                              save_path=self.save_path))
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
             if not is_eval_period and self.buffer_full() and not self.load_path:
                 for i in range(self.num_train_steps):
@@ -84,17 +87,17 @@ class Trainer:
                         ))
                     self.episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
-                        }))
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()

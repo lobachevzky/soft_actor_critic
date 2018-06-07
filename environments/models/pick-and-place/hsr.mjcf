@@ -1,8 +1,8 @@
 <mujoco model="hsrb">
     <body name="base_link" pos="-.46 -.081 0">
-        <site name="touchsensor_site" size="0.25 .5" pos="0 0 .5" type="cylinder" rgba="1 0 0 0"/>
-        <!--<joint axis="1 0 0" damping="1000" name="slide_x" pos="0 0 0" type="slide" limited="true" range="-.02 .02"/>-->
-        <!--<joint axis="0 1 0" damping="1000" name="slide_y" pos="0 0 0" type="slide" limited="true" range="-.02 .02"/>-->
+        <!--<site name="touchsensor_site" size="0.25 .5" pos="0 0 .5" type="cylinder" rgba="1 0 0 0"/>-->
+        <!--<joint armature="0.0001" axis="1 0 0" frictionloss="50" name="slide_x" pos="0 0 0" type="slide" limited="true" range="-.12 .22"/>-->
+        <!--<joint armature="0.0001" axis="0 1 0" frictionloss="50" name="slide_y" pos="0 0 0" type="slide" limited="true" range="-.22 .24"/>-->
         <!--<joint axis="0 0 1" damping="1000" name="turn" pos="0 0 0" type="hinge"/>-->
         <inertial pos="-0.025978 -0.005498 0.17633" quat="0.995796 0.0411155 -0.0685908 0.0446655" mass="50"
                   diaginertia="0.378627 0.344913 0.145159"/>
@@ -152,7 +152,7 @@
                             <inertial pos="-0.001416 -0.001547 0.081689"
                                       quat="0.988073 0.0424396 -0.0351605 -0.143785"
                                       mass="0.761692" diaginertia="0.000811657 0.000766039 0.000449422"/>
-                            <joint name="wrist_roll_joint" pos="0 0 0" axis="0 0 1" damping="10" limited="true" range="-180 180"/>
+                            <joint name="wrist_roll_joint" pos="0 0 0" axis="0 0 1" damping="15" limited="true" range="-90 90"/>
                                    <!--range="-1.92 3.67" />-->
                             <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="wrist_roll"/>
                             <geom type="mesh" mesh="wrist_roll"/>

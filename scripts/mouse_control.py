@@ -8,6 +8,7 @@ import numpy as np
 from click._unicodefun import click
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper, MultiTaskHindsightWrapper
+from environments.mujoco import print1
 from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
@@ -24,7 +25,8 @@ def cli(discrete, mimic_path):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = PickAndPlaceHindsightWrapper(PickAndPlaceEnv(fixed_block=True, steps_per_action=1, geofence=.1, min_lift_height=.02))
+    env = MultiTaskHindsightWrapper(
+        MultiTaskEnv(steps_per_action=20, geofence=.1, min_lift_height=.02))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -82,6 +84,7 @@ def cli(discrete, mimic_path):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
+            print1(action)
             s2, r, done, _ = env.step(action)
 
             achieved_goal = env._achieved_goal().block

@@ -16,11 +16,11 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--learning-rate', default=3e-4, type=float)
 @click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=4, type=int)
-@click.option('--steps-per-action', default=300, type=int)
+@click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
-@click.option('--max-steps', default=200, type=int)
+@click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
@@ -33,12 +33,11 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-@click.option('--hindsight', 'trainer', flag_value=HindsightTrainer, default=True)
-@click.option('--value-pred', 'trainer', flag_value=ValuePredictionTrainer)
+@click.option('--xml-file', type=str, default='world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, mimic_dir,
-        mimic_save_dir, logdir, save_path, load_path, render, n_goals, trainer):
+        mimic_save_dir, logdir, save_path, load_path, render, n_goals, xml_file):
 
     trainer(
         env=PickAndPlaceHindsightWrapper(
@@ -50,7 +49,9 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     steps_per_action=steps_per_action,
                     fixed_block=fixed_block,
                     min_lift_height=min_lift_height,
-                    geofence=geofence))),
+                    geofence=geofence,
+                    xml_file=xml_file
+                ))),
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,

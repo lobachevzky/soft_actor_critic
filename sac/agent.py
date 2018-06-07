@@ -16,18 +16,6 @@ def mlp(inputs, layer_size, n_layers, activation):
 
 ArrayLike = Union[np.ndarray, list]
 
-TRAIN_VALUES = """\
-entropy
-soft_update_xi_bar
-V_loss
-Q_loss
-pi_loss
-V_grad
-Q_grad
-pi_grad\
-""".split('\n')
-TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
-
 
 class AbstractAgent:
     def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable,
@@ -132,17 +120,28 @@ class AbstractAgent:
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
 
-    def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
-        if feed_dict is None:
-            feed_dict = {
-                self.S1: step.s1,
-                self.A: step.a,
-                self.R: np.array(step.r) * self.reward_scale,
-                self.S2: step.s2,
-                self.T: step.t
-            }
-        return TrainStep(*self.sess.run([getattr(self, attr)
-                                         for attr in TRAIN_VALUES], feed_dict))
+        self.train_values = """\
+entropy
+soft_update_xi_bar
+V_loss
+Q_loss
+pi_loss
+V_grad
+Q_grad
+pi_grad\
+""".split('\n')
+        self.Step = namedtuple('Step', self.train_values)
+
+    def train_step(self, step: Step):
+        feed_dict = {
+            self.S1: step.s1,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
+            self.S2: step.s2,
+            self.T: step.t
+        }
+        return self.Step(*self.sess.run([getattr(self, attr)
+                              for attr in self.train_values], feed_dict))
 
     def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
         if sample:
@@ -242,4 +241,5 @@ class ValuePredictionAgent(AbstractAgent):
         else:
             self.pred_grad = tf.global_norm(gradients)
         self.train_pred = optimizer.apply_gradients(zip(gradients, variables))
-        TRAIN_VALUES.extend(['train_pred', 'pred_loss', 'pred_grad'])
+        self.train_values = super().train_values + ['train_pred', 'pred_loss', 'pred_grad']
+        self.Step = namedtuple('Step', self.train_values)

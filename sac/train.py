@@ -27,10 +27,13 @@ class Trainer:
             tf.set_random_seed(seed)
             env.seed(seed)
 
+        self.logdir = logdir
+        self.save_path = save_path
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
+        self.render = render
 
         if mimic_dir:
             for path in Path(mimic_dir).iterdir():
@@ -39,40 +42,39 @@ class Trainer:
                         self.buffer.extend(pickle.load(f))
                 print('Loaded mimic file {} into buffer.'.format(path))
 
-        self.agent = agent = self.build_agent(**kwargs)
+        self.agent = self.build_agent(**kwargs)
 
-        saver = tf.train.Saver()
-        tb_writer = None
+        self.saver = tf.train.Saver()
+        self.tb_writer = None
         if load_path:
-            saver.restore(agent.sess, load_path)
+            self.saver.restore(self.agent.sess, load_path)
             print("Model restored from", load_path)
         if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
+            self.tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.agent.sess.graph)
 
-        count = Counter(reward=0, episode=0)
-        self.episode_count = episode_count = Counter()
-        self.episode_mean = episode_mean = Counter()
+        self.count = Counter(reward=0, episode=0)
+        self.episode_count = Counter()
+        self.episode_mean = Counter()
+
         tick = time.time()
-
         s1 = self.reset()
-
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
-            if render:
-                env.render()
+            is_eval_period = self.count['episode'] % 100 == 99
+            a = self.agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
+            if self.render:
+                self.env.render()
             s2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                episode_count.update(Counter(info['log count']))
+                self.episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
-                episode_mean.update(Counter(info['log mean']))
+                self.episode_mean.update(Counter(info['log mean']))
 
-            if save_path and time_steps % 5000 == 0:
-                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
+            if self.save_path and time_steps % 5000 == 0:
+                print("model saved in path:", self.saver.save(self.agent.sess, save_path=self.save_path))
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
-            if not is_eval_period and self.buffer_full() and not load_path:
+            if not is_eval_period and self.buffer_full() and not self.load_path:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     step = self.agent.train_step(
@@ -80,7 +82,7 @@ class Trainer:
                             s1=self.vectorize_state(sample_steps.s1),
                             s2=self.vectorize_state(sample_steps.s2),
                         ))
-                    episode_mean.update(
+                    self.episode_mean.update(
                         Counter({
                             k: getattr(step, k.replace(' ', '_'))
                             for k in [
@@ -94,36 +96,36 @@ class Trainer:
                             ]
                         }))
             s1 = s2
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, timesteps=1))
+            self.episode_count.update(Counter(reward=r, timesteps=1))
             if t:
                 s1 = self.reset()
-                episode_reward = episode_count['reward']
-                episode_timesteps = episode_count['timesteps']
-                count.update(Counter(reward=episode_reward, episode=1))
+                episode_reward = self.episode_count['reward']
+                episode_timesteps = self.episode_count['timesteps']
+                self.count.update(Counter(reward=episode_reward, episode=1))
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
+                    'EVAL' if is_eval_period else 'TRAIN', self.count['episode'], time_steps,
                     episode_reward))
-                if logdir:
+                if self.logdir:
                     summary = tf.Summary()
                     if is_eval_period:
                         summary.value.add(tag='eval reward', simple_value=episode_reward)
                     summary.value.add(
                         tag='average reward',
-                        simple_value=(count['reward'] / float(count['episode'])))
-                    for k in episode_count:
-                        summary.value.add(tag=k, simple_value=episode_count[k])
-                    for k in episode_mean:
+                        simple_value=(self.count['reward'] / float(self.count['episode'])))
+                    for k in self.episode_count:
+                        summary.value.add(tag=k, simple_value=self.episode_count[k])
+                    for k in self.episode_mean:
                         summary.value.add(
                             tag=k,
-                            simple_value=episode_mean[k] / float(episode_timesteps))
-                    tb_writer.add_summary(summary, time_steps)
-                    tb_writer.flush()
+                            simple_value=self.episode_mean[k] / float(episode_timesteps))
+                    self.tb_writer.add_summary(summary, time_steps)
+                    self.tb_writer.flush()
 
                 # zero out counters
-                self.episode_count = episode_count = Counter()
-                episode_mean = Counter()
+                self.episode_count = Counter()
+                self.episode_mean = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape

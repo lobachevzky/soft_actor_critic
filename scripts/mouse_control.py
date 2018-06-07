@@ -24,8 +24,7 @@ def cli(discrete, mimic_path):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = MultiTaskHindsightWrapper(
-        MultiTaskEnv(steps_per_action=600, geofence=.1, min_lift_height=.02))
+    env = PickAndPlaceHindsightWrapper(PickAndPlaceEnv(fixed_block=True, steps_per_action=1, geofence=.1, min_lift_height=.02))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -86,8 +85,6 @@ def cli(discrete, mimic_path):
             s2, r, done, _ = env.step(action)
 
             achieved_goal = env._achieved_goal().block
-            if achieved_goal[2] > env.unwrapped.lift_height:
-                print('lifted')
             if achieved_goal[1] > .1:
                 print('in box')
 

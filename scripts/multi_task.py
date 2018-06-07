@@ -1,7 +1,7 @@
 import click
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import MultiTaskHindsightWrapper
+from environments.hindsight_wrapper import MultiTaskHindsightWrapper, HindsightWrapper, PickAndPlaceHindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability, str_to_activation
@@ -31,13 +31,15 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
+@click.option('--baseline', is_flag=True)
 def cli(max_steps, geofence, min_lift_height, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, mimic_dir,
-        mimic_save_dir, logdir, save_path, load_path, render, n_goals):
+        mimic_save_dir, logdir, save_path, load_path, render, n_goals, baseline):
 
+    wrapper = PickAndPlaceHindsightWrapper if baseline else MultiTaskHindsightWrapper
     HindsightTrainer(
-        env=MultiTaskHindsightWrapper(
+        env=wrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(

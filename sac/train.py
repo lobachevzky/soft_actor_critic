@@ -235,6 +235,6 @@ class HindsightTrainer(TrajectoryTrainer):
         return self.env.vectorize_state(state)
 
 
-class ValuePredictionTrainer(Trainer):
+class ValuePredictionTrainer(HindsightTrainer):
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         return super().build_agent(base_agent=ValuePredictionAgent, **kwargs)

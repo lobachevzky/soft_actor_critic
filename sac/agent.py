@@ -229,7 +229,7 @@ class ValuePredictionAgent(AbstractAgent):
         with tf.variable_scope('loss_prediction'):
             sa = tf.concat([self.S1, self.A], axis=1)
             pred = tf.layers.dense(self.mlp(sa), 1, name='prediction')
-        self.pred_loss = .5 * tf.square(pred - tf.stop_gradient(self.Q_loss))
+        self.pred_loss = .5 * tf.square(pred - tf.stop_gradient(tf.abs(self.Q_loss)))
 
         var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                      scope='loss_prediction/')
@@ -241,5 +241,6 @@ class ValuePredictionAgent(AbstractAgent):
         else:
             self.pred_grad = tf.global_norm(gradients)
         self.train_pred = optimizer.apply_gradients(zip(gradients, variables))
-        self.train_values = super().train_values + ['train_pred', 'pred_loss', 'pred_grad']
+        self.train_values += ['train_pred', 'pred_loss', 'pred_grad']
         self.Step = namedtuple('Step', self.train_values)
+        self.sess.run(tf.global_variables_initializer())

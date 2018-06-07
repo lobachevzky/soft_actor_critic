@@ -3,7 +3,7 @@ from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
-from sac.train import HindsightTrainer
+from sac.train import HindsightTrainer, ValuePredictionTrainer
 from scripts.gym_env import check_probability, str_to_activation
 
 
@@ -33,12 +33,14 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
+@click.option('--hindsight', 'trainer', flag_value=HindsightTrainer, default=True)
+@click.option('--value-pred', 'trainer', flag_value=ValuePredictionTrainer)
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, mimic_dir,
-        mimic_save_dir, logdir, save_path, load_path, render, n_goals):
+        mimic_save_dir, logdir, save_path, load_path, render, n_goals, trainer):
 
-    HindsightTrainer(
+    trainer(
         env=PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,

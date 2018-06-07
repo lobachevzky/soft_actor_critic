@@ -11,7 +11,7 @@ import tensorflow as tf
 from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
-from sac.agent import AbstractAgent
+from sac.agent import AbstractAgent, ValuePredictionAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
@@ -233,3 +233,8 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
+
+
+class ValuePredictionTrainer(Trainer):
+    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
+        return super().build_agent(base_agent=ValuePredictionAgent, **kwargs)

@@ -56,6 +56,7 @@ class Trainer:
         self.count = Counter(reward=0, episode=0)
         self.episode_count = Counter()
         self.episode_mean = Counter()
+        self.mean_values = ['entropy', 'V loss', 'Q loss', 'pi loss', 'V grad', 'Q grad', 'pi grad', ]
 
     def train(self):
         tick = time.time()
@@ -86,18 +87,7 @@ class Trainer:
                             s2=self.vectorize_state(sample_steps.s2),
                         ))
                     self.episode_mean.update(
-                        Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                        Counter({k: getattr(step, k.replace(' ', '_')) for k in self.mean_values}))
             s1 = s2
             self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -236,5 +226,9 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class ValuePredictionTrainer(HindsightTrainer):
+    def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
+        super().__init__(env, n_goals, **kwargs)
+        self.mean_values += ['pred loss', 'pred grad']
+
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         return super().build_agent(base_agent=ValuePredictionAgent, **kwargs)

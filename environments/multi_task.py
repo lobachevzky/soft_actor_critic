@@ -16,8 +16,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
                          xml_filepath=Path('models', 'multi-task', 'world.xml'))
         self.env = self
         self.action_space = spaces.Box(
-            low=np.array([-15, -20, -20, -10, -10]),
-            high=np.array([35, 20, 20, 10, 10]),
+            low=np.array([-1, -1, 1, -1.5, -1.3, -.02]),
+            high=np.array([1, 1, 4, .1, 2.3, .4]),
             dtype=np.float32)
         self.lift_height = self._initial_block_pos[2] + geofence + min_lift_height
 

@@ -10,8 +10,8 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper
-from sac.agent import AbstractAgent, ValuePredictionAgent
+from environments.hindsight_wrapper import HindsightWrapper, MultiTaskHindsightWrapper
+from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
@@ -86,8 +86,19 @@ class Trainer:
                             s1=self.vectorize_state(sample_steps.s1),
                             s2=self.vectorize_state(sample_steps.s2),
                         ))
-                    self.episode_mean.update(
-                        Counter({k: getattr(step, k.replace(' ', '_')) for k in self.mean_values}))
+                    episode_mean.update(
+                        Counter({
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -225,10 +236,11 @@ class HindsightTrainer(TrajectoryTrainer):
         return self.env.vectorize_state(state)
 
 
-class ValuePredictionTrainer(HindsightTrainer):
-    def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
-        super().__init__(env, n_goals, **kwargs)
-        self.mean_values += ['pred loss', 'pred grad']
+class MultiTaskHindsightTrainer(HindsightTrainer):
+    def _trajectory(self):
+        if self.timesteps():
+            steps = list(self.buffer[-(self.timesteps() + 1):-1])
+            assert len(steps) == self.timesteps()
+            return steps
+        return ()
 
-    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
-        return super().build_agent(base_agent=ValuePredictionAgent, **kwargs)

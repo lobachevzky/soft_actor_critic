@@ -140,20 +140,20 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env):
         super().__init__(env)
 
-    def recompute_trajectory(self, reverse_trajectory: Iterable, initial_step: Step):
+    def recompute_trajectory(self, reverse_trajectory: Iterable, final_step: Step):
         achieved_goals = []
         last_goal = True
         for step in reverse_trajectory:
             assert isinstance(step, Step)
-            achieved_goal = step.s2.achieved_goal.block
+            achieved_goal = step.s2.achieved_goal
 
             if last_goal:
                 last_goal = False
                 if np.random.uniform(0, 1) < .1:
                     achieved_goals.append(achieved_goal)
 
-            block_lifted = achieved_goal[2] > self.env.lift_height
-            in_box = achieved_goal[1] > .1 and not block_lifted
+            block_lifted = achieved_goal.block[2] > self.env.unwrapped.lift_height
+            in_box = achieved_goal.block[1] > .1 and not block_lifted
             if block_lifted or in_box:
                 achieved_goals.append(achieved_goal)
 

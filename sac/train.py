@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper, MultiTaskHindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -82,17 +82,17 @@ class Trainer:
                         ))
                     episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
-                        }))
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -228,3 +228,13 @@ class HindsightTrainer(TrajectoryTrainer):
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.vectorize_state(state)
+
+
+class MultiTaskHindsightTrainer(HindsightTrainer):
+    def _trajectory(self):
+        if self.timesteps():
+            steps = list(self.buffer[-(self.timesteps() + 1):-1])
+            assert len(steps) == self.timesteps()
+            return steps
+        return ()
+

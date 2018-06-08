@@ -69,6 +69,8 @@ class HindsightWrapper(gym.Wrapper):
                 r=r,
                 s2=step.s2.replace(desired_goal=achieved_goal),
                 t=new_t)
+            if new_t:
+                break
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):

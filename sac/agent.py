@@ -4,8 +4,9 @@ from typing import Callable, Iterable, Sequence, Union
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.ops.rnn_cell_impl import MultiRNNCell, BasicLSTMCell, LSTMStateTuple
 
-from sac.utils import Step
+from sac.utils import Step, LSTMStep
 
 
 def mlp(inputs, layer_size, n_layers, activation):
@@ -141,7 +142,7 @@ pi_grad\
             self.T: step.t
         }
         return self.Step(*self.sess.run([getattr(self, attr)
-                              for attr in self.train_values], feed_dict))
+                                         for attr in self.train_values], feed_dict))
 
     def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
         if sample:
@@ -226,11 +227,8 @@ class ValuePredictionAgent(AbstractAgent):
         super().__init__(s_shape, a_shape, activation, reward_scale, n_layers, layer_size, learning_rate, grad_clip,
                          device_num)
 
-        with tf.variable_scope('loss_prediction'):
-            sa = tf.concat([self.S1, self.A], axis=1)
-            pred = tf.layers.dense(self.mlp(sa), 1, name='prediction')
         self.pred_loss = tf.reduce_mean(
-            .5 * tf.square(pred - tf.stop_gradient(tf.abs(self.Q_loss))))
+            .5 * tf.square(self.value_pred() - tf.stop_gradient(tf.abs(self.Q_loss))))
 
         var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                                      scope='loss_prediction/')
@@ -245,3 +243,57 @@ class ValuePredictionAgent(AbstractAgent):
         self.train_values += ['train_pred', 'pred_loss', 'pred_grad']
         self.Step = namedtuple('Step', self.train_values)
         self.sess.run(tf.global_variables_initializer())
+
+    def value_pred(self):
+        with tf.variable_scope('loss_prediction'):
+            sa = tf.concat([self.S1, self.A], axis=1)
+            return tf.layers.dense(self.mlp(sa), 1, name='prediction')
+
+
+class LSTMValuePredictionAgent(ValuePredictionAgent):
+    def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable, reward_scale: float, n_layers: int,
+                 layer_size: int, learning_rate: float, grad_clip: float, device_num: int, batch_size: int):
+        self.batch_size = batch_size
+        with tf.device('/gpu:' + str(device_num)):
+            self.lstm = MultiRNNCell([BasicLSTMCell(num_units=layer_size)
+                                      for _ in range(n_layers)])
+
+            def lstm_placeholder(name, i):
+                return tf.placeholder(tf.float32, [None, layer_size], name=name + str(i))
+
+            self.H = [LSTMStateTuple(c=lstm_placeholder('c', i),
+                                     h=lstm_placeholder('h', i))
+                      for i in range(n_layers)]
+            self.h = None
+            self.new_H = None
+
+        super().__init__(s_shape, a_shape, activation, reward_scale, n_layers, layer_size, learning_rate, grad_clip,
+                         device_num)
+        self.train_values += ['new_H']
+        self.Step = namedtuple('Step', self.train_values)
+        self.sess.run(tf.global_variables_initializer())
+
+    def value_pred(self):
+        with tf.variable_scope('loss_prediction'):
+            sa = tf.concat([self.S1, self.A], axis=1)
+            output, self.new_H = self.lstm(sa, self.H)
+            return output
+
+    def train_step(self, step: Step):
+        if self.h is None:
+            self.h = self.sess.run(self.lstm.zero_state(self.batch_size, dtype=tf.float32))
+        feed_dict = {
+            self.S1: step.s1,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
+            self.S2: step.s2,
+            self.T: step.t
+        }
+        for placeholder, values in zip(self.H, self.h):
+            feed_dict[placeholder.c] = values.c
+            feed_dict[placeholder.h] = values.h
+
+        step = self.Step(*self.sess.run([getattr(self, attr)
+                                         for attr in self.train_values], feed_dict))
+        self.h = step.new_H
+        return step

@@ -56,3 +56,8 @@ State = Any
 class Step(namedtuple('Step', 's1 a r s2 t')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
+
+
+class LSTMStep(namedtuple('Step', 'h s1 a r s2 t')):
+    def replace(self, **kwargs):
+        return super()._replace(**kwargs)

@@ -3,6 +3,7 @@ import pickle
 import time
 from collections import Counter
 from pathlib import Path
+from pprint import pprint
 from typing import Iterable, Optional, Tuple
 
 import gym
@@ -11,7 +12,7 @@ import tensorflow as tf
 from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper, MultiTaskHindsightWrapper
-from sac.agent import AbstractAgent
+from sac.agent import AbstractAgent, ValuePredictionAgent, LSTMValuePredictionAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
@@ -86,19 +87,9 @@ class Trainer:
                             s1=self.vectorize_state(sample_steps.s1),
                             s2=self.vectorize_state(sample_steps.s2),
                         ))
-                    episode_mean.update(
-                        Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                    self.episode_mean.update(
+                        Counter({k: getattr(step, k.replace(' ', '_'))
+                                 for k in self.mean_values}))
             s1 = s2
             self.episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -244,3 +235,18 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
             return steps
         return ()
 
+
+class ValuePredictionTrainer(HindsightTrainer):
+    def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
+        super().__init__(env, n_goals, **kwargs)
+        self.mean_values += ['pred loss', 'pred grad']
+
+    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
+        return super().build_agent(base_agent=ValuePredictionAgent, **kwargs)
+
+
+class LSTMValuePredictionTrainer(ValuePredictionTrainer):
+    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
+        return HindsightTrainer.build_agent(self,
+                                            base_agent=LSTMValuePredictionAgent,
+                                            batch_size=self.batch_size, **kwargs)

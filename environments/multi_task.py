@@ -20,10 +20,13 @@ class MultiTaskEnv(PickAndPlaceEnv):
             high=np.array([1, 1, 4, .1, 2.3, .4]),
             dtype=np.float32)
         self.lift_height = self._initial_block_pos[2] + geofence + min_lift_height
+        self.goal_space = spaces.Box(low=np.array([-.14, -.22, .45]),
+                                     high=np.array([.11, .22, .73]))
+        self.goals = [np.linspace(start, stop, num=10) for start, stop in
+                      zip(self.goal_space.low, self.goal_space.high)]
 
     def _set_new_goal(self):
-        self._goal = np.random.uniform(low=[-0.161, -0.233, 0.457],
-                                       high=[0.107, 0.201, 0.613])
+        self._goal = np.array([np.random.choice(x) for x in self.goals])
 
     def goal(self):
         return Goal(gripper=self._goal, block=self._goal)
@@ -44,8 +47,9 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.init_qpos[r] = self.init_qpos[l]
 
         block_joint = self.sim.jnt_qposadr('block1joint')
-        self.init_qpos[[block_joint + 1,
+        self.init_qpos[[block_joint + 0,
+                        block_joint + 1,
                         block_joint + 3,
-                        block_joint + 6]] = np.random.uniform(low=[-.23, 0, -1],
-                                                              high=[.085, 1, 1])
+                        block_joint + 6]] = np.random.uniform(low=list(self.goal_space.low)[:2] + [0, -1],
+                                                              high=list(self.goal_space.high)[:2] + [1, 1])
         return self.init_qpos

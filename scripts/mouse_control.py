@@ -61,10 +61,10 @@ def cli(discrete, mimic_path):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            print(env.gripper_pos())
+            print('gipper pos', env.env.gripper_pos())
             for joint in ['slide_x', 'slide_y', 'arm_flex_joint',
                           'wrist_roll_joint', 'hand_l_proximal_joint']:
-                print(joint, env.sim.qpos[env.sim.jnt_qposadr(joint)])
+                print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
         # self.init_qpos[[self.sim.jnt_qposadr('slide_x'),
         #                 self.sim.jnt_qposadr('slide_y'),
         #                 self.sim.jnt_qposadr('arm_flex_joint'),
@@ -84,14 +84,8 @@ def cli(discrete, mimic_path):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
-            print1(action)
+            # print1(action)
             s2, r, done, _ = env.step(action)
-
-            achieved_goal = env._achieved_goal().block
-            if achieved_goal[2] > env.unwrapped.lift_height:
-                print('lifted')
-            if achieved_goal[1] > .1:
-                print('in box')
 
             if discrete:
                 action = 0

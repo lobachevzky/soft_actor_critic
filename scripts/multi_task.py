@@ -14,7 +14,7 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=1e7, type=int)
+@click.option('--buffer-size', default=1e5, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)

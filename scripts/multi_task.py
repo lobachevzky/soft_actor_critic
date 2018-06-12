@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import click
 from gym.wrappers import TimeLimit
 
@@ -19,14 +21,11 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
-@click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.1, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
-@click.option('--mimic-dir', default=None, type=str)
-@click.option('--mimic-save-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
@@ -34,9 +33,8 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--baseline', is_flag=True)
 def cli(max_steps, geofence, min_lift_height, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, mimic_dir,
-        mimic_save_dir, logdir, save_path, load_path, render, n_goals, baseline):
-
+        grad_clip, batch_size, num_train_steps, steps_per_action,
+        logdir, save_path, load_path, render, n_goals, baseline):
     wrapper = PickAndPlaceHindsightWrapper if baseline else MultiTaskHindsightWrapper
     HindsightTrainer(
         env=wrapper(
@@ -59,8 +57,6 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
-        mimic_dir=mimic_dir,
-        mimic_save_dir=mimic_save_dir,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,

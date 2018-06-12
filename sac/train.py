@@ -19,8 +19,8 @@ from sac.utils import State, Step
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, mimic_dir: Optional[str],
-                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
+                 batch_size: int, num_train_steps: int, logdir: str, save_path: str,
+                 load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -31,14 +31,7 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
-
-        if mimic_dir:
-            for path in Path(mimic_dir).iterdir():
-                if path.suffix == '.pkl':
-                    with Path(path).open('rb') as f:
-                        self.buffer.extend(pickle.load(f))
-                print('Loaded mimic file {} into buffer.'.format(path))
-
+        self.save_path = save_path
         self.agent = agent = self.build_agent(**kwargs)
 
         saver = tf.train.Saver()
@@ -171,13 +164,7 @@ class Trainer:
 
 
 class TrajectoryTrainer(Trainer):
-    def __init__(self, mimic_save_dir: Optional[str], **kwargs):
-        self.mimic_save_dir = mimic_save_dir
-        if mimic_save_dir is not None:
-            path = Path(mimic_save_dir)
-            print('Using model dir', path.absolute())
-            path.mkdir(parents=True, exist_ok=True)
-        self.mimic_num = 0
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def add_to_buffer(self, step: Step):
@@ -187,11 +174,6 @@ class TrajectoryTrainer(Trainer):
         return self.buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:
-        if self.mimic_save_dir is not None:
-            path = Path(self.mimic_save_dir, str(self.mimic_num) + '.pkl')
-            with path.open(mode='wb') as f:
-                pickle.dump(self._trajectory(), f)
-            self.mimic_num += 1
         return super().reset()
 
     def timesteps(self):

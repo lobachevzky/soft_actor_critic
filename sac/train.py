@@ -43,20 +43,17 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0, time_steps=0)
-        self.episode_count = episode_count = Counter()
-        self.episode_mean = episode_mean = Counter()
-
+        self.episode_count = self.episode_mean = Counter()
         s1 = self.reset()
 
         for episodes in itertools.count():
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             is_eval_period = count['episode'] % 100 == 99
-            self.run_episode(agent, count, env, episode_count, episode_mean, load_path, render, s1,
-                             save_path, saver)
+            self.episode_mean, self.episode_count = self.run_episode(agent, count, env, load_path, render, s1)
             s1 = self.reset()
-            episode_reward = episode_count['reward']
-            episode_timesteps = episode_count['timesteps']
+            episode_reward = self.episode_count['reward']
+            episode_timesteps = self.episode_count['timesteps']
             count.update(Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if is_eval_period else 'TRAIN', count['episode'], count['time_steps'],
@@ -68,20 +65,18 @@ class Trainer:
                 summary.value.add(
                     tag='average reward',
                     simple_value=(count['reward'] / float(count['episode'])))
-                for k in episode_count:
-                    summary.value.add(tag=k, simple_value=episode_count[k])
-                for k in episode_mean:
+                for k in self.episode_count:
+                    summary.value.add(tag=k, simple_value=self.episode_count[k])
+                for k in self.episode_mean:
                     summary.value.add(
                         tag=k,
-                        simple_value=episode_mean[k] / float(episode_timesteps))
+                        simple_value=self.episode_mean[k] / float(episode_timesteps))
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
-            # zero out counters
-            self.episode_count = episode_count = Counter()
-            episode_mean = Counter()
-
-    def run_episode(self, agent, count, env, episode_count, episode_mean, load_path, render, s1, save_path, saver):
+    def run_episode(self, agent, count, env, load_path, render, s1):
+        episode_count = Counter()
+        episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
@@ -123,7 +118,7 @@ class Trainer:
             tick = time.time()
             episode_count.update(Counter(reward=r, timesteps=1))
             if t:
-                return
+                return episode_mean, episode_count
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -226,4 +221,3 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
             assert len(steps) == self.timesteps()
             return steps
         return ()
-

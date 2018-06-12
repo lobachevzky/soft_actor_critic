@@ -49,6 +49,8 @@ class Trainer:
         s1 = self.reset()
 
         for episodes in itertools.count():
+            if save_path and episodes % 25 == 0:
+                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             is_eval_period = count['episode'] % 100 == 99
             self.run_episode(agent, count, env, episode_count, episode_mean, load_path, render, s1,
                              save_path, saver)
@@ -93,9 +95,6 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-
-            if save_path and time_steps % 5000 == 0:
-                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
 
             if not is_eval_period and self.buffer_full() and not load_path:

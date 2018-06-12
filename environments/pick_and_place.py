@@ -54,11 +54,13 @@ class PickAndPlaceEnv(MujocoEnv):
                  discrete=False,
                  cheat_prob=0,
                  xml_filepath=None,
-                 xml_file='world.xml'):
+                 xml_file='world.xml',
+                 render=False):
         if discrete:
             xml_file = 'discrete.xml'
         if xml_filepath is None:
-            xml_filepath = Path('models', 'pick-and-place', xml_file)
+            xml_filepath = Path(Path(__file__).parent,
+                                'models', 'pick-and-place', xml_file)
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
@@ -72,7 +74,8 @@ class PickAndPlaceEnv(MujocoEnv):
             xml_filepath=xml_filepath,
             neg_reward=neg_reward,
             steps_per_action=steps_per_action,
-            image_dimensions=None)
+            image_dimensions=None,
+            render=render)
 
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self.block_pos())

@@ -1,5 +1,7 @@
 import os
 from abc import abstractmethod
+from pathlib import Path
+from typing import Tuple
 
 import numpy as np
 
@@ -7,11 +9,12 @@ import mujoco
 
 
 class MujocoEnv:
-    def __init__(self, xml_filepath, image_dimensions, neg_reward, steps_per_action):
-        fullpath = os.path.join(os.path.dirname(__file__), xml_filepath)
-        if not fullpath.startswith("/"):
-            fullpath = os.path.join(os.path.dirname(__file__), "assets", fullpath)
-        self.sim = mujoco.Sim(fullpath, n_substeps=steps_per_action)
+    def __init__(self, xml_filepath: Path,
+                 image_dimensions: Tuple[int],
+                 neg_reward: bool,
+                 steps_per_action: int,
+                 render: bool):
+        self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._step_num = 0
@@ -24,6 +27,8 @@ class MujocoEnv:
         self.metadata = {'render.modes': 'rgb_array'}
         self.reward_range = -np.inf, np.inf
         self.spec = None
+        self._render = render
+        self.steps_per_action = steps_per_action
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -50,8 +55,11 @@ class MujocoEnv:
 
     def _set_action(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
-        self.sim.ctrl[:] = action
-        self.sim.step()
+        for i in range(self.steps_per_action):
+            self.sim.ctrl[:] = action
+            self.sim.step()
+            if i % 20 == 0 and self._render:
+                self.render()
 
     def reset(self):
         self.sim.reset()

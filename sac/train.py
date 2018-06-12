@@ -50,7 +50,7 @@ class Trainer:
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             is_eval_period = count['episode'] % 100 == 99
-            self.episode_mean, self.episode_count = self.run_episode(agent, count, env, load_path, render, s1)
+            self.episode_mean, self.episode_count = self.run_episode(agent, count, env, load_path, render, s1, is_eval_period)
             s1 = self.reset()
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
@@ -74,12 +74,11 @@ class Trainer:
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
-    def run_episode(self, agent, count, env, load_path, render, s1):
+    def run_episode(self, agent, count, env, load_path, render, s1, is_eval_period):
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count():
-            is_eval_period = count['episode'] % 100 == 99
             a = agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
             if render:
                 env.render()

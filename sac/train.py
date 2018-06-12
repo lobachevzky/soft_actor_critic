@@ -1,8 +1,6 @@
 import itertools
-import pickle
 import time
 from collections import Counter
-from pathlib import Path
 from typing import Iterable, Optional, Tuple
 
 import gym
@@ -10,7 +8,8 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper, MultiTaskHindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper, PickAndPlaceHindsightWrapper
+from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -42,7 +41,7 @@ class Trainer:
         if logdir:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
-        count = Counter(reward=0, episode=0, time_steps=0)
+        self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
         for episodes in itertools.count():

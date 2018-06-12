@@ -29,6 +29,9 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def _set_new_goal(self):
         self._goal = np.array([np.random.choice(x) for x in self.goals])
 
+    def set_goal(self, goal):
+        self._goal = np.array(goal)
+
     def goal(self):
         return Goal(gripper=self._goal, block=self._goal)
 

@@ -43,14 +43,14 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
 
         count = Counter(reward=0, episode=0, time_steps=0)
-        self.episode_count = self.episode_mean = Counter()
+        self.episode_count = Counter()
         s1 = self.reset()
 
         for episodes in itertools.count():
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             is_eval_period = count['episode'] % 100 == 99
-            self.episode_mean, self.episode_count = self.run_episode(load_path, render, s1, is_eval_period)
+            self.episode_count = self.run_episode(load_path, render, s1, is_eval_period)
             s1 = self.reset()
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
@@ -67,10 +67,6 @@ class Trainer:
                     simple_value=(count['reward'] / float(count['episode'])))
                 for k in self.episode_count:
                     summary.value.add(tag=k, simple_value=self.episode_count[k])
-                for k in self.episode_mean:
-                    summary.value.add(
-                        tag=k,
-                        simple_value=self.episode_mean[k] / float(episode_timesteps))
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
@@ -117,7 +113,9 @@ class Trainer:
             tick = time.time()
             episode_count.update(Counter(reward=r, timesteps=1))
             if t:
-                return episode_mean, episode_count
+                for k in episode_mean:
+                    episode_count[k] = episode_mean[k] / float(time_steps)
+                return episode_count
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape

@@ -23,8 +23,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.lift_height = self._initial_block_pos[2] + geofence + min_lift_height
         self.goal_space = spaces.Box(low=np.array([-.14, -.22, .45]),
                                      high=np.array([.11, .22, .73]))
-        self.goals = [np.linspace(start, stop, num=10) for start, stop in
-                      zip(self.goal_space.low, self.goal_space.high)]
+        self.goals = [np.linspace(start, stop, num) for start, stop, num in
+                      zip(self.goal_space.low, self.goal_space.high, [4, 4, 3])]
 
     def _set_new_goal(self):
         self._goal = np.array([np.random.choice(x) for x in self.goals])

@@ -54,7 +54,7 @@ class Trainer:
             episode_timesteps = self.episode_count['timesteps']
             count.update(Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                'EVAL' if self.is_eval_period() else 'TRAIN', count['episode'], count['time_steps'],
+                'EVAL' if self.is_eval_period() else 'TRAIN', episodes, count['time_steps'],
                 episode_reward))
             if logdir:
                 summary = tf.Summary()
@@ -232,4 +232,4 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
         return count
 
     def is_eval_period(self):
-        return self.count['episodes'] % 100 == 0
+        return self.count['episodes'] % 200 == 0

@@ -47,18 +47,17 @@ class Trainer:
         for episodes in itertools.count():
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            is_eval_period = count['episode'] % 100 == 99
-            self.episode_count = self.run_episode(render=render, is_eval_period=is_eval_period,
-                                                  perform_updates=not is_eval_period and load_path is None)
+            self.episode_count = self.run_episode(render=render,
+                                                  perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
             count.update(Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                'EVAL' if is_eval_period else 'TRAIN', count['episode'], count['time_steps'],
+                'EVAL' if self.is_eval_period() else 'TRAIN', count['episode'], count['time_steps'],
                 episode_reward))
             if logdir:
                 summary = tf.Summary()
-                if is_eval_period:
+                if self.is_eval_period():
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 summary.value.add(
                     tag='average reward',
@@ -68,13 +67,16 @@ class Trainer:
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
-    def run_episode(self, perform_updates, render, is_eval_period):
+    def is_eval_period(self):
+        return self.count['episode'] % 100 == 99
+
+    def run_episode(self, perform_updates, render):
         s1 = self.reset()
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count():
-            a = self.agent.get_actions(self.vectorize_state(s1), sample=(not is_eval_period))
+            a = self.agent.get_actions(self.vectorize_state(s1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             s2, r, t, info = self.step(a)

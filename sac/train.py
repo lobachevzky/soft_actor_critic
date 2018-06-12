@@ -47,7 +47,8 @@ class Trainer:
         for episodes in itertools.count():
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            self.episode_count = self.run_episode(render=render,
+            self.episode_count = self.run_episode(s1=self.reset(),
+                                                  render=render,
                                                   perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
@@ -59,19 +60,19 @@ class Trainer:
                 summary = tf.Summary()
                 if self.is_eval_period():
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
-                summary.value.add(
-                    tag='average reward',
-                    simple_value=(count['reward'] / float(count['episode'])))
-                for k in self.episode_count:
-                    summary.value.add(tag=k, simple_value=self.episode_count[k])
+                else:
+                    summary.value.add(
+                        tag='average reward',
+                        simple_value=(count['reward'] / float(count['episode'])))
+                    for k in self.episode_count:
+                        summary.value.add(tag=k, simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
 
-    def run_episode(self, perform_updates, render):
-        s1 = self.reset()
+    def run_episode(self, s1, perform_updates, render):
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
@@ -213,9 +214,22 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):
-    def _trajectory(self):
-        if self.timesteps():
-            steps = list(self.buffer[-(self.timesteps() + 1):-1])
-            assert len(steps) == self.timesteps()
-            return steps
-        return ()
+    def run_episode(self, s1, perform_updates, render):
+        if not self.is_eval_period():
+            return super().run_episode(s1=s1, perform_updates=perform_updates,
+                                       render=render)
+        env = self.env.unwrapped
+        assert isinstance(env, PickAndPlaceHindsightWrapper)
+        env = env.env  # type: MultiTaskEnv
+        all_goals = itertools.product(*env.goals)
+        count = Counter()
+        for goal in all_goals:
+            s1 = self.reset()
+            env.set_goal(goal)
+            count.update(super().run_episode(s1=s1, perform_updates=perform_updates,
+                                             render=render))
+        count = {k: v / len(all_goals) for k, v in count.items()}
+        return count
+
+    def is_eval_period(self):
+        return self.count['episodes'] % 100 == 0

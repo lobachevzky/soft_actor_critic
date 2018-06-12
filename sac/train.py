@@ -44,7 +44,7 @@ class Trainer:
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
-        for episodes in itertools.count(1):
+        for episodes in itertools.count():
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             self.episode_count = self.run_episode(s1=self.reset(),
@@ -63,7 +63,7 @@ class Trainer:
                 else:
                     summary.value.add(
                         tag='average reward',
-                        simple_value=(count['reward'] / float(episodes)))
+                        simple_value=(count['reward'] / float(count['episode'])))
                     for k in self.episode_count:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, count['time_steps'])
@@ -76,9 +76,8 @@ class Trainer:
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
-        for time_steps in itertools.count(1):
-            a = self.agent.get_actions(self.vectorize_state(s1),
-                                       sample=(not self.is_eval_period()))
+        for time_steps in itertools.count():
+            a = self.agent.get_actions(self.vectorize_state(s1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             s2, r, t, info = self.step(a)

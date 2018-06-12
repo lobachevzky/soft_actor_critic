@@ -46,7 +46,9 @@ class Trainer:
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 0:
-                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
+                _save_path = save_path.replace('<episode>', str(episodes))
+                print("model saved in path:", saver.save(agent.sess,
+                                                         save_path=_save_path))
             self.episode_count = self.run_episode(s1=self.reset(),
                                                   render=render,
                                                   perform_updates=not self.is_eval_period() and load_path is None)
@@ -215,6 +217,10 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):
+    def __init__(self, evaluation, env: HindsightWrapper, n_goals: int, **kwargs):
+        self.eval = evaluation
+        super().__init__(env, n_goals, **kwargs)
+
     def run_episode(self, s1, perform_updates, render):
         if not self.is_eval_period():
             return super().run_episode(s1=s1, perform_updates=perform_updates,
@@ -222,14 +228,15 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
         env = self.env.unwrapped
         assert isinstance(env, MultiTaskEnv), type(env)
         all_goals = itertools.product(*env.goals)
-        count = Counter()
         for goal in all_goals:
             s1 = self.reset()
             env.set_goal(goal)
-            count.update(super().run_episode(s1=s1, perform_updates=perform_updates,
-                                             render=render))
-        count = {k: v / len(all_goals) for k, v in count.items()}
-        return count
+            count = super().run_episode(s1=s1, perform_updates=perform_updates,
+                                             render=render)
+            for k in count:
+                print(f'{k}: {count[k]}')
+        print('Evaluation complete.')
+        exit()
 
     def is_eval_period(self):
-        return self.count['episodes'] % 200 == 199
+        return self.eval

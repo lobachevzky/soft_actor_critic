@@ -15,16 +15,15 @@ class MultiTaskEnv(PickAndPlaceEnv):
                          min_lift_height=min_lift_height,
                          xml_filepath=Path('models', 'multi-task', 'world.xml'),
                          render_freq=render_freq)
-        self.env = self
         self.action_space = spaces.Box(
             low=np.array([-1, -1, 1, -1.5, -1.3, -.02]),
             high=np.array([1, 1, 4, .1, 2.3, .4]),
             dtype=np.float32)
         self.lift_height = self._initial_block_pos[2] + geofence + min_lift_height
         self.goal_space = spaces.Box(low=np.array([-.14, -.22, .45]),
-                                     high=np.array([.11, .22, .73]))
+                                     high=np.array([.11, .22, .63]))
         self.goals = [np.linspace(start, stop, num) for start, stop, num in
-                      zip(self.goal_space.low, self.goal_space.high, [4, 4, 3])]
+                      zip(self.goal_space.low, self.goal_space.high, [6, 8, 6])]
 
     def _set_new_goal(self):
         self._goal = np.array([np.random.choice(x) for x in self.goals])

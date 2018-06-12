@@ -1,9 +1,9 @@
 import click
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import MultiTaskHindsightWrapper, PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac.train import HindsightTrainer, MultiTaskHindsightTrainer
+from sac.train import MultiTaskHindsightTrainer
 from scripts.gym_env import str_to_activation
 
 
@@ -29,10 +29,11 @@ from scripts.gym_env import str_to_activation
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', default=0, type=int)
 @click.option('--baseline', is_flag=True)
+@click.option('--eval', is_flag=True)
 def cli(max_steps, geofence, min_lift_height, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         grad_clip, batch_size, num_train_steps, steps_per_action,
-        logdir, save_path, load_path, render_freq, n_goals, baseline):
+        logdir, save_path, load_path, render_freq, n_goals, baseline, eval):
     MultiTaskHindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
             env=TimeLimit(
@@ -41,7 +42,8 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num,
                     steps_per_action=steps_per_action,
                     geofence=geofence,
                     min_lift_height=min_lift_height,
-                    render_freq=render_freq))),
+                    render_freq=render_freq
+                ))),
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,
@@ -57,7 +59,8 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=False)  # because render is handled inside env
+        render=False,   # because render is handled inside env
+        evaluation=eval,)
 
 
 if __name__ == '__main__':

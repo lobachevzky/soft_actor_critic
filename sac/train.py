@@ -44,15 +44,13 @@ class Trainer:
 
         count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-        s1 = self.reset()
 
         for episodes in itertools.count():
             if save_path and episodes % 25 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
             is_eval_period = count['episode'] % 100 == 99
-            self.episode_count = self.run_episode(render=render, s1=s1, is_eval_period=is_eval_period,
+            self.episode_count = self.run_episode(render=render, is_eval_period=is_eval_period,
                                                   perform_updates=not is_eval_period and load_path is None)
-            s1 = self.reset()
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
             count.update(Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
@@ -71,7 +69,8 @@ class Trainer:
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
-    def run_episode(self, perform_updates, render, s1, is_eval_period):
+    def run_episode(self, perform_updates, render, is_eval_period):
+        s1 = self.reset()
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()

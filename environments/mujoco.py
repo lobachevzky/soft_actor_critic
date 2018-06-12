@@ -1,7 +1,7 @@
 import os
 from abc import abstractmethod
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 
@@ -10,10 +10,12 @@ import mujoco
 
 class MujocoEnv:
     def __init__(self, xml_filepath: Path,
-                 image_dimensions: Tuple[int],
+                 image_dimensions: Optional[Tuple[int]],
                  neg_reward: bool,
                  steps_per_action: int,
                  render: bool):
+        if not xml_filepath.is_absolute():
+            xml_filepath = Path(Path(__file__).parent, xml_filepath)
         self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()

@@ -45,7 +45,8 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num,
                 env=MultiTaskEnv(
                     steps_per_action=steps_per_action,
                     geofence=geofence,
-                    min_lift_height=min_lift_height))),
+                    min_lift_height=min_lift_height,
+                    render=render))),
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,
@@ -63,7 +64,7 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=render)
+        render=False)
 
 
 if __name__ == '__main__':

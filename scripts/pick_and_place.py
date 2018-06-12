@@ -66,7 +66,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=render)
+        render=False)  # because render is handled inside env
 
 
 if __name__ == '__main__':

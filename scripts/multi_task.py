@@ -1,12 +1,10 @@
-from pathlib import Path
-
 import click
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import MultiTaskHindsightWrapper, HindsightWrapper, PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import MultiTaskHindsightWrapper, PickAndPlaceHindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.train import HindsightTrainer
-from scripts.gym_env import check_probability, str_to_activation
+from scripts.gym_env import str_to_activation
 
 
 @click.command()
@@ -60,7 +58,7 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=False)
+        render=False)  # because render is handled inside env
 
 
 if __name__ == '__main__':

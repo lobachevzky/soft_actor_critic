@@ -220,8 +220,7 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
             return super().run_episode(s1=s1, perform_updates=perform_updates,
                                        render=render)
         env = self.env.unwrapped
-        assert isinstance(env, PickAndPlaceHindsightWrapper)
-        env = env.env  # type: MultiTaskEnv
+        assert isinstance(env, MultiTaskEnv), type(env)
         all_goals = itertools.product(*env.goals)
         count = Counter()
         for goal in all_goals:
@@ -233,4 +232,4 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
         return count
 
     def is_eval_period(self):
-        return self.count['episodes'] % 200 == 0
+        return self.count['episodes'] % 200 == 199

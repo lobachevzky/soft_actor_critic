@@ -49,7 +49,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     min_lift_height=min_lift_height,
                     geofence=geofence,
                     xml_file=xml_file,
-                    render=render,
+                    render_freq=render,
                 ))),
         seed=seed,
         device_num=device_num,

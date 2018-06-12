@@ -13,7 +13,7 @@ class MujocoEnv:
                  image_dimensions: Optional[Tuple[int]],
                  neg_reward: bool,
                  steps_per_action: int,
-                 render: bool):
+                 render_freq: bool):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
         self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
@@ -29,7 +29,7 @@ class MujocoEnv:
         self.metadata = {'render.modes': 'rgb_array'}
         self.reward_range = -np.inf, np.inf
         self.spec = None
-        self._render = render
+        self.render_freq = render_freq
         self.steps_per_action = steps_per_action
 
     def seed(self, seed=None):
@@ -60,7 +60,7 @@ class MujocoEnv:
         for i in range(self.steps_per_action):
             self.sim.ctrl[:] = action
             self.sim.step()
-            if i % 20 == 0 and self._render:
+            if self.render_freq > 0 and i % self.render_freq == 0:
                 self.render()
 
     def reset(self):

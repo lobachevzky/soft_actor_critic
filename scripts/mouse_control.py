@@ -25,8 +25,8 @@ def cli(discrete, mimic_path):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    env = MultiTaskHindsightWrapper(
-        MultiTaskEnv(steps_per_action=200, geofence=.1, min_lift_height=.02))
+    env = PickAndPlaceHindsightWrapper(
+        PickAndPlaceEnv(fixed_block=True, steps_per_action=200, geofence=.1, min_lift_height=.02, render=False))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 

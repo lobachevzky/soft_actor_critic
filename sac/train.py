@@ -217,22 +217,26 @@ class HindsightTrainer(TrajectoryTrainer):
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):
+    def __init__(self, evaluation, env: HindsightWrapper, n_goals: int, **kwargs):
+        self.eval = evaluation
+        super().__init__(env, n_goals, **kwargs)
+
     def run_episode(self, s1, perform_updates, render):
         if not self.is_eval_period():
             return super().run_episode(s1=s1, perform_updates=perform_updates,
                                        render=render)
         env = self.env.unwrapped
-        assert isinstance(env, PickAndPlaceHindsightWrapper)
-        env = env.env  # type: MultiTaskEnv
+        assert isinstance(env, MultiTaskEnv), type(env)
         all_goals = itertools.product(*env.goals)
-        count = Counter()
         for goal in all_goals:
             s1 = self.reset()
             env.set_goal(goal)
-            count.update(super().run_episode(s1=s1, perform_updates=perform_updates,
-                                             render=render))
-        count = {k: v / len(all_goals) for k, v in count.items()}
-        return count
+            count = super().run_episode(s1=s1, perform_updates=perform_updates,
+                                             render=render)
+            for k in count:
+                print(f'{k}: {count[k]}')
+        print('Evaluation complete.')
+        exit()
 
     def is_eval_period(self):
-        return self.count['episodes'] % 200 == 0
+        return self.eval

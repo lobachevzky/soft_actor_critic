@@ -28,7 +28,7 @@ def cli(discrete, mimic_path):
     env = PickAndPlaceHindsightWrapper(
         PickAndPlaceEnv(fixed_block=False, steps_per_action=200, geofence=.1,
                         min_lift_height=.02, render_freq=10,
-                        xml_file='5dof/world.xml'))
+                        xml_file='world.xml'))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 

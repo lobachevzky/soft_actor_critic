@@ -89,8 +89,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.action_space = spaces.Discrete(7)
         else:
             self.action_space = spaces.Box(
-                low=np.array([-15, -20, -20]),
-                high=np.array([35, 20, 20]),
+                low=self.sim.actuator_ctrlrange[:-1, 0],
+                high=self.sim.actuator_ctrlrange[:-1, 1],
                 dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]

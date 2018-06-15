@@ -2,14 +2,7 @@ import click
 import gym
 import tensorflow as tf
 
-from sac.train import PropagationTrainer, Trainer
-
-
-def cast_to_int(ctx, param, value):
-    try:
-        return int(value)
-    except ValueError:
-        raise click.BadParameter("Cannot cast param {} to int".format(value))
+from sac.train import Trainer
 
 
 def check_probability(ctx, param, value):
@@ -42,7 +35,7 @@ def str_to_activation(ctx, param, value):
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=1e7, callback=cast_to_int)
+@click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=1, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1., type=float)
@@ -50,12 +43,9 @@ def str_to_activation(ctx, param, value):
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-@click.option('--reward-prop', is_flag=True)
-def cli(reward_prop, env, seed, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, batch_size, num_train_steps, logdir, save_path,
-        load_path, render):
-    trainer = PropagationTrainer if reward_prop else Trainer
-    trainer(
+def cli(env, seed, buffer_size, activation, n_layers, layer_size, learning_rate,
+        reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render):
+    Trainer(
         env=gym.make(env),
         seed=seed,
         buffer_size=buffer_size,

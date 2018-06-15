@@ -1,15 +1,14 @@
 #! /usr/bin/env python3
 """Agent that executes random actions"""
 # import gym
-import argparse
 import pickle
 from pathlib import Path
 
 import numpy as np
 from click._unicodefun import click
 
-from environments.base import print1
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.mujoco import print1
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 from sac.utils import Step
@@ -18,15 +17,22 @@ saved_pos = None
 
 
 @click.command()
-@click.option('--mimic-path', default=None, type=str)
+@click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--discrete', is_flag=True)
-def cli(discrete, mimic_path):
+def cli(discrete, xml_file):
     # env = NavigateEnv(continuous=True, max_steps=1000, geofence=.5)
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
     env = PickAndPlaceHindsightWrapper(
-        default_reward=0, env=PickAndPlaceEnv(fixed_block=True, discrete=discrete))
+        PickAndPlaceEnv(
+            fixed_block=False,
+            steps_per_action=200,
+            geofence=.1,
+            min_lift_height=.02,
+            render_freq=10,
+            xml_filepath=xml_filepath))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -53,7 +59,7 @@ def cli(discrete, mimic_path):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .5
+                action[i] += env.env.sim.get_mouse_dy() * .05
 
         if lastkey is 'R':
             env.reset()
@@ -61,7 +67,19 @@ def cli(discrete, mimic_path):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            print(env.env.sim.qpos)
+            print('gipper pos', env.env.gripper_pos())
+            for joint in [
+                    'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
+                    'hand_l_proximal_joint'
+            ]:
+                print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
+        # self.init_qpos[[self.sim.jnt_qposadr('slide_x'),
+        #                 self.sim.jnt_qposadr('slide_y'),
+        #                 self.sim.jnt_qposadr('arm_flex_joint'),
+        #                 self.sim.jnt_qposadr('wrist_roll_joint'),
+        #                 self.sim.jnt_qposadr('hand_l_proximal_joint'),
+        #                 ]] = np.random.uniform(low=[-.13, -.23, -63, -90, 0],
+        #                                        high=[.23, .25, 0, 90, 20])
 
         if not discrete:
             for k in range(10):
@@ -73,7 +91,9 @@ def cli(discrete, mimic_path):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
+            print1(action)
             s2, r, done, _ = env.step(action)
+
             if discrete:
                 action = 0
 
@@ -100,7 +120,7 @@ def run_tests(env, obs):
     assert np.shape(env._goal()) == np.shape(env.obs_to_goal(obs))
     goal, obs_history = env.destructure_mlp_input(obs)
     assert_equal(env._goal(), goal)
-    assert_equal(env._obs(), obs_history[-1])
+    assert_equal(env._get_obs(), obs_history[-1])
     assert_equal((goal, obs_history),
                  env.destructure_mlp_input(env.mlp_input(goal, obs_history)))
     assert_equal(obs, env.mlp_input(*env.destructure_mlp_input(obs)))

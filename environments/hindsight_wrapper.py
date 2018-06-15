@@ -1,65 +1,73 @@
 from abc import abstractmethod
 from collections import namedtuple
+from typing import Iterable, List
 
 import gym
 import numpy as np
 from gym.spaces import Box
 
-from environments.pick_and_place import Goal, PickAndPlaceEnv
+from environments.mujoco import distance_between
+from environments.pick_and_place import Goal
 from sac.utils import Step
 
-State = namedtuple('State', 'obs goal')
+
+class State(namedtuple('State', 'observation achieved_goal desired_goal')):
+    def replace(self, **kwargs):
+        return super()._replace(**kwargs)
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env, default_reward=0):
-        self._default_reward = default_reward
+    def __init__(self, env):
         super().__init__(env)
         vector_state = self.vectorize_state(self.reset())
-        self.observation_space = Box(-1, 1, vector_state.shape)
+        self.observation_space = Box(-1, 1, vector_state.shape[1:])
 
     @abstractmethod
-    def achieved_goal(self, obs):
+    def _achieved_goal(self):
         raise NotImplementedError
 
     @abstractmethod
-    def at_goal(self, obs, goal):
+    def _is_success(self, achieved_goal, desired_goal):
         raise NotImplementedError
 
     @abstractmethod
-    def desired_goal(self):
+    def _desired_goal(self):
         raise NotImplementedError
 
     @staticmethod
     def vectorize_state(state):
         return np.concatenate(state)
 
-    def _reward(self, state, goal):
-        return 1 if self.at_goal(state, goal) else self._default_reward
-
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(obs=s2, goal=self.desired_goal())
-        new_r = self._reward(s2, self.desired_goal())
-        new_t = self.at_goal(s2, self.desired_goal()) or t
+        new_s2 = State(
+            observation=s2,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        is_success = self._is_success(new_s2.achieved_goal, new_s2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
         info['base_reward'] = r
         return new_s2, new_r, new_t, info
 
     def reset(self):
-        return State(obs=self.env.reset(), goal=self.desired_goal())
+        return State(
+            observation=self.env.reset(),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
 
-    def recompute_trajectory(self, trajectory):
-        if not trajectory:
-            return ()
-        achieved_goal = self.achieved_goal(trajectory[-1].s2.obs)
+    def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
+        achieved_goal = None
         for step in trajectory:
-            new_t = self.at_goal(step.s2.obs, achieved_goal) or step.t
-            r = self._reward(step.s2.obs, achieved_goal)
+            if achieved_goal is None:
+                achieved_goal = final_step.s2.achieved_goal
+            new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
+            r = float(new_t)
             yield Step(
-                s1=State(obs=step.s1.obs, goal=achieved_goal),
+                s1=step.s1.replace(desired_goal=achieved_goal),
                 a=step.a,
                 r=r,
-                s2=State(obs=step.s2.obs, goal=achieved_goal),
+                s2=step.s2.replace(desired_goal=achieved_goal),
                 t=new_t)
             if new_t:
                 break
@@ -70,40 +78,92 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
-    def achieved_goal(self, obs):
-        return np.array([obs[0]])
+    def _achieved_goal(self):
+        return self.env.unwrapped.state[0]
 
-    def at_goal(self, obs, goal):
-        return obs[0] >= goal[0]
+    def _is_success(self, achieved_goal, desired_goal):
+        return self.env.unwrapped.state[0] >= self._desired_goal()
 
-    def desired_goal(self):
-        return np.array([0.45])
+    def _desired_goal(self):
+        return 0.45
+
+    @staticmethod
+    def vectorize_state(states: List[State]):
+        if isinstance(states, State):
+            states = [states]
+        return np.stack(
+            np.append(state.observation, state.desired_goal) for state in states)
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env, default_reward):
-        if isinstance(env, gym.Wrapper):
-            assert isinstance(env.unwrapped, PickAndPlaceEnv)
-            self.unwrapped_env = env.unwrapped
-        else:
-            assert isinstance(env, PickAndPlaceEnv)
-            self.unwrapped_env = env
-        super().__init__(env, default_reward)
+    def __init__(self, env):
+        super().__init__(env)
 
-    def achieved_goal(self, history):
-        last_obs, = history[-1]
+    def _is_success(self, achieved_goal, desired_goal):
+        geofence = self.env.unwrapped.geofence
+        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
+            distance_between(achieved_goal.gripper,
+                             desired_goal.gripper) < geofence
+
+    def _achieved_goal(self):
         return Goal(
-            gripper=self.unwrapped_env.gripper_pos(last_obs),
-            block=self.unwrapped_env.block_pos(last_obs))
+            gripper=self.env.unwrapped.gripper_pos(),
+            block=self.env.unwrapped.block_pos())
 
-    def at_goal(self, obs, goal):
-        return any(self.unwrapped_env.compute_terminal(goal, o) for o in obs)
-
-    def desired_goal(self):
-        return self.unwrapped_env.goal()
+    def _desired_goal(self):
+        return self.env.unwrapped.goal()
 
     @staticmethod
-    def vectorize_state(state):
-        state = State(*state)
-        state_history = list(map(np.concatenate, state.obs))
-        return np.concatenate([np.concatenate(state_history), np.concatenate(state.goal)])
+    def vectorize_state(states: List[State]):
+        """
+        :returns
+        >>> np.stack([np.concatenate(
+        >>>    [state.observation, state.desired_goal.gripper, state.desired_goal.block])
+        >>>     for state in states])
+        """
+        if isinstance(states, State):
+            states = [states]
+
+        def get_arrays(s: State):
+            return [s.observation, s.desired_goal.gripper, s.desired_goal.block]
+
+        slices = np.cumsum([0] + [np.size(a) for a in get_arrays(states[0])])
+        state_vector = np.empty((len(states), slices[-1]))
+        for i, state in enumerate(states):
+            for (start, stop), array in zip(zip(slices, slices[1:]), get_arrays(state)):
+                state_vector[i, start:stop] = array
+
+        return state_vector
+
+
+class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def recompute_trajectory(self, reverse_trajectory: Iterable, final_step: Step):
+        achieved_goals = []
+        last_goal = True
+        for step in reverse_trajectory:
+            assert isinstance(step, Step)
+            achieved_goal = step.s2.achieved_goal
+
+            if last_goal:
+                last_goal = False
+                if np.random.uniform(0, 1) < .1:
+                    achieved_goals.append(achieved_goal)
+
+            block_lifted = achieved_goal.block[2] > self.env.unwrapped.lift_height
+            in_box = achieved_goal.block[1] > .1 and not block_lifted
+            if block_lifted or in_box:
+                achieved_goals.append(achieved_goal)
+
+            for achieved_goal in achieved_goals:
+                new_t = self._is_success(
+                    achieved_goal=step.s2.achieved_goal, desired_goal=achieved_goal)
+                r = float(new_t)
+                yield Step(
+                    s1=step.s1.replace(desired_goal=achieved_goal),
+                    a=step.a,
+                    r=r,
+                    s2=step.s2.replace(desired_goal=achieved_goal),
+                    t=new_t)

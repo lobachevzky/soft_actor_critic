@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, NamedTuple, Union
+from typing import Any
 
 import numpy as np
 import tensorflow as tf
@@ -52,20 +52,7 @@ def component(function):
 
 State = Any
 
-Step = namedtuple('Step', 's1 a r s2 t')
-PropStep = namedtuple('PropStep', 's1 a r s2 t v2')
-# class Step(NamedTuple):
-#     s1: State
-#     a: Union[int, np.ndarray]
-#     r: float
-#     s2: State
-#     t: bool
-#
-#
-# class PropStep(Step, NamedTuple):
-#     s1: State
-#     a: Union[int, np.ndarray]
-#     r: float
-#     s2: State
-#     t: bool
-#     v2: float
+
+class Step(namedtuple('Step', 's1 a r s2 t')):
+    def replace(self, **kwargs):
+        return super()._replace(**kwargs)

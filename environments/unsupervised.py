@@ -1,14 +1,10 @@
 from collections import namedtuple
-from os.path import join
 
 import numpy as np
 import tensorflow as tf
-from gym import spaces
 
 from environments.base import at_goal
-from environments.mujoco import MujocoEnv
 from environments.pick_and_place import PickAndPlaceEnv
-from mujoco import ObjType
 from sac.agent import mlp
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import Step
@@ -38,7 +34,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
             list(self.observation_space.shape[1:])
         self._grad_clip = 1e6
 
-    def initialize(self, session: tf.Session(), buffer: ReplayBuffer):
+    def initialize(self, session: tf.Session, buffer: ReplayBuffer):
         with tf.variable_scope('env'):
             self.buffer = buffer
             self.sess = session
@@ -87,7 +83,7 @@ class UnsupervisedEnv(PickAndPlaceEnv):
         goal, = obs  # use current obs as goal
         s1 = self._add_goal_to_sample(obs=sample_steps.s1, goal=goal)
         s2 = self._add_goal_to_sample(obs=sample_steps.s2, goal=goal)
-        t = at_goal(sample_steps.s2, goal, self._geofence)
+        t = at_goal(sample_steps.s2, goal, self.geofence)
         return self.sess.run(
             [self.loss, self.train],
             feed_dict={

@@ -1,15 +1,12 @@
-import argparse
-
 import click
 import gym
 import numpy as np
-import tensorflow as tf
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import cast_to_int, str_to_activation
+from scripts.gym_env import str_to_activation
 
 ACHIEVED_GOAL = 'achieved_goal'
 
@@ -19,17 +16,17 @@ class FetchReachHindsightWrapper(HindsightWrapper):
         assert isinstance(env.unwrapped, FetchReachEnv)
         super().__init__(env)
 
-    def achieved_goal(self, obs):
+    def _achieved_goal(self, obs):
         return obs[ACHIEVED_GOAL]
 
     def _reward(self, obs, goal):
         return self.env.compute_reward(obs[ACHIEVED_GOAL], goal, {})
 
-    def at_goal(self, obs, goal):
+    def _is_success(self, obs, goal):
         return goal_distance(obs[ACHIEVED_GOAL],
                              goal) < self.env.unwrapped.distance_threshold
 
-    def desired_goal(self):
+    def _desired_goal(self):
         return self.env.unwrapped.goal.copy()
 
     @staticmethod
@@ -45,7 +42,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
-@click.option('--buffer-size', default=1e7, callback=cast_to_int)
+@click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)

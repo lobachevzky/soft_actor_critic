@@ -1,16 +1,17 @@
 import click
+import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
-from scripts.gym_env import check_probability, str_to_activation
+from scripts.gym_env import check_probability
 
 
 @click.command()
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
-@click.option('--activation', default='relu', callback=str_to_activation)
+@click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
@@ -30,12 +31,12 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
-@click.option('--render', is_flag=True)
+@click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=str, default='world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action,
-        logdir, save_path, load_path, render, n_goals, xml_file):
+        logdir, save_path, load_path, render_freq, n_goals, xml_file):
 
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -49,7 +50,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     min_lift_height=min_lift_height,
                     geofence=geofence,
                     xml_file=xml_file,
-                    render_freq=render,
+                    render_freq=render_freq,
                 ))),
         seed=seed,
         device_num=device_num,

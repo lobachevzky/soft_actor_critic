@@ -1,16 +1,17 @@
 import click
+import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
-from scripts.gym_env import check_probability, str_to_activation
+from scripts.gym_env import check_probability
 
 
 @click.command()
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
-@click.option('--activation', default='relu', callback=str_to_activation)
+@click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)

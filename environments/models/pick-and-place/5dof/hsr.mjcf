@@ -18,7 +18,7 @@
                 <inertial pos="0 0 0" mass="0.2" diaginertia="0.015 0.015 0.015"/>
                 <!--<joint name="base_r_drive_wheel_joint" pos="0 0 0" axis="0 1 0" />-->
                 <geom size="0.04 0.015" quat="0.707107 0.707107 0 0" type="cylinder" contype="0" conaffinity="0"
-                      group="1" rgba="0.2 0.2 0.2 1" />
+                      group="1" rgba="0.2 0.2 0.2 1"/>
             </body>
             <body name="base_l_drive_wheel_link" pos="-0.11 0.133 0.04">
                 <inertial pos="0 0 0" mass="0.2" diaginertia="0.015 0.015 0.015"/>
@@ -121,7 +121,7 @@
               <!--pos="0 0 0.34">-->
             <!--<inertial pos="0.051549 0.042438 -0.064145" quat="-0.111496 0.499152 -0.110462 0.852182" mass="1.27582"-->
                       <!--diaginertia="0.00909548 0.00799354 0.00328099"/>-->
-           <!--<joint name="arm_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" damping="50"-->
+            <!--<joint name="arm_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" damping="50"-->
                    <!--range="0 0.31" />-->
             <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="shoulder"/>
             <geom type="mesh" mesh="shoulder"/>
@@ -187,7 +187,7 @@
                                                 <inertial pos="0.011116 0.005679 0.017532"
                                                           quat="0.643017 0.664219 -0.320716 0.206114" mass="0.027731"
                                                           diaginertia="3.13749e-06 3.13749e-06 3.13749e-06"/>
-                                                <!--.349joint name="hand_l_distal_joint" pos="0 0 0" axis="1 0 0" limited="true" range="-1.24 0.798" />-->
+                                                <!--<joint name="hand_l_distal_joint" pos="0 0 0" axis="1 0 0" limited="true" range="-1.24 0.798" />-->
                                                 <geom type="mesh" contype="0" conaffinity="0" group="1"
                                                       rgba="0.33 0.33 0.33 1" mesh="l_distal"/>
                                                 <geom type="mesh" rgba="0.33 0.33 0.33 1" mesh="l_distal"/>

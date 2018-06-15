@@ -45,21 +45,18 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
-                 fixed_block,
                  steps_per_action,
+                 fixed_block=False,
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
                  discrete=False,
                  cheat_prob=0,
-                 xml_filepath=None,
-                 xml_file='world.xml',
+                 xml_filepath=Path(
+                     Path(__file__).parent, 'models', 'pick-and-place', 'world.xml'),
                  render_freq=0):
         if discrete:
-            xml_file = 'discrete.xml'
-        if xml_filepath is None:
-            xml_filepath = Path(
-                Path(__file__).parent, 'models', 'pick-and-place', xml_file)
+            xml_filepath =  Path(__file__).parent, 'models', 'pick-and-place', 'discrete.xml'
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
@@ -83,7 +80,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         if discrete:
             self.action_space = spaces.Discrete(7)
         else:
@@ -124,7 +121,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
-            np.array([0, 0, self._min_lift_height])
+                   np.array([0, 0, self._min_lift_height])
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):
@@ -154,7 +151,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 action -= 1
                 joint = action // 2
                 assert 0 <= joint <= 2
-                direction = (-1)**(action % 2)
+                direction = (-1) ** (action % 2)
                 joint_scale = [.2, .05, .5]
                 a[2] = self.grip
                 a[joint] = direction * joint_scale[joint]
@@ -168,7 +165,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-        ]
+            ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:
             action[mirroring_index] = action[mirrored_index]

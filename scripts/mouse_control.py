@@ -17,13 +17,14 @@ saved_pos = None
 
 
 @click.command()
-@click.option('--mimic-path', default=None, type=str)
+@click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--discrete', is_flag=True)
-def cli(discrete, mimic_path):
+def cli(discrete, xml_file):
     # env = NavigateEnv(continuous=True, max_steps=1000, geofence=.5)
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
     env = PickAndPlaceHindsightWrapper(
         PickAndPlaceEnv(
             fixed_block=False,
@@ -31,7 +32,7 @@ def cli(discrete, mimic_path):
             geofence=.1,
             min_lift_height=.02,
             render_freq=10,
-            xml_file='world.xml'))
+            xml_filepath=xml_filepath))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 

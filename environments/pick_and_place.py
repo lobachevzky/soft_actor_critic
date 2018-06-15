@@ -55,7 +55,7 @@ class PickAndPlaceEnv(MujocoEnv):
                  cheat_prob=0,
                  xml_filepath=None,
                  xml_file='world.xml',
-                 render=False):
+                 render_freq=0):
         if discrete:
             xml_file = 'discrete.xml'
         if xml_filepath is None:
@@ -75,7 +75,7 @@ class PickAndPlaceEnv(MujocoEnv):
             neg_reward=neg_reward,
             steps_per_action=steps_per_action,
             image_dimensions=None,
-            render=render)
+            render_freq=render_freq)
 
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self.block_pos())

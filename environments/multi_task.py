@@ -7,15 +7,14 @@ from environments.pick_and_place import PickAndPlaceEnv, Goal
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, steps_per_action, geofence, min_lift_height, render):
+    def __init__(self, steps_per_action, geofence, min_lift_height, render_freq):
         self._goal = None
         super().__init__(fixed_block=False,
                          steps_per_action=steps_per_action,
                          geofence=geofence,
                          min_lift_height=min_lift_height,
                          xml_filepath=Path('models', 'multi-task', 'world.xml'),
-                         render=render)
-        self.env = self
+                         render_freq=render_freq)
         self.action_space = spaces.Box(
             low=np.array([-1, -1, 1, -1.5, -1.3, -.02]),
             high=np.array([1, 1, 4, .1, 2.3, .4]),

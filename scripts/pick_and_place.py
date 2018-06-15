@@ -30,12 +30,12 @@ from scripts.gym_env import check_probability, str_to_activation
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
-@click.option('--render', is_flag=True)
+@click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=str, default='world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action,
-        logdir, save_path, load_path, render, n_goals, xml_file):
+        logdir, save_path, load_path, render_freq, n_goals, xml_file):
 
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -49,7 +49,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     min_lift_height=min_lift_height,
                     geofence=geofence,
                     xml_file=xml_file,
-                    render=render,
+                    render_freq=render_freq,
                 ))),
         seed=seed,
         device_num=device_num,

@@ -45,8 +45,10 @@ class Trainer:
         self.episode_count = Counter()
 
         for episodes in itertools.count(1):
-            if save_path and episodes % 25 == 0:
-                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
+            if save_path and episodes % 25 == 1:
+                _save_path = save_path.replace('<episode>', str(episodes))
+                print("model saved in path:", saver.save(agent.sess,
+                                                         save_path=_save_path))
             self.episode_count = self.run_episode(s1=self.reset(),
                                                   render=render,
                                                   perform_updates=not self.is_eval_period() and load_path is None)

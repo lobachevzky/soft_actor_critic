@@ -27,8 +27,8 @@ def cli(discrete, mimic_path):
     # env = PickAndPlaceEnv(max_steps=9999999)
     env = PickAndPlaceHindsightWrapper(
         PickAndPlaceEnv(fixed_block=False, steps_per_action=200, geofence=.1,
-                        min_lift_height=.02, render_freq=False,
-                        xml_file='world.xml'))
+                        min_lift_height=.02, render_freq=10,
+                        xml_file='5dof/world.xml'))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -86,7 +86,7 @@ def cli(discrete, mimic_path):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
-            # print1(action)
+            print1(action)
             s2, r, done, _ = env.step(action)
 
             if discrete:

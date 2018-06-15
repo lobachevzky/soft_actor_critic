@@ -1,10 +1,9 @@
 import click
 import gym
+import tensorflow as tf
 
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import str_to_activation
-import tensorflow as tf
 
 
 @click.command()

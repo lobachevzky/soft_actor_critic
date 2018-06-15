@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper, PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -47,17 +47,19 @@ class Trainer:
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
                 _save_path = save_path.replace('<episode>', str(episodes))
-                print("model saved in path:", saver.save(agent.sess,
-                                                         save_path=_save_path))
-            self.episode_count = self.run_episode(s1=self.reset(),
-                                                  render=render,
-                                                  perform_updates=not self.is_eval_period() and load_path is None)
+                print("model saved in path:", saver.save(
+                    agent.sess, save_path=_save_path))
+            self.episode_count = self.run_episode(
+                s1=self.reset(),
+                render=render,
+                perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
-            count.update(Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
+            count.update(
+                Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                'EVAL' if self.is_eval_period() else 'TRAIN', episodes, count['time_steps'],
-                episode_reward))
+                'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
+                count['time_steps'], episode_reward))
             if logdir:
                 summary = tf.Summary()
                 if self.is_eval_period():
@@ -79,8 +81,8 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count(1):
-            a = self.agent.get_actions(self.vectorize_state(s1),
-                                       sample=(not self.is_eval_period()))
+            a = self.agent.get_actions(
+                self.vectorize_state(s1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             s2, r, t, info = self.step(a)
@@ -102,17 +104,17 @@ class Trainer:
                         ))
                     episode_mean.update(
                         Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in [
+                                'entropy',
+                                'V loss',
+                                'Q loss',
+                                'pi loss',
+                                'V grad',
+                                'Q grad',
+                                'pi grad',
+                            ]
+                        }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -223,16 +225,16 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
 
     def run_episode(self, s1, perform_updates, render):
         if not self.is_eval_period():
-            return super().run_episode(s1=s1, perform_updates=perform_updates,
-                                       render=render)
+            return super().run_episode(
+                s1=s1, perform_updates=perform_updates, render=render)
         env = self.env.unwrapped
         assert isinstance(env, MultiTaskEnv), type(env)
         all_goals = itertools.product(*env.goals)
         for goal in all_goals:
             s1 = self.reset()
             env.set_goal(goal)
-            count = super().run_episode(s1=s1, perform_updates=perform_updates,
-                                             render=render)
+            count = super().run_episode(
+                s1=s1, perform_updates=perform_updates, render=render)
             for k in count:
                 print(f'{k}: {count[k]}')
         print('Evaluation complete.')

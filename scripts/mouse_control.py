@@ -7,9 +7,8 @@ from pathlib import Path
 import numpy as np
 from click._unicodefun import click
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper, MultiTaskHindsightWrapper
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 from sac.utils import Step
@@ -26,9 +25,13 @@ def cli(discrete, mimic_path):
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
     env = PickAndPlaceHindsightWrapper(
-        PickAndPlaceEnv(fixed_block=False, steps_per_action=200, geofence=.1,
-                        min_lift_height=.02, render_freq=10,
-                        xml_file='world.xml'))
+        PickAndPlaceEnv(
+            fixed_block=False,
+            steps_per_action=200,
+            geofence=.1,
+            min_lift_height=.02,
+            render_freq=10,
+            xml_file='world.xml'))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -64,8 +67,10 @@ def cli(discrete, mimic_path):
             print('\rmoving:', moving)
         if lastkey is 'P':
             print('gipper pos', env.env.gripper_pos())
-            for joint in ['slide_x', 'slide_y', 'arm_flex_joint',
-                          'wrist_roll_joint', 'hand_l_proximal_joint']:
+            for joint in [
+                    'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
+                    'hand_l_proximal_joint'
+            ]:
                 print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
         # self.init_qpos[[self.sim.jnt_qposadr('slide_x'),
         #                 self.sim.jnt_qposadr('slide_y'),
@@ -74,7 +79,6 @@ def cli(discrete, mimic_path):
         #                 self.sim.jnt_qposadr('hand_l_proximal_joint'),
         #                 ]] = np.random.uniform(low=[-.13, -.23, -63, -90, 0],
         #                                        high=[.23, .25, 0, 90, 20])
-
 
         if not discrete:
             for k in range(10):

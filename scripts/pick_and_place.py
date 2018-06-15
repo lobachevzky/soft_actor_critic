@@ -35,8 +35,8 @@ from scripts.gym_env import check_probability
 @click.option('--xml-file', type=str, default='world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action,
-        logdir, save_path, load_path, render_freq, n_goals, xml_file):
+        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
+        save_path, load_path, render_freq, n_goals, xml_file):
 
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(

@@ -1,7 +1,6 @@
-import os
 from abc import abstractmethod
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 import numpy as np
 
@@ -9,11 +8,8 @@ import mujoco
 
 
 class MujocoEnv:
-    def __init__(self, xml_filepath: Path,
-                 image_dimensions: Optional[Tuple[int]],
-                 neg_reward: bool,
-                 steps_per_action: int,
-                 render_freq: int):
+    def __init__(self, xml_filepath: Path, image_dimensions: Optional[Tuple[int]],
+                 neg_reward: bool, steps_per_action: int, render_freq: int):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
         self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)

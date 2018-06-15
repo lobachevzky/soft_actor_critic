@@ -102,8 +102,8 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         geofence = self.env.unwrapped.geofence
         return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-               distance_between(achieved_goal.gripper,
-                                desired_goal.gripper) < geofence
+            distance_between(achieved_goal.gripper,
+                             desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
         return Goal(
@@ -158,8 +158,8 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
                 achieved_goals.append(achieved_goal)
 
             for achieved_goal in achieved_goals:
-                new_t = self._is_success(achieved_goal=step.s2.achieved_goal,
-                                         desired_goal=achieved_goal)
+                new_t = self._is_success(
+                    achieved_goal=step.s2.achieved_goal, desired_goal=achieved_goal)
                 r = float(new_t)
                 yield Step(
                     s1=step.s1.replace(desired_goal=achieved_goal),

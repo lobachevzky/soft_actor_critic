@@ -45,7 +45,6 @@ class Trainer:
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-        reward_q = deque(maxlen=20)
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
@@ -58,7 +57,6 @@ class Trainer:
                 perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
-            reward_q += [episode_reward]
             count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
@@ -69,12 +67,6 @@ class Trainer:
                 if self.is_eval_period():
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
-                    smoothed_r = (sum(reward_q) / float(reward_q.maxlen))
-                    summary.value.add(
-                        tag='smoothed reward',
-                        simple_value=smoothed_r)
-                    with Path(logdir, 'reward').open('w') as f:
-                        f.write(str(smoothed_r))
                     for k in self.episode_count:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, count['time_steps'])

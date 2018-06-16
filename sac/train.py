@@ -1,8 +1,6 @@
 import itertools
 import time
 from collections import Counter
-from collections import deque
-from pathlib import Path
 from typing import Iterable, Optional, Tuple
 
 import gym

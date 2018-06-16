@@ -2,6 +2,7 @@ import itertools
 import time
 from collections import Counter
 from collections import deque
+from pathlib import Path
 from typing import Iterable, Optional, Tuple
 
 import gym
@@ -68,9 +69,12 @@ class Trainer:
                 if self.is_eval_period():
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
+                    smoothed_r = (sum(reward_q) / float(reward_q.maxlen))
                     summary.value.add(
                         tag='smoothed reward',
-                        simple_value=(sum(reward_q) / float(reward_q.maxlen)))
+                        simple_value=smoothed_r)
+                    with Path(logdir, 'reward').open('w') as f:
+                        f.write(str(smoothed_r))
                     for k in self.episode_count:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, count['time_steps'])

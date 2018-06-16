@@ -9,6 +9,7 @@ from click._unicodefun import click
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
+from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 from sac.utils import Step
@@ -32,7 +33,8 @@ def cli(discrete, xml_file):
             geofence=.1,
             min_lift_height=.02,
             render_freq=10,
-            xml_filepath=xml_filepath))
+            xml_filepath=xml_filepath,
+        ))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -91,7 +93,7 @@ def cli(discrete, xml_file):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
-            print1(action)
+            print1(action, env.env.sim.qpos[env.env.sim.jnt_qposadr('arm_lift_joint')])
             s2, r, done, _ = env.step(action)
 
             if discrete:
@@ -107,10 +109,6 @@ def cli(discrete, xml_file):
                 print('\nresetting', total_reward)
             pause = True
             total_reward = 0
-            if mimic_path is not None:
-                with Path(mimic_path + '.pkl').open(mode='wb') as f:
-                    pickle.dump(traj, f)
-                exit()
         env.env.render(labels={'x': env.env.goal_3d()})
 
 

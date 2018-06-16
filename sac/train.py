@@ -65,9 +65,6 @@ class Trainer:
                 if self.is_eval_period():
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
-                    summary.value.add(
-                        tag='average reward',
-                        simple_value=(count['reward'] / float(episodes)))
                     for k in self.episode_count:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, count['time_steps'])

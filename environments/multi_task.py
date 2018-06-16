@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 from gym import spaces
-from mujoco.glfw import ObjType
+from mujoco import ObjType
 
 from environments.pick_and_place import Goal, PickAndPlaceEnv
 

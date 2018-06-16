@@ -9,7 +9,6 @@ from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
-
 @click.command()
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
@@ -34,7 +33,7 @@ from scripts.gym_env import check_probability
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
-@click.option('--xml-file', type=Path, default='world.xml')
+@click.option('--xml-file', type=Path, default='4dof/world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,

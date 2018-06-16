@@ -93,7 +93,7 @@ def cli(discrete, xml_file):
         if not pause and not np.allclose(action, 0):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
-            print1(action, env.env.sim.qpos[env.env.sim.jnt_qposadr('arm_lift_joint')])
+            print1(action)
             s2, r, done, _ = env.step(action)
 
             if discrete:

@@ -8,10 +8,11 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('path', type=Path)
+parser.add_argument('--smoothing', type=int, default=20)
 args = parser.parse_args()
 for path in args.path.glob('**/events*'):
     print(path.parent)
-    q = deque(maxlen=20)
+    q = deque(maxlen=args.smoothing)
     for event in tf.train.summary_iterator(str(path)):
         reward = next((v.simple_value for v in event.summary.value
                         if v.tag == 'reward'), None)

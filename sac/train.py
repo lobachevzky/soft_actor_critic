@@ -198,7 +198,7 @@ class HindsightTrainer(TrajectoryTrainer):
         self.buffer.extend(
             self.env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
         if self.n_goals - 1 and self.timesteps() > 0:
-            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
+            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:

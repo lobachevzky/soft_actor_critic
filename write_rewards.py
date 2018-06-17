@@ -17,7 +17,7 @@ def main():
         length = sum(1 for _ in tf.train.summary_iterator(str(path)))
         iterator = tf.train.summary_iterator(str(path))
         n_reward = args.smoothing
-        events = islice(iterator, length - n_reward, length)
+        events = islice(iterator, max(length - n_reward, 0), length)
 
         def get_reward(event):
             return next((v.simple_value for v in event.summary.value

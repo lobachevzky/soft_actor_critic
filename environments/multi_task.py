@@ -8,14 +8,15 @@ from environments.pick_and_place import Goal, PickAndPlaceEnv
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, steps_per_action, geofence, min_lift_height, render_freq):
+    def __init__(self, steps_per_action, geofence, min_lift_height, render_freq, fixed_pose=True):
+        self.fixed_pose = fixed_pose
         self._goal = None
         super().__init__(
             fixed_block=False,
             steps_per_action=steps_per_action,
             geofence=geofence,
             min_lift_height=min_lift_height,
-            xml_filepath=Path('models', 'multi-task', 'world.xml'),
+            xml_filepath=Path('models', '6dof', 'world.xml'),
             render_freq=render_freq)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
@@ -37,15 +38,16 @@ class MultiTaskEnv(PickAndPlaceEnv):
         return self._goal
 
     def reset_qpos(self):
-        for joint in ['slide_x',
-                      'slide_y',
-                      'arm_lift_joint',
-                      'arm_flex_joint',
-                      'wrist_roll_joint',
-                      'hand_l_proximal_joint']:
-            qpos_idx = self.sim.jnt_qposadr(joint)
-            jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-            self.init_qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
+        if not self.fixed_pose:
+            for joint in ['slide_x',
+                          'slide_y',
+                          'arm_lift_joint',
+                          'arm_flex_joint',
+                          'wrist_roll_joint',
+                          'hand_l_proximal_joint']:
+                qpos_idx = self.sim.jnt_qposadr(joint)
+                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
+                self.init_qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
 
         r = self.sim.jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.jnt_qposadr('hand_l_proximal_joint')

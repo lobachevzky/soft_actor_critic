@@ -74,6 +74,7 @@ class Trainer:
         return self.count['episode'] % 100 == 99
 
     def run_episode(self, s1, perform_updates, render):
+        assert isinstance(self.agent, AbstractAgent)
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
@@ -132,7 +133,8 @@ class Trainer:
 
         class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape=s_shape, a_shape=a_shape, **kwargs)
+                super(Agent, self).__init__(batch_size=self.batch_size,
+                                            o_shape=s_shape, a_shape=a_shape, **kwargs)
 
         return Agent(state_shape, action_shape)
 
@@ -163,6 +165,17 @@ class Trainer:
 
     def sample_buffer(self) -> Step:
         return Step(*self.buffer.sample(self.batch_size))
+
+
+class MemoryTrainer(Trainer):
+    def __init__(self, seq_length: int, env: gym.Env, seed: Optional[int], buffer_size: int, batch_size: int, num_train_steps: int,
+                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
+        self.seq_length = seq_length
+        super().__init__(env, seed, buffer_size, batch_size, num_train_steps, logdir, save_path, load_path, render,
+                         **kwargs)
+
+    def sample_buffer(self):
+        return Step(*self.buffer.sample(self.batch_size, self.seq_length))
 
 
 class TrajectoryTrainer(Trainer):

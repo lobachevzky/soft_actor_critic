@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
 import tensorflow as tf
@@ -56,3 +56,17 @@ State = Any
 class Step(namedtuple('Step', 's1 a r s2 t')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
+
+
+TRAIN_VALUES = """\
+entropy
+soft_update_xi_bar
+V_loss
+Q_loss
+pi_loss
+V_grad
+Q_grad
+pi_grad\
+""".split('\n')
+TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
+ArrayLike = Union[np.ndarray, list]

@@ -21,14 +21,16 @@ class ReplayBuffer:
         for x in xs:
             self.append(x)
 
-    def sample(self, batch_size):
+    def sample(self, batch_size, seq_len=1):
         top_pos = self.maxlen if self.full else self.pos
         indices = np.random.randint(0, top_pos, size=batch_size)
         assert isinstance(indices, np.ndarray)
-        samples = []
-        for idx in indices:
-            sample = self.buffer[idx]
-            samples.append(sample)
+        samples = [None] * len(indices)
+        for i, idx in enumerate(indices):
+            if seq_len == 1:
+                samples[i] = self.buffer[idx]
+            else:
+                samples[i] = self.buffer[idx: idx + seq_len]
         return tuple(map(list, zip(*samples)))
 
     def __len__(self):

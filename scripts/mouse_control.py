@@ -27,13 +27,13 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
     env = PickAndPlaceHindsightWrapper(
-        MultiTaskEnv(
+        PickAndPlaceEnv(
             # fixed_block=False,
             steps_per_action=200,
             geofence=.1,
             min_lift_height=.02,
             render_freq=10,
-            # xml_filepath=xml_filepath,
+            xml_filepath=xml_filepath,
         ))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()

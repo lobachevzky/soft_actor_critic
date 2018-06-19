@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable, Sequence, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -16,6 +16,7 @@ class AbstractAgent:
         self.n_layers = n_layers
         self.layer_size = layer_size
         self.reward_scale = reward_scale
+        self.initial_state = None
 
         with tf.device('/gpu:' + str(device_num)):
             self.O1 = tf.placeholder(tf.float32, [None] + list(o_shape), name='O1')
@@ -120,9 +121,10 @@ class AbstractAgent:
         return TrainStep(*self.sess.run([getattr(self, attr)
                                          for attr in TRAIN_VALUES], feed_dict))
 
-    def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
+    def get_actions(self, o: ArrayLike, _, sample: bool = True) -> \
+            Tuple[np.ndarray, None]:
         A = self.A_sampled1 if sample else self.A_max_likelihood
-        return self.sess.run(A, {self.O1: s1})[0]
+        return self.sess.run(A, {self.O1: o})[0], None
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:

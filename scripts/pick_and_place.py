@@ -6,6 +6,7 @@ from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
+from sac.networks import LstmAgent, MlpAgent
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
@@ -14,6 +15,8 @@ from scripts.gym_env import check_probability
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
+@click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
+@click.option('--lstm', 'agent', flag_value=LstmAgent)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=2e-4, type=float)
@@ -38,7 +41,7 @@ from scripts.gym_env import check_probability
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, n_goals, xml_file):
+        save_path, load_path, render_freq, n_goals, xml_file, agent):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -54,6 +57,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     render_freq=render_freq,
                     xml_filepath=xml_filepath))),
         seed=seed,
+        base_agent=agent,
         device_num=device_num,
         n_goals=n_goals,
         buffer_size=buffer_size,

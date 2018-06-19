@@ -102,17 +102,17 @@ class Trainer:
                         ))
                     episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
-                        }))
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -122,7 +122,7 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
+    def build_agent(self, base_agent: AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -130,11 +130,11 @@ class Trainer:
         else:
             action_shape = self.env.action_space.shape
             policy_type = GaussianPolicy
+        batch_size = self.batch_size
 
         class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(batch_size=self.batch_size,
-                                            o_shape=s_shape, a_shape=a_shape, **kwargs)
+                super(Agent, self).__init__(o_shape=s_shape, a_shape=a_shape, **kwargs)
 
         return Agent(state_shape, action_shape)
 
@@ -168,7 +168,8 @@ class Trainer:
 
 
 class MemoryTrainer(Trainer):
-    def __init__(self, seq_length: int, env: gym.Env, seed: Optional[int], buffer_size: int, batch_size: int, num_train_steps: int,
+    def __init__(self, seq_length: int, env: gym.Env, seed: Optional[int], buffer_size: int, batch_size: int,
+                 num_train_steps: int,
                  logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
         self.seq_length = seq_length
         super().__init__(env, seed, buffer_size, batch_size, num_train_steps, logdir, save_path, load_path, render,

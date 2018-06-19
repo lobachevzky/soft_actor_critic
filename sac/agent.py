@@ -8,7 +8,7 @@ from sac.utils import Step, TrainStep, TRAIN_VALUES, ArrayLike
 
 
 class AbstractAgent:
-    def __init__(self, batch_size: int, o_shape: Iterable, a_shape: Sequence, activation: Callable,
+    def __init__(self, o_shape: Iterable, a_shape: Sequence, activation: Callable,
                  reward_scale: float, n_layers: int, layer_size: int,
                  learning_rate: float, grad_clip: float, device_num: int) -> None:
 
@@ -18,11 +18,11 @@ class AbstractAgent:
         self.reward_scale = reward_scale
 
         with tf.device('/gpu:' + str(device_num)):
-            self.O1 = tf.placeholder(tf.float32, [batch_size] + list(o_shape), name='O1')
-            self.O2 = tf.placeholder(tf.float32, [batch_size] + list(o_shape), name='O2')
-            self.A = A = tf.placeholder(tf.float32, [batch_size] + list(a_shape), name='A')
-            self.R = R = tf.placeholder(tf.float32, [batch_size], name='R')
-            self.T = T = tf.placeholder(tf.float32, [batch_size], name='T')
+            self.O1 = tf.placeholder(tf.float32, [None] + list(o_shape), name='O1')
+            self.O2 = tf.placeholder(tf.float32, [None] + list(o_shape), name='O2')
+            self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
+            self.R = R = tf.placeholder(tf.float32, [None], name='R')
+            self.T = T = tf.placeholder(tf.float32, [None], name='T')
             gamma = 0.99
             tau = 0.01
 
@@ -47,7 +47,7 @@ class AbstractAgent:
             with tf.control_dependencies([self.V_loss]):
                 v2 = self.compute_v2()
                 q = self.q_network(
-                    self.O1, 'Q', reuse=True)
+                    self.O1, self.transform_action_sample(A), 'Q', reuse=True)
                 # noinspection PyTypeChecker
                 self.Q_loss = Q_loss = tf.reduce_mean(
                     0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
@@ -56,8 +56,7 @@ class AbstractAgent:
             with tf.control_dependencies([self.Q_loss]):
                 self.A_sampled2 = A_sampled2 = tf.stop_gradient(
                     self.sample_pi_network('pi', reuse=True))
-                q2 = self.q_network(
-                    self.O1, 'Q', reuse=True)
+                q2 = self.q_network(self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
                 log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, 'pi', reuse=True)
                 self.pi_loss = pi_loss = tf.reduce_mean(
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))

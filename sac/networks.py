@@ -13,7 +13,7 @@ def mlp(inputs, layer_size, n_layers, activation):
     return inputs
 
 
-class MlpNetwork(AbstractAgent):
+class MlpAgent(AbstractAgent):
     def network(self, inputs: tf.Tensor) -> tf.Tensor:
         return mlp(
             inputs=inputs,
@@ -22,26 +22,16 @@ class MlpNetwork(AbstractAgent):
             activation=self.activation)
 
 
-class LstmNetwork(AbstractAgent):
-    def __init__(self, batch_size: int, o_shape: Iterable, a_shape: Sequence, activation: Callable,
-                 reward_scale: float, n_layers: int, layer_size: int, learning_rate: float,
-                 grad_clip: float, device_num: int, num_lstm_units: int):
+class LstmAgent(AbstractAgent):
+    def __init__(self, batch_size: int, layer_size: int, device_num: int,
+                 num_lstm_units: int, **kwargs):
         with tf.device('/gpu:' + str(device_num)):
             state_shape = [batch_size] + list(layer_size)
             self.S = LSTMStateTuple(c=tf.placeholder(tf.float32, state_shape, name='C'),
                                     h=tf.placeholder(tf.float32, state_shape, name='H'))
             self.lstm = LSTMBlockCell(num_lstm_units)
             self.initial_state = self.lstm.zero_state(batch_size, tf.float32)
-        super().__init__(batch_size=batch_size,
-                         o_shape=o_shape,
-                         a_shape=a_shape,
-                         activation=activation,
-                         reward_scale=reward_scale,
-                         n_layers=n_layers,
-                         layer_size=layer_size,
-                         learning_rate=learning_rate,
-                         grad_clip=grad_clip,
-                         device_num=device_num)
+        super().__init__(**kwargs)
         self.new_s = self.sess.run(self.initial_state)
 
     def network(self, inputs: tf.Tensor) -> tf.Tensor:

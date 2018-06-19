@@ -11,6 +11,7 @@ from gym import spaces
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
+from sac.networks import LstmAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
@@ -130,7 +131,6 @@ class Trainer:
         else:
             action_shape = self.env.action_space.shape
             policy_type = GaussianPolicy
-        batch_size = self.batch_size
 
         class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):

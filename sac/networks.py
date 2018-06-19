@@ -23,19 +23,20 @@ class MlpAgent(AbstractAgent):
 
 
 class LstmAgent(AbstractAgent):
-    def __init__(self, batch_size: int, layer_size: int, device_num: int,
-                 num_lstm_units: int, **kwargs):
+    def __init__(self, layer_size: int, device_num: int, **kwargs):
         with tf.device('/gpu:' + str(device_num)):
-            state_shape = [batch_size] + list(layer_size)
+            state_shape = [None, layer_size]
             self.S = LSTMStateTuple(c=tf.placeholder(tf.float32, state_shape, name='C'),
                                     h=tf.placeholder(tf.float32, state_shape, name='H'))
-            self.lstm = LSTMBlockCell(num_lstm_units)
-            self.initial_state = self.lstm.zero_state(batch_size, tf.float32)
-        super().__init__(**kwargs)
+            self.lstm = LSTMBlockCell(layer_size)
+            self.new_S = None
+            self.initial_state = self.lstm.zero_state(32, tf.float32)
+        super().__init__(layer_size=layer_size, device_num=device_num, **kwargs)
         self.new_s = self.sess.run(self.initial_state)
 
-    def network(self, inputs: tf.Tensor) -> tf.Tensor:
-        output, self.new_s = self.lstm(inputs, self.S)
+    def network(self, inputs: tf.Tensor, reuse=False) -> tf.Tensor:
+        inputs = tf.layers.dense(inputs, self.layer_size)
+        output, self.new_S = self.lstm(inputs, self.S)
         return output
 
     def state_feed(self):
@@ -55,5 +56,5 @@ class LstmAgent(AbstractAgent):
     def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
         feed_dict = {**{self.O1: s1}, **self.state_feed()}
         A = self.A_sampled1 if sample else self.A_max_likelihood
-        actions, self.new_s = self.sess.run(A, feed_dict)
-        return actions[0]
+        # actions, self.new_s = self.sess.run([A, self.new_S], feed_dict)
+        return np.zeros(3)

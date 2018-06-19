@@ -43,6 +43,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, n_goals, xml_file, agent):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
+
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
             env=TimeLimit(
@@ -72,7 +73,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=False)  # because render is handled inside env
+        render=False,)  # because render is handled inside env
 
 
 if __name__ == '__main__':

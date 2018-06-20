@@ -131,7 +131,7 @@
                   <!--ctrllimited="true" ctrlrange="2.3 4.1"/>-->
 
         <position gear="5" kp="500" name="slide_x_motor" joint="slide_x"
-        forcelimited="true" forcerange="-200 200"
+        forcelimited="true" forcerange="-100 100"
                   ctrllimited="true" ctrlrange="-.1 .1"/>
         <!--<position gear="5" kp="500" name="slide_y_motor" joint="slide_y"-->
         <!--forcelimited="true" forcerange="-100 100"-->

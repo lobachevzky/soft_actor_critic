@@ -1,10 +1,15 @@
 from abc import abstractmethod
-from typing import Callable, Iterable, Sequence, Tuple
+from collections import namedtuple
+from typing import Callable, Iterable, Sequence, Tuple, Any
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.debug import LocalCLIDebugWrapperSession
+from tensorflow.python.debug import TensorBoardDebugWrapperSession
 
 from sac.utils import Step, TrainStep, TRAIN_VALUES, ArrayLike
+
+NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 
 class AbstractAgent:
@@ -28,7 +33,7 @@ class AbstractAgent:
             tau = 0.01
 
             with tf.variable_scope('pi'):
-                processed_s = self.input_processing(self.O1)
+                processed_s, self.S_new = self.network(self.O1)
                 self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
             # generate actions:
@@ -91,9 +96,9 @@ class AbstractAgent:
                 soft_update_xi_bar_ops = [
                     tf.assign(xbar, tau * x + (1 - tau) * xbar)
                     for (xbar, x) in zip(xi_bar, xi)
-                ]
+                    ]
                 self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
-                self.check = tf.add_check_numerics_ops()
+                # self.check = tf.add_check_numerics_ops()
                 self.entropy = self.compute_entropy()
                 # ensure that xi and xi_bar are the same at initialization
 
@@ -101,6 +106,7 @@ class AbstractAgent:
             config.gpu_options.allow_growth = True
             config.inter_op_parallelism_threads = 1
             self.sess = sess = tf.Session(config=config)
+            # self.sess = LocalCLIDebugWrapperSession(sess)
             sess.run(tf.global_variables_initializer())
 
             # ensure that xi and xi_bar are the same at initialization
@@ -121,20 +127,20 @@ class AbstractAgent:
         return TrainStep(*self.sess.run([getattr(self, attr)
                                          for attr in TRAIN_VALUES], feed_dict))
 
-    def get_actions(self, o: ArrayLike, _, sample: bool = True) -> \
-            Tuple[np.ndarray, None]:
+    def get_actions(self, o: ArrayLike, _, sample: bool = True) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
-        return self.sess.run(A, {self.O1: o})[0], None
+        return NetworkOutput(output=self.sess.run(A, {self.O1: o})[0],
+                             state=None)
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(self.network(sa), 1, name='q'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(sa).output, 1, name='q'), [-1])
 
     def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(tf.layers.dense(self.network(s), 1, name='v'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(s).output, 1, name='v'), [-1])
 
     def compute_v1(self) -> tf.Tensor:
         return self.v_network(self.O1, 'V')
@@ -142,11 +148,8 @@ class AbstractAgent:
     def compute_v2(self) -> tf.Tensor:
         return self.v_network(self.O2, 'V_bar')
 
-    def input_processing(self, s: tf.Tensor) -> tf.Tensor:
-        return self.network(s)
-
     @abstractmethod
-    def network(self, inputs: tf.Tensor) -> tf.Tensor:
+    def network(self, inputs: tf.Tensor) -> NetworkOutput:
         pass
 
     @abstractmethod
@@ -191,6 +194,3 @@ class AbstractAgent:
     def get_best_action(self, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             return self.policy_parameters_to_max_likelihood_action(self.parameters)
-
-    def define_memory_state(self):
-        pass

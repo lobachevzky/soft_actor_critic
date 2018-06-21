@@ -2,7 +2,7 @@ from abc import abstractmethod
 from collections import namedtuple
 from itertools import zip_longest
 from pathlib import Path, PurePath
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Tuple, List, Union, Sequence
 
 import numpy as np
 
@@ -14,7 +14,7 @@ XMLSetter = namedtuple('XMLSetter', 'path value')
 
 
 def mutate_xml(tree: ET.ElementTree,
-               changes: List[XMLSetter]):
+               changes: List[XMLSetter], dofs):
     assert isinstance(tree, ET.ElementTree)
     for change in changes:
         path = change.path
@@ -22,21 +22,34 @@ def mutate_xml(tree: ET.ElementTree,
         element_to_change = tree.find(str(path.parent))
         if isinstance(element_to_change, ET.Element):
             element_to_change.set(change.path.name, change.value)
+
+    for actuators in tree.iter('actuator'):
+        for actuator in list(actuators):
+            if actuator.get('joint') not in dofs:
+                actuators.remove(actuator)
+    for body in tree.iter('body'):
+        for joint in body.findall('joint'):
+            if not joint.get('name') in dofs:
+                body.remove(joint)
+
     return tree
+
+
+def tmp(path: Path):
+    return path.with_name(path.name + '.tmp')
 
 
 class MujocoEnv:
     def __init__(self, xml_filepath: Path, image_dimensions: Optional[Tuple[int]],
                  neg_reward: bool, steps_per_action: int, render_freq: int,
-                 xml_changes: List[XMLSetter]):
+                 xml_changes: List[XMLSetter], dofs: Sequence[str]):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
+
+        # make changes to xml as requested
         world_tree = ET.parse(xml_filepath)
         include_elements = world_tree.findall('*/include')
         included_files = [xml_filepath.with_name(e.get('file')) for e in include_elements]
-
-        def tmp(path: Path):
-            return path.with_name(path.name + '.tmp')
 
         for e, path in zip(include_elements, included_files):
             e.set('file', tmp(path))
@@ -44,12 +57,14 @@ class MujocoEnv:
         paths = [xml_filepath] + included_files
         for path in paths:
             tree = ET.parse(path)
-            mutate_xml(tree, xml_changes)
+            mutate_xml(tree, xml_changes, dofs)
             tree.write(tmp(path))
 
         self.sim = mujoco.Sim(str(tmp(xml_filepath)), n_substeps=1)
+
         for path in paths:
             tmp(path).unlink()
+
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._step_num = 0

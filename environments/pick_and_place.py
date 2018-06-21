@@ -45,6 +45,7 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
+                 xml_filepath,
                  steps_per_action,
                  fixed_block=False,
                  min_lift_height=.02,
@@ -52,12 +53,14 @@ class PickAndPlaceEnv(MujocoEnv):
                  neg_reward=False,
                  discrete=False,
                  cheat_prob=0,
-                 xml_filepath=Path(
-                     Path(__file__).parent, 'models', 'pick-and-place', 'world.xml'),
                  xml_changes=None,
+                 dofs=None,
                  render_freq=0):
         if xml_changes is None:
             xml_changes = []
+        if dofs is None:
+            dofs = ['slide_x', 'slide_y', 'arm_lift', 'arm_flex', 'wrist_roll',
+                    'hand_l_proximal', 'hand_r_proximal']
         if discrete:
             xml_filepath = Path(__file__).parent, 'models', 'pick-and-place', 'discrete.xml'
         self._cheated = False
@@ -75,7 +78,9 @@ class PickAndPlaceEnv(MujocoEnv):
             neg_reward=neg_reward,
             steps_per_action=steps_per_action,
             image_dimensions=None,
-            render_freq=render_freq)
+            render_freq=render_freq,
+            dofs=dofs,
+        )
 
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self.block_pos())

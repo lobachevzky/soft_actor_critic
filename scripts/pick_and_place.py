@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import click
 import tensorflow as tf
@@ -11,8 +11,9 @@ from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
 
-def set_xml_type(string):
-    return XMLSetter(*eval(string))
+def put_in_xml_setter(ctx, param, value):
+    return [XMLSetter(path=PurePath(p), value=v)
+            for p, v in value]
 
 
 @click.command()
@@ -40,7 +41,7 @@ def set_xml_type(string):
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=Path, default='world.xml')
-@click.option('--set-xml', action='append', type=Path, default='world.xml')
+@click.option('--set-xml', nargs=2, multiple=True, callback=put_in_xml_setter)
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,

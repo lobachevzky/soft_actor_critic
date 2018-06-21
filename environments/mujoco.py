@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from collections import namedtuple
-from pathlib import Path
+from itertools import zip_longest
+from pathlib import Path, PurePath
 from typing import Optional, Tuple, List, Union
 
 import numpy as np
@@ -9,21 +10,19 @@ import mujoco
 
 import xml.etree.ElementTree as ET
 
-XMLSetter = namedtuple('XMLSetter', 'element attrib value')
+XMLSetter = namedtuple('XMLSetter', 'path value')
 
 
 def mutate_xml(tree: ET.ElementTree,
                changes: List[XMLSetter]):
     assert isinstance(tree, ET.ElementTree)
     for change in changes:
-        element_to_change = tree.find(change.element)
+        path = change.path
+        assert isinstance(path, PurePath)
+        element_to_change = tree.find(str(path.parent))
         if isinstance(element_to_change, ET.Element):
-            element_to_change.set(change.attrib, change.value)
+            element_to_change.set(change.path.name, change.value)
     return tree
-
-
-def tmp(path):
-    return Path('/tmp', path)
 
 
 class MujocoEnv:
@@ -34,20 +33,23 @@ class MujocoEnv:
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
         world_tree = ET.parse(xml_filepath)
         include_elements = world_tree.findall('*/include')
-        included_files = [Path(e.get('file')) for e in include_elements]
-        for e in include_elements:
-            e.set('file', tmp(e.get('file')))
+        included_files = [xml_filepath.with_name(e.get('file')) for e in include_elements]
+
+        def tmp(path: Path):
+            return path.with_name(path.name + '.tmp')
+
+        for e, path in zip(include_elements, included_files):
+            e.set('file', tmp(path))
 
         paths = [xml_filepath] + included_files
         for path in paths:
             tree = ET.parse(path)
             mutate_xml(tree, xml_changes)
             tree.write(tmp(path))
-        exit()
 
-        self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
+        self.sim = mujoco.Sim(str(tmp(xml_filepath)), n_substeps=1)
         for path in paths:
-            path.unlink()
+            tmp(path).unlink()
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._step_num = 0

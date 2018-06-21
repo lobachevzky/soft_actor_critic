@@ -148,7 +148,7 @@
                   forcelimited="true" forcerange="-20 20"
         ctrllimited="true" ctrlrange="0 0.349066"/>
         <position gear="1" kp="1000" name="hand_r_proximal_motor" joint="hand_r_proximal_joint"
-                  forcelimited="true" forcerange="-20 20"/>
+                  forcelimited="true" forcerange="-20 20"
         ctrllimited="true" ctrlrange="0 0.349066"/>
 
     </actuator>

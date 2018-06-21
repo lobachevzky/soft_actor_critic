@@ -1,18 +1,53 @@
 from abc import abstractmethod
+from collections import namedtuple
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List, Union
 
 import numpy as np
 
 import mujoco
 
+import xml.etree.ElementTree as ET
+
+XMLSetter = namedtuple('XMLSetter', 'element attrib value')
+
+
+def mutate_xml(tree: ET.ElementTree,
+               changes: List[XMLSetter]):
+    assert isinstance(tree, ET.ElementTree)
+    for change in changes:
+        element_to_change = tree.find(change.element)
+        if isinstance(element_to_change, ET.Element):
+            element_to_change.set(change.attrib, change.value)
+    return tree
+
+
+def tmp(path):
+    return Path('/tmp', path)
+
 
 class MujocoEnv:
     def __init__(self, xml_filepath: Path, image_dimensions: Optional[Tuple[int]],
-                 neg_reward: bool, steps_per_action: int, render_freq: int):
+                 neg_reward: bool, steps_per_action: int, render_freq: int,
+                 xml_changes: List[XMLSetter]):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
+        world_tree = ET.parse(xml_filepath)
+        include_elements = world_tree.findall('*/include')
+        included_files = [Path(e.get('file')) for e in include_elements]
+        for e in include_elements:
+            e.set('file', tmp(e.get('file')))
+
+        paths = [xml_filepath] + included_files
+        for path in paths:
+            tree = ET.parse(path)
+            mutate_xml(tree, xml_changes)
+            tree.write(tmp(path))
+        exit()
+
         self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
+        for path in paths:
+            path.unlink()
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._step_num = 0
@@ -65,7 +100,7 @@ class MujocoEnv:
 
         self._set_new_goal()
         qpos = self.reset_qpos()
-        assert qpos.shape == (self.sim.nq, )
+        assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
@@ -139,7 +174,7 @@ def at_goal(pos, goal, geofence, verbose=False):
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \
-        or np.any(pos < world_lower_bound)
+           or np.any(pos < world_lower_bound)
 
 
 def get_limits(pos, size):

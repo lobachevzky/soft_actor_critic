@@ -4,10 +4,15 @@ import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
+from environments.mujoco import XMLSetter
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
+
+
+def set_xml_type(string):
+    return XMLSetter(*eval(string))
 
 
 @click.command()
@@ -35,10 +40,11 @@ from scripts.gym_env import check_probability
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=Path, default='world.xml')
+@click.option('--set-xml', action='append', type=Path, default='world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, n_goals, xml_file):
+        save_path, load_path, render_freq, n_goals, xml_file, set_xml):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -52,7 +58,9 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     min_lift_height=min_lift_height,
                     geofence=geofence,
                     render_freq=render_freq,
-                    xml_filepath=xml_filepath))),
+                    xml_filepath=xml_filepath,
+                    xml_changes=set_xml,
+                ))),
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,

@@ -26,10 +26,12 @@ def mutate_xml(tree: ET.ElementTree,
     for actuators in tree.iter('actuator'):
         for actuator in list(actuators):
             if actuator.get('joint') not in dofs:
+                print('removing', actuator.get('name'))
                 actuators.remove(actuator)
     for body in tree.iter('body'):
         for joint in body.findall('joint'):
             if not joint.get('name') in dofs:
+                print('removing', joint.get('name'))
                 body.remove(joint)
 
     return tree

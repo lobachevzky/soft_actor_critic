@@ -21,6 +21,7 @@ def mutate_xml(tree: ET.ElementTree,
         assert isinstance(path, PurePath)
         element_to_change = tree.find(str(path.parent))
         if isinstance(element_to_change, ET.Element):
+            print('setting', change.path, 'to', change.value)
             element_to_change.set(change.path.name, change.value)
 
     for actuators in tree.iter('actuator'):

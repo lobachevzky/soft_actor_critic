@@ -1,5 +1,5 @@
 import random
-from collections import namedtuple
+from collections import namedtuple, Iterable
 from pathlib import Path
 
 import numpy as np
@@ -53,7 +53,9 @@ class PickAndPlaceEnv(MujocoEnv):
                  neg_reward=False,
                  discrete=False,
                  cheat_prob=0,
-                 render_freq=0):
+                 render_freq=0,
+                 isolate_movements=False):
+        self._isolate_movements = isolate_movements
         if discrete:
             xml_filepath = Path(__file__).parent, 'models', 'pick-and-place', 'discrete.xml'
         self._cheated = False
@@ -172,7 +174,59 @@ class PickAndPlaceEnv(MujocoEnv):
         else:
             mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
             action = np.insert(action, mirroring_index, action[mirrored_index])
+
+        if self._isolate_movements is not None:
+
+            base_motors = ['slide_x_motor', 'slide_y_motor']
+            base_joints = ['slide_x', 'slide_y']
+            other_motors = ['arm_lift_motor',
+                            'arm_flex_motor',
+                            'wrist_roll_motor',
+                            'hand_l_proximal_motor',
+                            'hand_r_proximal_motor']
+            other_joints = [m.replace('motor', 'joint') for m in other_motors]
+
+            def get_joint(name):
+                try:
+                    return self.sim.jnt_qposadr(name)
+                except RuntimeError:
+                    return None
+
+            def get_actuator(name):
+                try:
+                    return self.sim.name2id(ObjType.ACTUATOR, name)
+                except RuntimeError:
+                    return None
+
+            base_qpos_indexes = filter_none(map(get_joint, base_joints))
+            other_joint_indexes = filter_none(map(get_joint, other_joints))
+            base_action_indexes = filter_none(map(get_actuator, base_motors))
+            other_action_indexes = filter_none(map(get_actuator, other_motors))
+
+            action_range = self.sim.actuator_ctrlrange[:, 1] - self.sim.actuator_ctrlrange[:, 0]
+            base_range = action_range[base_action_indexes]
+            other_range = action_range[other_action_indexes]
+
+            base_diff = action[base_action_indexes] - self.sim.qpos[base_qpos_indexes]
+            base_diff = np.linalg.norm(base_diff)
+            base_diff /= np.linalg.norm(base_range)
+
+            other_diff = action[other_action_indexes] - self.sim.qpos[other_joint_indexes]
+            other_diff = np.linalg.norm(other_diff)
+            other_diff /= np.linalg.norm(other_range)
+
+            if 3 * base_diff < other_diff:
+                action[base_action_indexes] = 0
+            else:
+                for i in range(len(action)):
+                    if i not in base_action_indexes:
+                        action[i] = 0
+
         s, r, t, i = super().step(action)
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
+
+
+def filter_none(it: Iterable):
+    return [x for x in it if x is not None]

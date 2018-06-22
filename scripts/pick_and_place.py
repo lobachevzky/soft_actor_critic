@@ -96,6 +96,7 @@ def put_in_xml_setter(ctx, param, value):
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--discrete', is_flag=True)
+@click.option('--isolate-movements', is_flag=True)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
@@ -112,7 +113,8 @@ def put_in_xml_setter(ctx, param, value):
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, n_goals, xml_file, set_xml, use_dof):
+        save_path, load_path, render_freq, n_goals, xml_file, set_xml, use_dof,
+        isolate_movements):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', '6dof', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         HindsightTrainer(
@@ -128,6 +130,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                         geofence=geofence,
                         render_freq=render_freq,
                         xml_filepath=temp_path,
+                        isolate_movements=isolate_movements
                     ))),
             seed=seed,
             device_num=device_num,

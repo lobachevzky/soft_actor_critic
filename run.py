@@ -4,7 +4,7 @@ import argparse
 from runs.main import main
 
 parser = argparse.ArgumentParser()
-parser.add_argument('flags', nargs='*', type=str)
+parser.add_argument('flag', type=str)
 args = parser.parse_args()
 command = "pick-and-place " \
           "--use-dof=slide_x " \
@@ -12,7 +12,7 @@ command = "pick-and-place " \
           "--use-dof=wrist_roll_joint " \
           "--use-dof=hand_l_proximal_joint " \
           "--use-dof=hand_r_proximal_joint " \
-          + ' '.join([' --' + f for f in args.flags])
+          + f' --{args.flag}'
 
 flags = [f'--flag={f}' for f in
          [
@@ -30,7 +30,7 @@ flags = [f'--flag={f}' for f in
              '\'body/joint[@name=\"slide_x\"]/damping\',2200',
          ]]
 main(['new',
-      f'4dof/block-movement/',
+      f'4dof/{args.flag}/',
       command,
       '--description="search xml hyperparams to find good x_slide params"']
      + flags)

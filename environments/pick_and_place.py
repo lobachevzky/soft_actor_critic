@@ -95,16 +95,17 @@ class PickAndPlaceEnv(MujocoEnv):
         self.unwrapped = self
 
     def reset_qpos(self):
-        if not self._fixed_block:
-            block_joint = self.sim.jnt_qposadr('block1joint')
-            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
             self.init_qpos = self.initial_qpos
+        if not self._fixed_block:
+            block_joint = self.sim.jnt_qposadr('block1joint')
+            self.init_qpos[block_joint] = np.random.uniform(-.02, .02)
+            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         return self.init_qpos
 

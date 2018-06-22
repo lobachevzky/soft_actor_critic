@@ -1,3 +1,4 @@
+import tempfile
 from abc import abstractmethod
 from collections import namedtuple
 from itertools import zip_longest
@@ -12,9 +13,8 @@ import xml.etree.ElementTree as ET
 
 XMLSetter = namedtuple('XMLSetter', 'path value')
 
-
 def mutate_xml(tree: ET.ElementTree,
-               changes: List[XMLSetter], dofs):
+               changes: List[XMLSetter], dofs, fps, xml_filepath):
     assert isinstance(tree, ET.ElementTree)
     for change in changes:
         path = change.path
@@ -35,11 +35,17 @@ def mutate_xml(tree: ET.ElementTree,
                 print('removing', joint.get('name'))
                 body.remove(joint)
 
+    parent = Path(fps[xml_filepath].name).parent
+    for include_elt in tree.findall('*/include'):
+        abs_path = Path(fps[xml_filepath.with_name(include_elt.get('file'))].name)
+        rel_path = abs_path.relative_to(parent)
+        include_elt.set('file', str(rel_path))
+
+    for compiler in tree.findall('compiler'):
+        abs_path = Path(xml_filepath.parent, compiler.get('meshdir'))
+        rel_path = Path(*(['..'] * len(parent.parts)), abs_path)
+        compiler.set('meshdir', str(rel_path))
     return tree
-
-
-def tmp(path: Path):
-    return path.with_name(path.name + '.tmp')
 
 
 class MujocoEnv:
@@ -52,21 +58,29 @@ class MujocoEnv:
         # make changes to xml as requested
         world_tree = ET.parse(xml_filepath)
         include_elements = world_tree.findall('*/include')
-        included_files = [xml_filepath.with_name(e.get('file')) for e in include_elements]
+        included_files = [xml_filepath.with_name(e.get('file'))
+                          for e in include_elements]
 
-        for e, path in zip(include_elements, included_files):
-            e.set('file', tmp(path))
+        paths = included_files + [xml_filepath]
+        try:
+            fps = {path: tempfile.NamedTemporaryFile(suffix='.xml',
+                                                     delete=False)
+                   for path in paths}
 
-        paths = [xml_filepath] + included_files
-        for path in paths:
-            tree = ET.parse(path)
-            mutate_xml(tree, xml_changes, dofs)
-            tree.write(tmp(path))
+            for path, f in fps.items():
+                tree = ET.parse(path)
+                mutate_xml(tree, xml_changes, dofs, fps, xml_filepath)
+                root = tree.getroot()
+                tostring = ET.tostring(root)
+                f.write(tostring)
+                f.flush()
 
-        self.sim = mujoco.Sim(str(tmp(xml_filepath)), n_substeps=1)
-
-        for path in paths:
-            tmp(path).unlink()
+            main_file = fps[xml_filepath].name
+            print(main_file)
+            self.sim = mujoco.Sim(main_file, n_substeps=1)
+        finally:
+            for f in fps.values():
+                f.close()
 
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()

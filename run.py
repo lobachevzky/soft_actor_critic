@@ -18,7 +18,7 @@ cli(db_path=Path('runs.db'),
     quiet=False,
     assume_yes=False,
     path=RunPath('4dof/gear=' + gear),
-    prefix='setopt +o nomatch; EGL=1 nice',
+    prefix=f'setopt +o nomatch; EGL={sys.argv[2]} nice',
     command=command,
     description='search xml hyperparams to find good x_slide params',
     flags=[

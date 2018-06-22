@@ -9,13 +9,16 @@ command = "pick-and-place " \
           "--use-dof=hand_l_proximal_joint " \
           "--use-dof=hand_r_proximal_joint "
 flags = [f'--flag=\"{f}\"' for f in
-         ['--set-xml \'actuator/position[@name="slide_x"]/gear\' 1|'
+         ['--set-xml '
+          '\'actuator/position[@name="slide_x"]/gear\' 1|'
           '\'actuator/position[@name="slide_x"]/gear\' 5',
-          '--set-xml \'actuator/position[@name="slide_x"]/kp\' 300|'
+          '--set-xml '
+          '\'actuator/position[@name="slide_x"]/kp\' 300|'
           '\'actuator/position[@name="slide_x"]/kp\' 500|'
           '\'actuator/position[@name="slide_x"]/kp\' 700',
           '--set-xml \'actuator/position[@name="slide_x"]/forcerange\' "-200 200"',
-          '--set-xml \'body/joint[@name="slide_x"]/damping\' 2000|'
+          '--set-xml '
+          '\'body/joint[@name="slide_x"]/damping\' 2000|'
           '\'body/joint[@name="slide_x"]/damping\' 2200']]
 main(['new',
       '4dof/forcerange=200',

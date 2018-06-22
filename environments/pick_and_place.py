@@ -176,8 +176,7 @@ class PickAndPlaceEnv(MujocoEnv):
             mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
             action = np.insert(action, mirroring_index, action[mirrored_index])
 
-        if self._isolate_movements is not None:
-
+        if self._isolate_movements:
             base_motors = ['slide_x_motor', 'slide_y_motor']
             base_joints = ['slide_x', 'slide_y']
             other_motors = ['arm_lift_motor',

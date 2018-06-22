@@ -1,14 +1,74 @@
+import tempfile
+from collections import namedtuple
+from contextlib import contextmanager
 from pathlib import Path, PurePath
+from typing import List
+from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.mujoco import XMLSetter
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
+
+XMLSetter = namedtuple('XMLSetter', 'path value')
+
+
+@contextmanager
+def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
+    def rel_to_abs(path: Path):
+        return Path(xml_filepath.parent, path)
+
+    def mutate_tree(tree: ET.ElementTree):
+        for change in changes:
+            element_to_change = tree.find(str(change.path.parent))
+            if isinstance(element_to_change, ET.Element):
+                print('setting', change.path, 'to', change.value)
+                element_to_change.set(change.path.name, change.value)
+
+        for actuators in tree.iter('actuator'):
+            for actuator in list(actuators):
+                if actuator.get('joint') not in dofs:
+                    print('removing', actuator.get('name'))
+                    actuators.remove(actuator)
+        for body in tree.iter('body'):
+            for joint in body.findall('joint'):
+                if not joint.get('name') in dofs:
+                    print('removing', joint.get('name'))
+                    body.remove(joint)
+
+        parent = Path(temp[xml_filepath].name).parent
+
+        for include_elt in tree.findall('*/include'):
+            original_abs_path = rel_to_abs(include_elt.get('file'))
+            tmp_abs_path = Path(temp[original_abs_path].name)
+            include_elt.set('file', str(tmp_abs_path.relative_to(parent)))
+
+        for compiler in tree.findall('compiler'):
+            abs_path = rel_to_abs(compiler.get('meshdir'))
+            compiler.set('meshdir', str(abs_path))
+
+        return tree
+
+    included_files = [rel_to_abs(e.get('file')) for e in
+                      ET.parse(xml_filepath).findall('*/include')]
+
+    temp = {path: tempfile.NamedTemporaryFile()
+            for path in (included_files + [xml_filepath])}
+    try:
+        for path, f in temp.items():
+            tree = ET.parse(path)
+            mutate_tree(tree)
+            tree.write(f)
+            f.flush()
+
+        yield Path(temp[xml_filepath].name)
+    finally:
+        for f in temp.values():
+            f.close()
 
 
 def put_in_xml_setter(ctx, param, value):
@@ -42,44 +102,49 @@ def put_in_xml_setter(ctx, param, value):
 @click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', nargs=2, multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True)
+@click.option('--use-dof', multiple=True, default=['slide_x',
+                                                   'slide_y',
+                                                   'arm_lift_joint',
+                                                   'arm_flex_joint',
+                                                   'wrist_roll_joint',
+                                                   'hand_l_proximal_joint',
+                                                   'hand_r_proximal_joint'])
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, n_goals, xml_file, set_xml, use_dof):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', '6dof', xml_file)
-    HindsightTrainer(
-        env=PickAndPlaceHindsightWrapper(
-            env=TimeLimit(
-                max_episode_steps=max_steps,
-                env=PickAndPlaceEnv(
-                    discrete=discrete,
-                    cheat_prob=cheat_prob,
-                    steps_per_action=steps_per_action,
-                    fixed_block=fixed_block,
-                    min_lift_height=min_lift_height,
-                    geofence=geofence,
-                    render_freq=render_freq,
-                    xml_filepath=xml_filepath,
-                    xml_changes=set_xml,
-                    dofs=use_dof,
-                ))),
-        seed=seed,
-        device_num=device_num,
-        n_goals=n_goals,
-        buffer_size=buffer_size,
-        activation=activation,
-        n_layers=n_layers,
-        layer_size=layer_size,
-        learning_rate=learning_rate,
-        reward_scale=reward_scale,
-        grad_clip=grad_clip if grad_clip > 0 else None,
-        batch_size=batch_size,
-        num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=False)  # because render is handled inside env
+    with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+        HindsightTrainer(
+            env=PickAndPlaceHindsightWrapper(
+                env=TimeLimit(
+                    max_episode_steps=max_steps,
+                    env=PickAndPlaceEnv(
+                        discrete=discrete,
+                        cheat_prob=cheat_prob,
+                        steps_per_action=steps_per_action,
+                        fixed_block=fixed_block,
+                        min_lift_height=min_lift_height,
+                        geofence=geofence,
+                        render_freq=render_freq,
+                        xml_filepath=temp_path,
+                    ))),
+            seed=seed,
+            device_num=device_num,
+            n_goals=n_goals,
+            buffer_size=buffer_size,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate,
+            reward_scale=reward_scale,
+            grad_clip=grad_clip if grad_clip > 0 else None,
+            batch_size=batch_size,
+            num_train_steps=num_train_steps,
+            logdir=logdir,
+            save_path=save_path,
+            load_path=load_path,
+            render=False)  # because render is handled inside env
 
 
 if __name__ == '__main__':

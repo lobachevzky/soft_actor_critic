@@ -1,88 +1,18 @@
-import tempfile
 from abc import abstractmethod
-from collections import namedtuple
-from itertools import zip_longest
-from pathlib import Path, PurePath
-from typing import Optional, Tuple, List, Union, Sequence
-
-import numpy as np
+from pathlib import Path
+from typing import Optional, Tuple
 
 import mujoco
-
-import xml.etree.ElementTree as ET
-
-XMLSetter = namedtuple('XMLSetter', 'path value')
-
-def mutate_xml(tree: ET.ElementTree,
-               changes: List[XMLSetter], dofs, fps, xml_filepath):
-    assert isinstance(tree, ET.ElementTree)
-    for change in changes:
-        path = change.path
-        assert isinstance(path, PurePath)
-        element_to_change = tree.find(str(path.parent))
-        if isinstance(element_to_change, ET.Element):
-            print('setting', change.path, 'to', change.value)
-            element_to_change.set(change.path.name, change.value)
-
-    for actuators in tree.iter('actuator'):
-        for actuator in list(actuators):
-            if actuator.get('joint') not in dofs:
-                print('removing', actuator.get('name'))
-                actuators.remove(actuator)
-    for body in tree.iter('body'):
-        for joint in body.findall('joint'):
-            if not joint.get('name') in dofs:
-                print('removing', joint.get('name'))
-                body.remove(joint)
-
-    parent = Path(fps[xml_filepath].name).parent
-    for include_elt in tree.findall('*/include'):
-        abs_path = Path(fps[xml_filepath.with_name(include_elt.get('file'))].name)
-        rel_path = abs_path.relative_to(parent)
-        include_elt.set('file', str(rel_path))
-
-    for compiler in tree.findall('compiler'):
-        abs_path = Path(xml_filepath.parent, compiler.get('meshdir'))
-        rel_path = Path(*(['..'] * len(parent.parts)), abs_path)
-        compiler.set('meshdir', str(rel_path))
-    return tree
+import numpy as np
 
 
 class MujocoEnv:
     def __init__(self, xml_filepath: Path, image_dimensions: Optional[Tuple[int]],
-                 neg_reward: bool, steps_per_action: int, render_freq: int,
-                 xml_changes: List[XMLSetter], dofs: Sequence[str]):
+                 neg_reward: bool, steps_per_action: int, render_freq: int):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
-        # make changes to xml as requested
-        world_tree = ET.parse(xml_filepath)
-        include_elements = world_tree.findall('*/include')
-        included_files = [xml_filepath.with_name(e.get('file'))
-                          for e in include_elements]
-
-        paths = included_files + [xml_filepath]
-        try:
-            fps = {path: tempfile.NamedTemporaryFile(suffix='.xml',
-                                                     delete=False)
-                   for path in paths}
-
-            for path, f in fps.items():
-                tree = ET.parse(path)
-                mutate_xml(tree, xml_changes, dofs, fps, xml_filepath)
-                root = tree.getroot()
-                tostring = ET.tostring(root)
-                f.write(tostring)
-                f.flush()
-
-            main_file = fps[xml_filepath].name
-            print(main_file)
-            with open(main_file) as f:
-                print(f)
-            self.sim = mujoco.Sim(main_file, n_substeps=1)
-        finally:
-            for f in fps.values():
-                f.close()
+        self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
 
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()

@@ -42,11 +42,11 @@ def put_in_xml_setter(ctx, param, value):
 @click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', nargs=2, multiple=True, callback=put_in_xml_setter)
-@click.option('--dofs', multiple=True)
+@click.option('--use-dof', multiple=True)
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, n_goals, xml_file, set_xml, dofs):
+        save_path, load_path, render_freq, n_goals, xml_file, set_xml, use_dof):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', '6dof', xml_file)
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -62,7 +62,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                     render_freq=render_freq,
                     xml_filepath=xml_filepath,
                     xml_changes=set_xml,
-                    dofs=dofs,
+                    dofs=use_dof,
                 ))),
         seed=seed,
         device_num=device_num,

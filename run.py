@@ -7,7 +7,7 @@ from runs.util import RunPath
 gear = sys.argv[1]
 
 command = "pick-and-place " \
-          "--use-dof=x_slide " \
+          "--use-dof=slide_x " \
           "--use-dof=arm_flex_joint " \
           "--use-dof=wrist_roll_joint " \
           "--use-dof=hand_l_proximal_joint " \

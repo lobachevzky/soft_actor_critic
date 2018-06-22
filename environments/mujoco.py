@@ -77,6 +77,8 @@ class MujocoEnv:
 
             main_file = fps[xml_filepath].name
             print(main_file)
+            with open(main_file) as f:
+                print(f)
             self.sim = mujoco.Sim(main_file, n_substeps=1)
         finally:
             for f in fps.values():

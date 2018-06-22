@@ -115,7 +115,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, n_goals, xml_file, set_xml, use_dof,
         isolate_movements):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', '6dof', xml_file)
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         HindsightTrainer(
             env=PickAndPlaceHindsightWrapper(

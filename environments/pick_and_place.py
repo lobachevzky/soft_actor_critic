@@ -57,7 +57,7 @@ class PickAndPlaceEnv(MujocoEnv):
                  isolate_movements=False):
         self._isolate_movements = isolate_movements
         if discrete:
-            xml_filepath = Path(__file__).parent, 'models', 'pick-and-place', 'discrete.xml'
+            xml_filepath = Path(__file__).parent, 'models', 'discrete.xml'
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from runs.commands.new import cli
 from runs.util import RunPath
+gear = sys.argv[1]
 
 command = "pick-and-place " \
           "--use-dof=x_slide " \
@@ -11,7 +12,6 @@ command = "pick-and-place " \
           "--use-dof=wrist_roll_joint " \
           "--use-dof=hand_l_proximal_joint " \
           "--use-dof=hand_r_proximal_joint "
-gear = sys.argv[1]
 cli(db_path=Path('runs.db'),
     root=Path('.runs'),
     dir_names=['tensorboard', 'checkpoints'],
@@ -22,7 +22,9 @@ cli(db_path=Path('runs.db'),
     command=command,
     description='search xml hyperparams to find good x_slide params',
     flags=[
-        f'--set-xml actuator/position[@name="slide_x"]/gear {gear}'
+        f"--logdir=.runs/tensorboard/<path>",
+        f"--save-path=.runs/checkpoints/<path>/model.ckpt",
+        f'--set-xml \'actuator/position[@name="slide_x"]/gear\' {gear}',
         '--set-xml '
         '\'actuator/position[@name="slide_x"]/k\' 3|'
         '\'actuator/position[@name="slide_x"]/k\' 5|'

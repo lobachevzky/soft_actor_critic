@@ -24,7 +24,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
     def mutate_tree(tree: ET.ElementTree):
         for change in changes:
-            element_to_change = tree.find(str(change.path.parent))
+            element_to_change = tree.find('./' + str(change.path.parent))
             if isinstance(element_to_change, ET.Element):
                 print('setting', change.path, 'to', change.value)
                 element_to_change.set(change.path.name, change.value)
@@ -73,7 +73,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
 def put_in_xml_setter(ctx, param, value: str):
     setters = [XMLSetter(*v.split(',')) for v in value]
-    return [s._replace(path=Path(s.path)) for s in setters]
+    return [s._replace(path=PurePath(s.path)) for s in setters]
 
 
 @click.command()

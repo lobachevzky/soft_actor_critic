@@ -10,9 +10,6 @@ class ReplayBuffer:
         self.full = False
         self.empty = True
 
-    def initialize(self, x):
-        dims =
-
     def append(self, *xs):
         assert len(xs) == len(self.buffers)
         self.empty = False

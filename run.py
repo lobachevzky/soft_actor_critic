@@ -8,20 +8,19 @@ command = "pick-and-place " \
           "--use-dof=wrist_roll_joint " \
           "--use-dof=hand_l_proximal_joint " \
           "--use-dof=hand_r_proximal_joint "
-flags = [f'--flag=\"{f}\"' for f in
-         ['--set-xml '
-          '\'actuator/position[@name="slide_x"]/gear\' 1|'
-          '\'actuator/position[@name="slide_x"]/gear\' 5',
-          '--set-xml '
-          '\'actuator/position[@name="slide_x"]/kp\' 300|'
-          '\'actuator/position[@name="slide_x"]/kp\' 500|'
-          '\'actuator/position[@name="slide_x"]/kp\' 700',
-          '--set-xml \'actuator/position[@name="slide_x"]/forcerange\' "-200 200"',
-          '--set-xml '
-          '\'body/joint[@name="slide_x"]/damping\' 2000|'
-          '\'body/joint[@name="slide_x"]/damping\' 2200']]
+flags = [f'--flag="{f}"' for f in
+         [
+             '--learning-rate=1e-4|2e-4',
+             '--set-xml '
+             '\'actuator/position[@name=\"slide_x\"]/forcerange\' \'-200 200\'|'
+             '\'actuator/position[@name=\"slide_x\"]/forcerange\' \'-400 400\'',
+             '--set-xml '
+             '\'body/joint[@name=\"slide_x\"]/damping\' 1800|'
+             '\'body/joint[@name=\"slide_x\"]/damping\' 2000|'
+             '\'body/joint[@name=\"slide_x\"]/damping\' 2200',
+         ]]
 main(['new',
-      '4dof/forcerange=200',
+      '4dof/x-axis/',
       command,
       '--description="search xml hyperparams to find good x_slide params"']
      + flags)

@@ -130,11 +130,11 @@
         <!--<position gear="5" kp="10" name="arm_lift_motor" joint="arm_lift_joint"-->
                   <!--ctrllimited="true" ctrlrange="2.3 4.1"/>-->
 
-        <position gear="5" kp="500" name="slide_x_motor" joint="slide_x"
-                  forcelimited="true" forcerange="-100 100"
+        <position gear="5" kp="700" name="slide_x_motor" joint="slide_x"
+                  forcelimited="true" forcerange="-300 300"
                   ctrllimited="true" ctrlrange="-.6 .65"/>
-        <position gear="5" kp="500" name="slide_y_motor" joint="slide_y"
-                  forcelimited="true" forcerange="-100 100"
+        <position gear="5" kp="700" name="slide_y_motor" joint="slide_y"
+                  forcelimited="true" forcerange="-300 300"
                   ctrllimited="true" ctrlrange="-1 1"/>
         <position gear="5" kp="10" name="arm_lift_motor" joint="arm_lift_joint"
                   ctrllimited="true" ctrlrange="2.3 4.1"/>

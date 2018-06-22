@@ -147,6 +147,7 @@ class PickAndPlaceEnv(MujocoEnv):
             return 0
 
     def step(self, action):
+        # action = np.array([1, 1, 0, 0, 0, 0])
         if self._discrete:
             a = np.zeros(4)
             if action > 0:

@@ -71,9 +71,9 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
             f.close()
 
 
-def put_in_xml_setter(ctx, param, value):
-    return [XMLSetter(path=PurePath(p), value=v)
-            for p, v in value]
+def put_in_xml_setter(ctx, param, value: str):
+    setters = [XMLSetter(*v.split(',')) for v in value]
+    return [s._replace(path=Path(s.path)) for s in setters]
 
 
 @click.command()
@@ -102,7 +102,7 @@ def put_in_xml_setter(ctx, param, value):
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
 @click.option('--xml-file', type=Path, default='world.xml')
-@click.option('--set-xml', nargs=2, multiple=True, callback=put_in_xml_setter)
+@click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--use-dof', multiple=True, default=['slide_x',
                                                    'slide_y',
                                                    'arm_lift_joint',

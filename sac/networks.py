@@ -35,8 +35,14 @@ class LstmAgent(AbstractAgent):
         self.initial_state = self.sess.run(self.lstm.zero_state(1, tf.float32))
 
     def network(self, inputs: tf.Tensor, reuse=False) -> tf.Tensor:
-        inputs = tf.layers.dense(inputs, self.layer_size)
-        return NetworkOutput(*self.lstm(inputs, self.S))
+        inputs = tf.layers.dense(inputs, self.layer_size)  # TODO: this should be unnecessary
+        inputs = tf.reshape(inputs, [-1, self.seq_len, self.layer_size])
+        inputs = tf.split(inputs, self.seq_len, axis=1)
+        s = self.S
+        for x in inputs:
+            x = tf.squeeze(x, axis=1)
+            outputs = NetworkOutput(*self.lstm(x, s))
+        return outputs
 
     def state_feed(self, state):
         if not isinstance(state, LSTMStateTuple):
@@ -58,6 +64,6 @@ class LstmAgent(AbstractAgent):
 
     def get_actions(self, o: ArrayLike, s: ArrayLike, sample: bool = True) -> \
             Tuple[np.ndarray, LSTMStateTuple]:
-        feed_dict = {**{self.O1: o}, **self.state_feed(s)}
+        feed_dict = {**{self.O1: [o]}, **self.state_feed(s)}
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return self.sess.run([A[0], self.S_new], feed_dict)

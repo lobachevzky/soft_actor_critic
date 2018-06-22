@@ -24,6 +24,7 @@ from scripts.gym_env import check_probability
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=300, type=int)
 @click.option('--batch-size', default=32, type=int)
+@click.option('--seq-len', default=8, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)
@@ -40,8 +41,8 @@ from scripts.gym_env import check_probability
 @click.option('--xml-file', type=Path, default='world.xml')
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, n_goals, xml_file, agent):
+        cheat_prob, grad_clip, batch_size, seq_len, num_train_steps, steps_per_action,
+        logdir, save_path, load_path, render_freq, n_goals, xml_file, agent):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
 
     HindsightTrainer(
@@ -69,6 +70,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         reward_scale=reward_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
+        seq_len=seq_len,
         num_train_steps=num_train_steps,
         logdir=logdir,
         save_path=save_path,

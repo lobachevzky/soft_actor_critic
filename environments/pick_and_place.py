@@ -54,7 +54,8 @@ class PickAndPlaceEnv(MujocoEnv):
                  discrete=False,
                  cheat_prob=0,
                  render_freq=0,
-                 isolate_movements=False):
+                 isolate_movements=False,
+                 add_base_qvel=False):
         self._isolate_movements = isolate_movements
         if discrete:
             xml_filepath = Path(__file__).parent, 'models', 'discrete.xml'
@@ -66,6 +67,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._min_lift_height = min_lift_height + geofence
         self.geofence = geofence
         self._discrete = discrete
+        self._add_base_qvel = add_base_qvel
 
         super().__init__(
             xml_filepath=xml_filepath,
@@ -113,6 +115,15 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _get_obs(self):
+        if self._add_base_qvel:
+            base_qvel = []
+            for joint in ['slide_x', 'slide_y']:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except RuntimeError:
+                    pass
+
+            return np.concatenate([self.sim.qpos, base_qvel])
         return np.copy(self.sim.qpos)
 
     def block_pos(self):

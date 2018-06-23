@@ -17,11 +17,10 @@ def initialize(x: BufferInput, maxlen: int):
         shape = np.shape(x)  # type: Tuple[int]
         return np.zeros((maxlen,) + shape)
     else:
-        assert isinstance(x, Iterable)
         return [initialize(_x, maxlen) for _x in x]
 
 
-def getitem(buffer, key: np.ndarray):
+def getitem(buffer, key: Key):
     if homogeneous(buffer):
         return buffer[key]
     return [getitem(b, key) for b in buffer]
@@ -48,12 +47,15 @@ class Buffer:
         self.full = False
         self.pos = 0
 
+    def modulate(self, key: Key) -> Key:
+        return (key + self.pos) % self.maxlen
+
     def __getitem__(self, indices: np.ndarray):
         assert self.buffer is not None
-        return getitem(buffer=self.buffer, key=indices)
+        return getitem(buffer=self.buffer, key=self.modulate(indices))
 
     def __setitem__(self, key, value):
-        setitem(self.buffer, key=key, x=value)
+        setitem(self.buffer, key=self.modulate(key), x=value)
 
     def __len__(self):
         return self.maxlen if self.full else self.pos

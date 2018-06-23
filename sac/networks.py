@@ -1,7 +1,6 @@
 from collections import Iterable, Sequence, Callable
 from typing import Tuple, Optional, Any
 
-import ipdb
 import numpy as np
 import tensorflow as tf
 from sac.agent import AbstractAgent, NetworkOutput
@@ -16,6 +15,10 @@ def mlp(inputs, layer_size, n_layers, activation):
 
 
 class MlpAgent(AbstractAgent):
+    @property
+    def seq_len(self):
+        return None
+
     def network(self, inputs: tf.Tensor) -> NetworkOutput:
         return NetworkOutput(output=mlp(inputs=inputs,
                                         layer_size=self.layer_size,
@@ -25,6 +28,12 @@ class MlpAgent(AbstractAgent):
 
 
 class LstmAgent(AbstractAgent):
+    @property
+    def seq_len(self):
+        if self._seq_len:
+            return self._seq_len
+        return 8
+
     def __init__(self, layer_size: int, device_num: int, **kwargs):
         with tf.device('/gpu:' + str(device_num)):
             state_args = tf.float32, [None, layer_size]
@@ -35,8 +44,8 @@ class LstmAgent(AbstractAgent):
         self.initial_state = self.sess.run(self.lstm.zero_state(1, tf.float32))
 
     def network(self, inputs: tf.Tensor, reuse=False) -> tf.Tensor:
-        inputs = tf.layers.dense(inputs, self.layer_size)  # TODO: this should be unnecessary
-        inputs = tf.reshape(inputs, [-1, self.seq_len, self.layer_size])
+        # inputs = tf.layers.dense(inputs, self.layer_size)  # TODO: this should be unnecessary
+        # inputs = tf.reshape(inputs, [-1, self.seq_len, self.layer_size])
         inputs = tf.split(inputs, self.seq_len, axis=1)
         s = self.S
         for x in inputs:
@@ -44,15 +53,14 @@ class LstmAgent(AbstractAgent):
             outputs = NetworkOutput(*self.lstm(x, s))
         return outputs
 
-    def state_feed(self, state):
-        if not isinstance(state, LSTMStateTuple):
-            state = LSTMStateTuple(
-                c=np.vstack([s.c for s in state]),
-                h=np.vstack([s.h for s in state])
-            )
-        return dict(zip(self.S, state))
+    def state_feed(self, states):
+        if not isinstance(states, LSTMStateTuple):
+            assert isinstance(states, list)
+            states = LSTMStateTuple(*states)
+        return dict(zip(self.S, states))
 
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
+        assert np.shape(step.s)[1:] == np.shape(self.initial_state)
         if feed_dict is None:
             feed_dict = {**self.state_feed(step.s),
                          **{self.O1: step.o1,
@@ -64,6 +72,8 @@ class LstmAgent(AbstractAgent):
 
     def get_actions(self, o: ArrayLike, s: ArrayLike, sample: bool = True) -> \
             Tuple[np.ndarray, LSTMStateTuple]:
+        assert np.shape(o)[0] == 1
+        assert np.shape(s) == np.shape(self.initial_state)
         feed_dict = {**{self.O1: [o]}, **self.state_feed(s)}
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return self.sess.run([A[0], self.S_new], feed_dict)

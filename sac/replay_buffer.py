@@ -1,51 +1,91 @@
+from numbers import Number
+from typing import Tuple
+from typing import Union, Iterable
+
 import numpy as np
 
+RAW_TYPES = (np.ndarray, Number, bool)
+
+
+def homogeneous(x):
+    return np.isscalar(x) or isinstance(x, np.ndarray)
+
+
+BufferInput = Union[(tuple, list, np.ndarray) + RAW_TYPES]
+Key = Union[int, slice, np.ndarray]
+
+
+def initialize(x: BufferInput, maxlen: int):
+    if homogeneous(x):
+        shape = np.shape(x)  # type: Tuple[int]
+        return np.zeros((maxlen,) + shape)
+    else:
+        return [initialize(_x, maxlen) for _x in x]
+
+
+def getitem(buffer, key: np.ndarray):
+    if homogeneous(buffer):
+        return buffer[key]
+    return [getitem(b, key) for b in buffer]
+
+
+def setitem(buffer: Union[list, np.ndarray],
+            key: Key, x: BufferInput):
+    if homogeneous(x):
+        assert isinstance(buffer, np.ndarray)
+        if np.shape(x) == ():
+            buffer[key] = x
+        else:
+            buffer[key, :] = x
+    else:
+        assert isinstance(x, Iterable)
+        for _buffer, _x in zip(buffer, x):
+            setitem(_buffer, key, _x)
 
 
 class ReplayBuffer:
-    def __init__(self, maxlen):
+    def __init__(self, maxlen: int):
         self.maxlen = maxlen
-        self.buffers = None
-        self.pos = 0
+        self.buffer = None
         self.full = False
-        self.empty = True
+        self.pos = 0
 
-    def append(self, *xs):
-        assert len(xs) == len(self.buffers)
-        self.empty = False
-        for buffer, x in zip(self.buffers, xs):
-            buffer[self.pos, :] = x
-        self.pos += 1
-        if self.pos >= self.maxlen:
-            self.full = True
-            self.pos = 0
+    @property
+    def empty(self):
+        return self.buffer is None
 
-    def extend(self, xs):
-        for x in xs:
-            self.append(*x)
+    def __getitem__(self, key: Key):
+        assert self.buffer is not None
+        key %= self.maxlen  # type: Key
+        return getitem(buffer=self.buffer, key=key)
 
-    def sample(self, batch_size, seq_len=None):
+    def __setitem__(self, key, value):
+        setitem(self.buffer, key=key % self.maxlen, x=value)
+
+    def __len__(self):
+        return self.maxlen if self.full else self.pos
+
+    def sample(self, batch_size: int, seq_len=None):
         top_pos = self.maxlen if self.full else self.pos
         indices = np.random.randint(0, top_pos, size=batch_size)  # type: np.ndarray
         if seq_len is not None:
             indices = np.array([np.arange(i, i + seq_len) for i in indices])
         assert isinstance(indices, np.ndarray)
-        return [buffer[indices] for buffer in self.buffers]
+        return self[indices]
 
-    def __len__(self):
-        return self.maxlen if self.full else self.pos
+    def append(self, x: BufferInput):
+        if self.pos >= self.maxlen:
+            self.full = True
+            self.pos = 0
 
-    def __getitem__(self, item):
-        def get_item(index):
-            return self.buffers[(self.pos + index) % self.maxlen]
+        if self.buffer is None:
+            self.buffer = initialize(x=x, maxlen=self.maxlen)
+        self[self.pos] = x
+        self.pos += 1
+        if self.pos == self.maxlen:
+            self.pos = 0
+            self.full = True
 
-        if isinstance(item, slice):
-            return map(
-                get_item,
-                range(item.start or 0, item.stop
-                      or (0 if item.start < 0 else self.maxlen), item.step or 1))
-        else:
-            try:
-                return map(get_item, item)
-            except TypeError:
-                return get_item(item)
+    def extend(self, xs: Iterable[BufferInput]):
+        for x in xs:
+            self.append(x)

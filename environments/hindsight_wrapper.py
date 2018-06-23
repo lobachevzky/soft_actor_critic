@@ -1,3 +1,4 @@
+import functools
 from abc import abstractmethod
 from collections import namedtuple
 from typing import Iterable, List
@@ -11,6 +12,22 @@ from environments.pick_and_place import Goal
 from sac.utils import Step
 
 
+def get_size(x):
+    if np.isscalar(x):
+        return 1
+    return sum(map(get_size, x))
+
+
+def assign_to_vector(x, vector: np.ndarray):
+    if isinstance(x, np.ndarray) or np.isscalar(x):
+        vector[:, :] = x
+    else:
+        sizes = np.array([get_size(_x) for _x in x])
+        sizes = np.cumsum(sizes / vector.shape[0], dtype=int)
+        for _x, start, stop in zip(x, [0] + list(sizes), sizes):
+            assign_to_vector(_x, vector[:, start: stop])
+
+
 class State(namedtuple('State', 'observation achieved_goal desired_goal')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
@@ -18,8 +35,11 @@ class State(namedtuple('State', 'observation achieved_goal desired_goal')):
 
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
+        self.state_vectors = {}
         super().__init__(env)
-        vector_state = self.vectorize_state(self.reset())
+        s = self.reset()
+        self.batch1size = get_size(s)
+        vector_state = self.vectorize_state(s)
         self.observation_space = Box(-1, 1, vector_state.shape[1:])
 
     @abstractmethod
@@ -34,9 +54,17 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    @staticmethod
-    def vectorize_state(state):
-        return np.concatenate(state)
+    def vectorize_state(self, state):
+        if isinstance(state, np.ndarray):
+            return state
+        size = get_size(state)
+        # if size not in self.state_vectors:
+        vector = np.zeros(size).reshape(-1, self.batch1size)
+        # self.state_vectors[size] = vector
+        # vector = self.state_vectors[size]
+        assert isinstance(vector, np.ndarray)
+        assign_to_vector(x=state, vector=vector)
+        return vector
 
     def step(self, action):
         o2, r, t, info = self.env.step(action)
@@ -88,13 +116,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return 0.45
 
-    @staticmethod
-    def vectorize_state(states: List[State]):
-        if isinstance(states, State):
-            states = [states]
-        return np.stack(
-            np.append(state.observation, state.desired_goal) for state in states)
-
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
@@ -103,8 +124,8 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         geofence = self.env.unwrapped.geofence
         return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-            distance_between(achieved_goal.gripper,
-                             desired_goal.gripper) < geofence
+               distance_between(achieved_goal.gripper,
+                                desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
         return Goal(
@@ -113,28 +134,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
-
-    @staticmethod
-    def vectorize_state(states: List[State]):
-        """
-        :returns
-        >>> np.stack([np.concatenate(
-        >>>    [state.observation, state.desired_goal.gripper, state.desired_goal.block])
-        >>>     for state in states])
-        """
-        if isinstance(states, State):
-            states = [states]
-
-        def get_arrays(s: State):
-            return [s.observation, s.desired_goal.gripper, s.desired_goal.block]
-
-        slices = np.cumsum([0] + [np.size(a) for a in get_arrays(states[0])])
-        state_vector = np.empty((len(states), slices[-1]))
-        for i, state in enumerate(states):
-            for (start, stop), array in zip(zip(slices, slices[1:]), get_arrays(state)):
-                state_vector[i, start:stop] = array
-
-        return state_vector
 
 
 class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):

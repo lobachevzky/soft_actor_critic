@@ -20,15 +20,15 @@ class AbstractAgent:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
-        self.seq_len = seq_len
+        self._seq_len = seq_len
         self.reward_scale = reward_scale
         self.initial_state = None
         self.sess = sess
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope('agent', reuse=reuse):
             seq_dim = [batch_size]
-            if seq_len is not None:
-                seq_dim = [batch_size, seq_len]
+            if self.seq_len is not None:
+                seq_dim = [batch_size, self.seq_len]
 
             self.O1 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O1')
             self.O2 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O2')
@@ -127,6 +127,10 @@ class AbstractAgent:
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
             self.saver = tf.train.Saver()
+
+    @property
+    def seq_len(self):
+        return self._seq_len
 
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
         if feed_dict is None:

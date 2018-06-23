@@ -24,7 +24,7 @@ from scripts.gym_env import check_probability
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=300, type=int)
 @click.option('--batch-size', default=32, type=int)
-@click.option('--seq-len', default=8, type=int)
+@click.option('--seq-len', default=None, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)

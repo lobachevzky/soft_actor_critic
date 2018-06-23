@@ -1,7 +1,6 @@
 import itertools
 import time
 from collections import Counter, namedtuple
-from pprint import pprint
 from typing import Iterable, Optional, Tuple, List
 
 import gym
@@ -9,13 +8,12 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper, get_size, assign_to_vector
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
-from sac.networks import LstmAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step, ArrayLike
+from sac.utils import State, Step
 
 Agents = namedtuple('Agents', 'train act')
 Buffers = namedtuple('Buffers', 'o a r t')
@@ -23,7 +21,7 @@ Buffers = namedtuple('Buffers', 'o a r t')
 
 class Trainer:
     def __init__(self, base_agent: AbstractAgent, env: gym.Env, seed: Optional[int],
-                 buffer_size: int, batch_size: int, num_train_steps: int,
+                 buffer_size: int, batch_size: int, seq_len: int, num_train_steps: int,
                  logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
@@ -34,6 +32,7 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
+        self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
 
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -41,22 +40,13 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        self.agents = Agents(act=self.build_agent(sess=sess,
-                                                  base_agent=base_agent,
-                                                  batch_size=1,
-                                                  reuse=False,
-                                                  **kwargs),
-                             train=self.build_agent(sess=sess,
-                                                    base_agent=base_agent,
-                                                    batch_size=batch_size,
-                                                    reuse=True,
-                                                    **kwargs))
+        act_agent = self.build_agent(sess=sess, base_agent=base_agent, batch_size=1, seq_len=1, reuse=False, **kwargs)
+        train_agent = self.build_agent(sess=sess, base_agent=base_agent, batch_size=batch_size, seq_len=seq_len,
+                                       reuse=True,
+                                       **kwargs)
+        self.agents = Agents(act=act_agent,
+                             train=train_agent)
         saver = tf.train.Saver()
-
-        self.buffer = self.build_buffer(maxlen=buffer_size,
-                                        obs=env.reset(),
-                                        action=env.action_space.sample(),
-                                        initial_state=base_agent.initial_state)
 
         tb_writer = None
         if load_path:
@@ -68,6 +58,7 @@ class Trainer:
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
+        self.state_vector = None
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
@@ -106,7 +97,8 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.agents.act.get_actions(
-                self.vectorize_state(o1), s, sample=(not self.is_eval_period()))
+                self.vectorize_state(o1), s,
+                sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             o2, r, t, info = self.step(a)
@@ -143,7 +135,8 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def build_agent(self, base_agent: AbstractAgent, batch_size, reuse, **kwargs):
+    def build_agent(self, base_agent: AbstractAgent, batch_size,
+                    seq_len, reuse, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -155,6 +148,7 @@ class Trainer:
         class Agent(policy_type, base_agent):
             def __init__(self, batch_size, reuse):
                 super(Agent, self).__init__(batch_size=batch_size,
+                                            seq_len=seq_len,
                                             o_shape=state_shape,
                                             a_shape=action_shape,
                                             reuse=reuse,
@@ -180,18 +174,6 @@ class Trainer:
         """ Preprocess state before feeding to network """
         return state
 
-    @staticmethod
-    def build_buffer(maxlen, obs: ArrayLike, action: ArrayLike,
-                     initial_state: ArrayLike):
-        def dim(array: ArrayLike):
-            shape = np.shape(array)  # type: Tuple[int]
-            return shape[-1]
-
-        return ReplayBuffer(maxlen, Buffers(o=dim(obs),
-                                            a=dim(action),
-                                            r=1,
-                                            t=1))
-
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
         self.buffer.append(step)
@@ -200,19 +182,13 @@ class Trainer:
         return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self) -> Step:
-        buffer_sample = Buffers(self.buffer.sample(self.batch_size))
-        sample = Step(*(buffer_sample))
-
-        def last(x: List[list]):
-            return [y[-1] for y in x]
-
-        sample = Step(o1=self.vectorize_state(sample.o1),
-                      o2=self.vectorize_state(sample.o2),
-                      s=last(sample.s),
-                      a=last(sample.a),
-                      r=last(sample.r),
-                      t=last(sample.t))
-        return sample
+        sample = Step(*self.buffer.sample(self.batch_size))
+        return Step(o1=self.vectorize_state(sample.o1),
+                    o2=self.vectorize_state(sample.o2),
+                    s=sample.s[: -1],
+                    a=sample.a[: -1],
+                    r=sample.r[: -1],
+                    t=sample.t[: -1])
 
 
 class TrajectoryTrainer(Trainer):
@@ -236,7 +212,9 @@ class TrajectoryTrainer(Trainer):
             return self.buffer[-self.timesteps():]
         return ()
 
+
 HindsightBuffers = namedtuple('HindsightBuffers', 'o ag dg a r t')
+
 
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
@@ -247,7 +225,8 @@ class HindsightTrainer(TrajectoryTrainer):
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.env, HindsightWrapper)
         self.buffer.extend(
-            self.env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
+            self.env.recompute_trajectory(self._trajectory(),
+                                          final_step=self.buffer[0]))
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
@@ -258,7 +237,8 @@ class HindsightTrainer(TrajectoryTrainer):
                         self._trajectory(), final_step=final_state))
 
     def reset(self) -> State:
-        self.add_hindsight_trajectories()
+        if not self.buffer.empty:
+            self.add_hindsight_trajectories()
         return super().reset()
 
     def vectorize_state(self, state: State) -> np.ndarray:

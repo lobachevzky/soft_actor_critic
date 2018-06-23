@@ -25,12 +25,12 @@ flags = [f'--flag={f}' for f in
              '\'actuator/position[@joint=\"arm_lift_joint\"]/gear\',3|'
              '\'actuator/position[@joint=\"arm_lift_joint\"]/gear\',5',
              '--set-xml='
-             '\'body/joint[@name=\"arm_lift_joint\"]/damping\',100|'
-             '\'body/joint[@name=\"arm_lift_joint\"]/damping\',150|'
-             '\'body/joint[@name=\"arm_lift_joint\"]/damping\',200',
+             '\'body/body/joint[@name=\"arm_lift_joint\"]/damping\',100|'
+             '\'body/body/joint[@name=\"arm_lift_joint\"]/damping\',150|'
+             '\'body/body/joint[@name=\"arm_lift_joint\"]/damping\',200',
          ]]
 main(['new',
-      f'4dof/forcerange={r}/',
+      f'4dof/arm_lift/forcerange={r}/',
       command,
       '--description="search xml hyperparams to find good x_slide params"']
      + flags)

@@ -1,6 +1,7 @@
 import functools
 from abc import abstractmethod
 from collections import namedtuple
+from copy import deepcopy
 from typing import Iterable, List
 
 import gym
@@ -9,6 +10,7 @@ from gym.spaces import Box
 
 from environments.mujoco import distance_between
 from environments.pick_and_place import Goal
+from sac.array_group import ArrayGroup
 from sac.utils import Step
 
 
@@ -19,16 +21,19 @@ def get_size(x):
 
 
 def assign_to_vector(x, vector: np.ndarray):
+    dim = vector.size / vector.shape[-1]
     if isinstance(x, np.ndarray) or np.isscalar(x):
-        vector[:, :] = x
+        vector[:] = x
     else:
-        sizes = np.array([get_size(_x) for _x in x])
-        sizes = np.cumsum(sizes / vector.shape[0], dtype=int)
+        sizes = np.array(list(map(get_size, x)))
+        sizes = np.cumsum(sizes / dim, dtype=int)
         for _x, start, stop in zip(x, [0] + list(sizes), sizes):
-            assign_to_vector(_x, vector[:, start: stop])
+            indices = [slice(None) for _ in vector.shape]
+            indices[-1] = slice(start, stop)
+            assign_to_vector(_x, vector[tuple(indices)])
 
 
-class State(namedtuple('State', 'observation achieved_goal desired_goal')):
+class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
 
@@ -38,9 +43,8 @@ class HindsightWrapper(gym.Wrapper):
         self.state_vectors = {}
         super().__init__(env)
         s = self.reset()
-        self.batch1size = get_size(s)
         vector_state = self.vectorize_state(s)
-        self.observation_space = Box(-1, 1, vector_state.shape[1:])
+        self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
     def _achieved_goal(self):
@@ -54,12 +58,15 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    def vectorize_state(self, state):
+    def vectorize_state(self, state, shape=None):
         if isinstance(state, np.ndarray):
             return state
         size = get_size(state)
+
         # if size not in self.state_vectors:
-        vector = np.zeros(size).reshape(-1, self.batch1size)
+        vector = np.zeros(size)
+        if shape is not None:
+            vector = np.reshape(vector, shape)
         # self.state_vectors[size] = vector
         # vector = self.state_vectors[size]
         assert isinstance(vector, np.ndarray)
@@ -68,7 +75,7 @@ class HindsightWrapper(gym.Wrapper):
 
     def step(self, action):
         o2, r, t, info = self.env.step(action)
-        new_o2 = State(
+        new_o2 = Observation(
             observation=o2,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
@@ -79,27 +86,39 @@ class HindsightWrapper(gym.Wrapper):
         return new_o2, new_r, new_t, info
 
     def reset(self):
-        return State(
+        return Observation(
             observation=self.env.reset(),
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
 
-    def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
-        achieved_goal = None
-        for step in trajectory:
-            if achieved_goal is None:
-                achieved_goal = final_step.o2.achieved_goal
-            new_t = self._is_success(step.o2.achieved_goal, achieved_goal)
-            r = float(new_t)
-            yield Step(
-                s=step.s,
-                o1=step.o1.replace(desired_goal=achieved_goal),
-                a=step.a,
-                r=r,
-                o2=step.o2.replace(desired_goal=achieved_goal),
-                t=new_t)
-            if new_t:
-                break
+    def recompute_trajectory(self, trajectory: Step):
+        import ipdb;ipdb.set_trace()
+        trajectory = deepcopy(trajectory)
+        o1 = Observation(*trajectory.o1)
+        o2 = Observation(*trajectory.o2)
+        achieved_goal = ArrayGroup(o2.achieved_goal)[-1]
+        o1.desired_goal[:] = achieved_goal
+        o2.desired_goal[:] = achieved_goal
+        assert False
+        #
+        #
+        #
+        #
+        # achieved_goal = None
+        # for step in trajectory:
+        #     if achieved_goal is None:
+        #         achieved_goal = State(*final_step.o2).achieved_goal
+        #     new_t = self._is_success(State(*step.o2).achieved_goal, achieved_goal)
+        #     r = float(new_t)
+        #     yield Step(
+        #         s=step.s,
+        #         o1=State(step.o1).replace(desired_goal=achieved_goal),
+        #         a=step.a,
+        #         r=r,
+        #         o2=State(step.o2).replace(desired_goal=achieved_goal),
+        #         t=new_t)
+        #     if new_t:
+        #         break
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):

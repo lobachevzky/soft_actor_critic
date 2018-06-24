@@ -135,10 +135,10 @@ class AbstractAgent:
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
         if feed_dict is None:
             feed_dict = {
-                self.O1: step.s1,
+                self.O1: step.o1,
                 self.A: step.a,
                 self.R: np.array(step.r) * self.reward_scale,
-                self.O2: step.s2,
+                self.O2: step.o2,
                 self.T: step.t
             }
         return TrainStep(*self.sess.run([getattr(self, attr)
@@ -146,8 +146,8 @@ class AbstractAgent:
 
     def get_actions(self, o: ArrayLike, _, sample: bool = True) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
-        return NetworkOutput(output=self.sess.run(A, {self.O1: o})[0],
-                             state=None)
+        return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0],
+                             state=0)
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:

@@ -16,7 +16,6 @@ from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
 
 Agents = namedtuple('Agents', 'train act')
-Buffers = namedtuple('Buffers', 'o a r t')
 
 
 class Trainer:
@@ -31,7 +30,6 @@ class Trainer:
 
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
-        self.seq_len = seq_len
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
@@ -41,12 +39,19 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        act_agent = self.build_agent(sess=sess, base_agent=base_agent, batch_size=1, seq_len=1, reuse=False, **kwargs)
-        train_agent = self.build_agent(sess=sess, base_agent=base_agent, batch_size=batch_size, seq_len=seq_len,
-                                       reuse=True,
-                                       **kwargs)
-        self.agents = Agents(act=act_agent,
-                             train=train_agent)
+        self.agents = Agents(act=self.build_agent(sess=sess,
+                                                  base_agent=base_agent,
+                                                  batch_size=1,
+                                                  seq_len=1,
+                                                  reuse=False,
+                                                  **kwargs),
+                             train=self.build_agent(sess=sess,
+                                                    base_agent=base_agent,
+                                                    batch_size=batch_size,
+                                                    seq_len=seq_len,
+                                                    reuse=True,
+                                                    **kwargs))
+        self.seq_len = self.agents.train.seq_len
         saver = tf.train.Saver()
 
         tb_writer = None
@@ -195,13 +200,24 @@ class Trainer:
 
     def sample_buffer(self) -> Step:
         sample = Step(*self.buffer.sample(self.batch_size, seq_len=self.seq_len))
-        shape = [self.batch_size, self.seq_len, -1]
-        return Step(o1=self.vectorize_state(sample.o1, shape=shape),
-                    o2=self.vectorize_state(sample.o2, shape=shape),
-                    s=np.swapaxes(sample.s[:, -1], 0, 1),
-                    a=sample.a[:, -1],
-                    r=sample.r[:, -1],
-                    t=sample.t[:, -1])
+        if self.seq_len is None:
+            # leave state as dummy value fr non-recurrent
+            shape = [self.batch_size, -1]
+            return Step(o1=self.vectorize_state(sample.o1, shape=shape),
+                        o2=self.vectorize_state(sample.o2, shape=shape),
+                        s=sample.s,
+                        a=sample.a,
+                        r=sample.r,
+                        t=sample.t)
+        else:
+            # adjust state for recurrent networks
+            shape = [self.batch_size, self.seq_len, -1]
+            return Step(o1=self.vectorize_state(sample.o1, shape=shape),
+                        o2=self.vectorize_state(sample.o2, shape=shape),
+                        s=np.swapaxes(sample.s[:, -1], 0, 1),
+                        a=sample.a[:, -1],
+                        r=sample.r[:, -1],
+                        t=sample.t[:, -1])
 
 
 class HindsightTrainer(Trainer):

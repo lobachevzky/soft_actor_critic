@@ -9,6 +9,7 @@ from click._unicodefun import click
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
+from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 from sac.utils import Step
@@ -26,13 +27,14 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
     env = PickAndPlaceHindsightWrapper(
-        PickAndPlaceEnv(
-            fixed_block=False,
+        MultiTaskEnv(
+            # fixed_block=False,
             steps_per_action=200,
             geofence=.1,
             min_lift_height=.02,
             render_freq=10,
-            xml_filepath=xml_filepath))
+            # xml_filepath=xml_filepath,
+        ))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -107,10 +109,6 @@ def cli(discrete, xml_file):
                 print('\nresetting', total_reward)
             pause = True
             total_reward = 0
-            if mimic_path is not None:
-                with Path(mimic_path + '.pkl').open(mode='wb') as f:
-                    pickle.dump(traj, f)
-                exit()
         env.env.render(labels={'x': env.env.goal_3d()})
 
 

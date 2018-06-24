@@ -1,8 +1,8 @@
 <mujoco model="hsrb">
     <body name="base_link" pos="-.46 -.081 0">
         <!--<site name="touchsensor_site" size="0.25 .5" pos="0 0 .5" type="cylinder" rgba="1 0 0 0"/>-->
-        <joint axis="1 0 0" damping="5000" name="slide_x" pos="0 0 0" type="slide" limited="true" range="-.12 .22"/>
-        <joint axis="0 1 0" damping="5000" name="slide_y" pos="0 0 0" type="slide" limited="true" range="-.22 .24"/>
+        <joint axis="1 0 0" damping="2000" name="slide_x" pos="0 0 0" type="slide" limited="true" range="-.12 .22"/>
+        <!--<joint axis="0 1 0" damping="2000" name="slide_y" pos="0 0 0" type="slide" limited="true" range="-.22 .24"/>-->
         <!--<joint axis="0 0 1" damping="1000" name="turn" pos="0 0 0" type="hinge"/>-->
         <inertial pos="-0.025978 -0.005498 0.17633" quat="0.995796 0.0411155 -0.0685908 0.0446655" mass="50"
                   diaginertia="0.378627 0.344913 0.145159"/>
@@ -121,8 +121,8 @@
               <!--pos="0 0 0.34">-->
             <!--<inertial pos="0.051549 0.042438 -0.064145" quat="-0.111496 0.499152 -0.110462 0.852182" mass="1.27582"-->
                       <!--diaginertia="0.00909548 0.00799354 0.00328099"/>-->
-            <joint name="arm_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" damping="50"
-                   range="0 0.31" />
+            <!--<joint name="arm_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" damping="100"-->
+                   <!--range="0 0.31" />-->
             <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="shoulder"/>
             <geom type="mesh" mesh="shoulder"/>
             <body name="arm_flex_link" pos="0.141 0.078 0">

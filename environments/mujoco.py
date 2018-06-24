@@ -65,11 +65,9 @@ class MujocoEnv:
 
         self._set_new_goal()
         qpos = self.reset_qpos()
-        qvel = self.init_qvel + \
-            np.random.uniform(size=self.sim.nv, low=-0.01, high=0.01)
-        assert qpos.shape == (self.sim.nq, ) and qvel.shape == (self.sim.nv, )
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
-        self.sim.qvel[:] = qvel.copy()
+        self.sim.qvel[:] = 0
         self.sim.forward()
         return self._get_obs()
 

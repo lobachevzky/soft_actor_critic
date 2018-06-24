@@ -2,31 +2,27 @@ from pathlib import Path
 
 import numpy as np
 from gym import spaces
+from mujoco import ObjType
 
 from environments.pick_and_place import Goal, PickAndPlaceEnv
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, steps_per_action, geofence, min_lift_height, render_freq):
+    def __init__(self, steps_per_action, geofence, min_lift_height, render_freq, fixed_pose=True):
+        self.fixed_pose = fixed_pose
         self._goal = None
         super().__init__(
             fixed_block=False,
             steps_per_action=steps_per_action,
             geofence=geofence,
             min_lift_height=min_lift_height,
-            xml_filepath=Path('models', 'multi-task', 'world.xml'),
+            xml_filepath=Path('models', '6dof', 'world.xml'),
             render_freq=render_freq)
-        self.action_space = spaces.Box(
-            low=np.array([-1, -1, 1, -1.5, -1.3, -.02]),
-            high=np.array([1, 1, 4, .1, 2.3, .4]),
-            dtype=np.float32)
-        self.lift_height = self._initial_block_pos[2] + \
-            geofence + min_lift_height
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
         self.goals = [
             np.linspace(start, stop, num) for start, stop, num in zip(
-                self.goal_space.low, self.goal_space.high, [6, 8, 6])
+                self.goal_space.low, self.goal_space.high, [1, 1, 1])
         ]
 
     def _set_new_goal(self):
@@ -42,14 +38,17 @@ class MultiTaskEnv(PickAndPlaceEnv):
         return self._goal
 
     def reset_qpos(self):
-        self.init_qpos[[
-            self.sim.jnt_qposadr('slide_x'),
-            self.sim.jnt_qposadr('slide_y'),
-            self.sim.jnt_qposadr('arm_flex_joint'),
-            self.sim.jnt_qposadr('wrist_roll_joint'),
-            self.sim.jnt_qposadr('hand_l_proximal_joint'),
-        ]] = np.random.uniform(
-            low=[-.13, -.23, -1.1, -1.575, -0.0083], high=[.11, .25, .001, 1.575, 0.357])
+        if not self.fixed_pose:
+            for joint in ['slide_x',
+                          'slide_y',
+                          'arm_lift_joint',
+                          'arm_flex_joint',
+                          'wrist_roll_joint',
+                          'hand_l_proximal_joint']:
+                qpos_idx = self.sim.jnt_qposadr(joint)
+                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
+                self.init_qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
+
         r = self.sim.jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.jnt_qposadr('hand_l_proximal_joint')
         self.init_qpos[r] = self.init_qpos[l]

@@ -55,8 +55,8 @@ class PickAndPlaceEnv(MujocoEnv):
                  cheat_prob=0,
                  render_freq=0,
                  isolate_movements=False,
-                 add_base_qvel=False):
-        self._isolate_movements = isolate_movements
+                 obs_type=None):
+        self._obs_type = obs_type
         if discrete:
             xml_filepath = Path(__file__).parent, 'models', 'discrete.xml'
         self._cheated = False
@@ -67,7 +67,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._min_lift_height = min_lift_height + geofence
         self.geofence = geofence
         self._discrete = discrete
-        self._add_base_qvel = add_base_qvel
+        self._isolate_movements = isolate_movements
 
         super().__init__(
             xml_filepath=xml_filepath,
@@ -105,7 +105,7 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-            # self.init_qpos[block_joint] = np.random.uniform(-.025, .025)
+            # self.init_qpos[block_joint] = np.random.uniform(-.1, .1)
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
@@ -115,16 +115,31 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _get_obs(self):
-        if self._add_base_qvel:
+        def get_qvels(joints):
             base_qvel = []
-            for joint in ['slide_x', 'slide_y']:
+            for joint in joints:
                 try:
                     base_qvel.append(self.sim.get_joint_qvel(joint))
                 except RuntimeError:
                     pass
+            return np.array(base_qvel)
 
-            return np.concatenate([self.sim.qpos, base_qvel])
-        return np.copy(self.sim.qpos)
+        if self._obs_type == 'qvel':
+            qvel = self.sim.qvel
+
+        elif self._obs_type == 'robot-qvel':
+            qvel = get_qvels(['slide_x', 'slide_y',
+                              'arm_lift_joint',
+                              'arm_flex_joint',
+                              'wrist_roll_joint',
+                              'hand_l_proximal_joint',
+                              'hand_r_proximal_joint'])
+        elif self._obs_type == 'base-qvel':
+            qvel = get_qvels(['slide_x', 'slide_x'])
+        else:
+            qvel = []
+
+        return np.concatenate([self.sim.qpos, qvel])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)

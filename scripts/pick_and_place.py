@@ -7,6 +7,7 @@ from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
+from gym.wrappers import Monitor
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
@@ -101,7 +102,8 @@ def put_in_xml_setter(ctx, param, value: str):
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
-@click.option('--no-qvel', 'obs_type', flag_value=None, default=True)
+@click.option('--record', is_flag=True)
+@click.option('--no-qvel', 'obs_type', flag_value=None)
 @click.option('--add-qvel', 'obs_type', flag_value='qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel')
 @click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
@@ -117,26 +119,30 @@ def put_in_xml_setter(ctx, param, value: str):
 def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, n_goals, xml_file, set_xml, use_dof,
+        save_path, load_path, render_freq, record, n_goals, xml_file, set_xml, use_dof,
         isolate_movements, obs_type):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+        env = PickAndPlaceHindsightWrapper(
+            env=TimeLimit(
+                max_episode_steps=max_steps,
+                env=PickAndPlaceEnv(discrete=discrete,
+                                    cheat_prob=cheat_prob,
+                                    steps_per_action=steps_per_action,
+                                    fixed_block=fixed_block,
+                                    min_lift_height=min_lift_height,
+                                    geofence=geofence,
+                                    render_freq=render_freq,
+                                    xml_filepath=temp_path,
+                                    obs_type=obs_type,
+                                    isolate_movements=isolate_movements,
+                                    )))
+        if record:
+            env = Monitor(env=env,
+                          directory=Path(logdir, 'video'),
+                          force=True,)
         HindsightTrainer(
-            env=PickAndPlaceHindsightWrapper(
-                env=TimeLimit(
-                    max_episode_steps=max_steps,
-                    env=PickAndPlaceEnv(
-                        discrete=discrete,
-                        cheat_prob=cheat_prob,
-                        steps_per_action=steps_per_action,
-                        fixed_block=fixed_block,
-                        min_lift_height=min_lift_height,
-                        geofence=geofence,
-                        render_freq=render_freq,
-                        xml_filepath=temp_path,
-                        isolate_movements=isolate_movements,
-                        obs_type=obs_type,
-                    ))),
+            env=env,
             seed=seed,
             device_num=device_num,
             n_goals=n_goals,

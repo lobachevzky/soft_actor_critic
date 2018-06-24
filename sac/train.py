@@ -6,7 +6,7 @@ from typing import Iterable, Optional, Tuple
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import spaces
+from gym import spaces, Wrapper
 
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
@@ -188,22 +188,28 @@ class TrajectoryTrainer(Trainer):
 
 
 class HindsightTrainer(TrajectoryTrainer):
-    def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
+    def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
-        assert isinstance(env, HindsightWrapper)
+        self.hindsight_env = env
+        while not isinstance(self.hindsight_env, HindsightWrapper):
+            try:
+                self.hindsight_env = self.hindsight_env.env
+            except AttributeError:
+                raise RuntimeError(f"env {env} must include HindsightWrapper.")
+        assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
-        assert isinstance(self.env, HindsightWrapper)
+        assert isinstance(self.hindsight_env, HindsightWrapper)
         self.buffer.extend(
-            self.env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
+            self.hindsight_env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:
                 self.buffer.extend(
-                    self.env.recompute_trajectory(
+                    self.hindsight_env.recompute_trajectory(
                         self._trajectory(), final_step=final_state))
 
     def reset(self) -> State:
@@ -211,8 +217,8 @@ class HindsightTrainer(TrajectoryTrainer):
         return super().reset()
 
     def vectorize_state(self, state: State) -> np.ndarray:
-        assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize_state(state)
+        assert isinstance(self.hindsight_env, HindsightWrapper)
+        return self.hindsight_env.vectorize_state(state)
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):

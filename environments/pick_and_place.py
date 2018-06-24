@@ -105,7 +105,7 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-            self.init_qpos[block_joint] = np.random.uniform(-.025, .025)
+            # self.init_qpos[block_joint] = np.random.uniform(-.025, .025)
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 

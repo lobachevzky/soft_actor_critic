@@ -1,6 +1,6 @@
 import numpy as np
 
-from sac.array_group import Input, Key, ArrayGroup
+from sac.array_group import X, Key, ArrayGroup
 
 
 class ReplayBuffer:
@@ -26,7 +26,9 @@ class ReplayBuffer:
 
     def modulate(self, key: Key):
         if isinstance(key, slice):
-            key = np.arange(key.start, key.stop or 0, key.step)
+            key = np.arange(key.start or 0,
+                            0 if key.stop is None else key.stop,
+                            key.step)
         return (key + self.pos) % self.maxlen
 
     def sample(self, batch_size: int, seq_len=None):
@@ -36,7 +38,7 @@ class ReplayBuffer:
         assert isinstance(indices, np.ndarray)
         return self[indices]
 
-    def append(self, x: Input, n=None):
+    def append(self, x: X, n=None):
         if self.pos >= self.maxlen:
             self.full = True
 

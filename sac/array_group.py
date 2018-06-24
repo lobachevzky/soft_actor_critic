@@ -1,10 +1,11 @@
 from collections import namedtuple
+import operator
 from numbers import Number
-from typing import Union, Iterable
+from typing import Union, Iterable, Callable, Any
 
 import numpy as np
 
-Input = Union[(tuple, list, np.ndarray, Number, bool)]
+X = Union[Iterable, np.ndarray, Number, bool]
 Key = Union[int, slice, np.ndarray]
 
 
@@ -15,12 +16,9 @@ def getitem(array_group, key: np.ndarray):
 
 
 def setitem(array_group: Union[list, np.ndarray],
-            key: Key, x: Input):
+            key: Key, x: X):
     if isinstance(array_group, np.ndarray):
-        if np.shape(x) == ():
-            array_group[key] = x
-        else:
-            array_group[key, :] = x
+        array_group[key] = x
     else:
         assert isinstance(x, Iterable)
         for _group, _x in zip(array_group, x):
@@ -45,9 +43,22 @@ def get_shapes(x, subset=None):
     return [get_shapes(_x, subset) for _x in x]
 
 
+def xnor(check: Callable, *vals: X):
+    return all(map(check, vals)) or not any(map(check, vals))
+
+
+def zip_op(op: Callable[[X, X], None], x: X, y: X):
+    assert xnor(np.isscalar, [x, y])
+    assert xnor(lambda z: isinstance(z, np.ndarray), [x, y])
+    if isinstance(x, np.ndarray) or np.isscalar(x):
+        return op(x, y)
+    assert len(x) == len(y)
+    return [op(_x, _y) for _x, _y in zip(x, y)]
+
+
 class ArrayGroup:
     @staticmethod
-    def shape_like(x: Input, pre_shape: tuple):
+    def shape_like(x: X, pre_shape: tuple):
         return ArrayGroup(allocate(pre_shape=pre_shape,
                                    shapes=(get_shapes(x))))
 
@@ -62,3 +73,14 @@ class ArrayGroup:
 
     def __setitem__(self, key: Key, value):
         setitem(self.arrays, key=key, x=value)
+
+    def zip_op(self, op: Callable[[None], None], other):
+        assert isinstance(other, ArrayGroup)
+        return zip_op(op, self.arrays, other.arrays)
+
+    def __or__(self, other):
+        return self.zip_op(operator.or_, other)
+    
+    @property
+    def shape(self):
+        return get_shapes(self.arrays)

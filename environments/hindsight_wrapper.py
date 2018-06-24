@@ -92,33 +92,21 @@ class HindsightWrapper(gym.Wrapper):
             achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
-        import ipdb;ipdb.set_trace()
         trajectory = deepcopy(trajectory)
+
+        # get values
         o1 = Observation(*trajectory.o1)
         o2 = Observation(*trajectory.o2)
         achieved_goal = ArrayGroup(o2.achieved_goal)[-1]
-        o1.desired_goal[:] = achieved_goal
-        o2.desired_goal[:] = achieved_goal
-        assert False
-        #
-        #
-        #
-        #
-        # achieved_goal = None
-        # for step in trajectory:
-        #     if achieved_goal is None:
-        #         achieved_goal = State(*final_step.o2).achieved_goal
-        #     new_t = self._is_success(State(*step.o2).achieved_goal, achieved_goal)
-        #     r = float(new_t)
-        #     yield Step(
-        #         s=step.s,
-        #         o1=State(step.o1).replace(desired_goal=achieved_goal),
-        #         a=step.a,
-        #         r=r,
-        #         o2=State(step.o2).replace(desired_goal=achieved_goal),
-        #         t=new_t)
-        #     if new_t:
-        #         break
+
+        # perform assignment
+        ArrayGroup(o1.desired_goal)[:] = achieved_goal
+        ArrayGroup(o2.desired_goal)[:] = achieved_goal
+        trajectory.r[:] = self._is_success(o2.achieved_goal, o2.desired_goal)
+        trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
+
+        first_terminal = np.flatnonzero(trajectory.t)[0]
+        return trajectory[:first_terminal + 1]  # include first terminal
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):
@@ -141,10 +129,15 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
 
     def _is_success(self, achieved_goal, desired_goal):
+
+        achieved_goal = Goal(*achieved_goal)
+        desired_goal = Goal(*desired_goal)
+
         geofence = self.env.unwrapped.geofence
-        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-               distance_between(achieved_goal.gripper,
-                                desired_goal.gripper) < geofence
+        block_distance = distance_between(achieved_goal.block, desired_goal.block)
+        goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
+        return np.logical_and(block_distance < geofence,
+                              goal_distance < geofence)
 
     def _achieved_goal(self):
         return Goal(
@@ -154,35 +147,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return self.env.unwrapped.goal()
 
-
-class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-
-    def recompute_trajectory(self, reverse_trajectory: Iterable, final_step: Step):
-        achieved_goals = []
-        last_goal = True
-        for step in reverse_trajectory:
-            assert isinstance(step, Step)
-            achieved_goal = step.o2.achieved_goal
-
-            if last_goal:
-                last_goal = False
-                if np.random.uniform(0, 1) < .1:
-                    achieved_goals.append(achieved_goal)
-
-            block_lifted = achieved_goal.block[2] > self.env.unwrapped.lift_height
-            in_box = achieved_goal.block[1] > .1 and not block_lifted
-            if block_lifted or in_box:
-                achieved_goals.append(achieved_goal)
-
-            for achieved_goal in achieved_goals:
-                new_t = self._is_success(
-                    achieved_goal=step.o2.achieved_goal, desired_goal=achieved_goal)
-                r = float(new_t)
-                yield Step(
-                    o1=step.o1.replace(desired_goal=achieved_goal),
-                    a=step.a,
-                    r=r,
-                    o2=step.o2.replace(desired_goal=achieved_goal),
-                    t=new_t)

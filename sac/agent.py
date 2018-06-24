@@ -145,6 +145,8 @@ class AbstractAgent:
                                          for attr in TRAIN_VALUES], feed_dict))
 
     def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
+        if np.ndim(s1) == 1:
+            s1 = [s1]
         if sample:
             actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: s1})
         else:

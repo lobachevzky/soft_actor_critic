@@ -1,2 +1,3 @@
 * pull out non-training Runner class
-* I forget
+* Incorporate non-hindsight wrapper
+* Incoporate best xml joint settings.

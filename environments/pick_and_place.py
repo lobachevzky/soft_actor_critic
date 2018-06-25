@@ -156,10 +156,8 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def at_goal(self, goal):
-        gripper_at_goal = at_goal(self.gripper_pos(), goal.gripper, self.geofence)
-        block_at_goal = at_goal(self.block_pos(), goal.block, self.geofence)
-        return gripper_at_goal and block_at_goal
+    def at_goal(self, _):
+        return self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height
 
     def compute_terminal(self, goal, obs):
         # return False

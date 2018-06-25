@@ -44,11 +44,7 @@ class HindsightWrapper(gym.Wrapper):
             observation=s2,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        is_success = self._is_success(new_s2.achieved_goal, new_s2.desired_goal)
-        new_t = is_success or t
-        new_r = float(is_success)
-        info['base_reward'] = r
-        return new_s2, new_r, new_t, info
+        return new_s2, r, t, info
 
     def reset(self):
         return State(
@@ -135,35 +131,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
         return state_vector
 
-
-class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-
-    def recompute_trajectory(self, reverse_trajectory: Iterable, final_step: Step):
-        achieved_goals = []
-        last_goal = True
-        for step in reverse_trajectory:
-            assert isinstance(step, Step)
-            achieved_goal = step.s2.achieved_goal
-
-            if last_goal:
-                last_goal = False
-                if np.random.uniform(0, 1) < .1:
-                    achieved_goals.append(achieved_goal)
-
-            block_lifted = achieved_goal.block[2] > self.env.unwrapped.lift_height
-            in_box = achieved_goal.block[1] > .1 and not block_lifted
-            if block_lifted or in_box:
-                achieved_goals.append(achieved_goal)
-
-            for achieved_goal in achieved_goals:
-                new_t = self._is_success(
-                    achieved_goal=step.s2.achieved_goal, desired_goal=achieved_goal)
-                r = float(new_t)
-                yield Step(
-                    s1=step.s1.replace(desired_goal=achieved_goal),
-                    a=step.a,
-                    r=r,
-                    s2=step.s2.replace(desired_goal=achieved_goal),
-                    t=new_t)

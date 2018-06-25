@@ -1,6 +1,21 @@
+from typing import Iterable
+
 import numpy as np
 
 from sac.array_group import X, Key, ArrayGroup, get_shapes
+
+
+def get_index(value):
+    if np.isscalar(value):
+        return 1
+    if isinstance(value, np.ndarray):
+        return value.shape[0]
+    assert isinstance(value, Iterable)
+    indices = set(map(get_index, value))
+    if len(indices) == 1:  # all the same
+        return indices.pop()
+    else:
+        return 1
 
 
 class ReplayBuffer:
@@ -45,9 +60,9 @@ class ReplayBuffer:
         if self.buffer is None:
             self.buffer = ArrayGroup.shape_like(
                 x=x, pre_shape=(self.maxlen,))
-        n = common_dim(x)
-        self[get_shapes(x)] = x
-        self.pos = self.modulate(n or 1)
+        stop = get_index(x)
+        self[:stop] = x
+        self.pos = self.modulate(stop)
         if self.pos == self.maxlen:
             self.pos = 0
             self.full = True

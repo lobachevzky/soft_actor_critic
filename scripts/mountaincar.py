@@ -19,15 +19,12 @@ from sac.train import HindsightTrainer
 @click.option('--reward-scale', default=1e4, type=float)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--grad-clip', default=2e4, type=float)
-@click.option('--mimic-dir', default=None, type=str)
-@click.option('--mimic-save-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, grad_clip, batch_size, num_train_steps, mimic_dir, mimic_save_dir,
-        logdir, save_path, load_path, render, n_goals):
+        reward_scale, grad_clip, batch_size, num_train_steps, logdir, save_path, load_path, render, n_goals):
 
     HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
@@ -43,8 +40,6 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
-        mimic_dir=mimic_dir,
-        mimic_save_dir=mimic_save_dir,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,

@@ -82,6 +82,11 @@ def put_in_xml_setter(ctx, param, value: str):
             for s in setters + mirroring]
 
 
+def parse_range(string):
+    low, high = map(int, string.split(','))
+    return low, high
+
+
 @click.command()
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
@@ -112,6 +117,8 @@ def put_in_xml_setter(ctx, param, value: str):
 @click.option('--add-qvel', 'obs_type', flag_value='qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
+@click.option('--block-xrange', default=(-.1, .1), callback=parse_range)
+@click.option('--block-yrange', default=(-.2, .2), callback=parse_range)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--use-dof', multiple=True, default=['slide_x',
@@ -125,7 +132,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
-        isolate_movements, obs_type, ):
+        isolate_movements, obs_type, block_xrange, block_yrange):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
@@ -141,11 +148,13 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
                                     xml_filepath=temp_path,
                                     obs_type=obs_type,
                                     isolate_movements=isolate_movements,
+                                    block_xrange=block_xrange,
+                                    block_yrange=block_yrange,
                                     )))
         if record_dir:
             env = Monitor(env=env,
                           directory=str(record_dir),
-                          force=True,)
+                          force=True, )
         HindsightTrainer(
             env=env,
             seed=seed,

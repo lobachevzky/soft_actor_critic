@@ -47,6 +47,8 @@ class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  xml_filepath,
                  steps_per_action,
+                 block_xrange,
+                 block_yrange,
                  fixed_block=False,
                  min_lift_height=.02,
                  geofence=.04,
@@ -56,6 +58,8 @@ class PickAndPlaceEnv(MujocoEnv):
                  render_freq=0,
                  isolate_movements=False,
                  obs_type=None):
+        self.block_xrange = block_xrange
+        self.block_yrange = block_yrange
         self._obs_type = obs_type
         if discrete:
             xml_filepath = Path(__file__).parent, 'models', 'discrete.xml'
@@ -112,7 +116,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-            self.init_qpos[block_joint] = np.random.uniform(-.1, .1)
+            self.init_qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
+            self.init_qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 

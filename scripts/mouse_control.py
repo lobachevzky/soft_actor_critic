@@ -29,11 +29,14 @@ def cli(discrete, xml_file):
     env = PickAndPlaceHindsightWrapper(
         PickAndPlaceEnv(
             # fixed_block=False,
+            isolate_movements=False,
             steps_per_action=200,
             geofence=.1,
             min_lift_height=.02,
             render_freq=10,
             xml_filepath=xml_filepath,
+            block_yrange=(0, 0),
+            block_xrange=(-.1, .1),
         ))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()

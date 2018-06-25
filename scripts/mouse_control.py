@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from click._unicodefun import click
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
 from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv

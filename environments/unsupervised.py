@@ -6,7 +6,7 @@ import tensorflow as tf
 from environments.base import at_goal
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.agent import mlp
-from sac.replay_buffer import ReplayBuffer
+from sac.old_replay_buffer import ReplayBuffer
 from sac.utils import Step
 
 

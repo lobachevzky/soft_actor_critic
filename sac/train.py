@@ -8,11 +8,12 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces, Wrapper
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.old_hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
+from sac import replay_buffer
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.replay_buffer import ReplayBuffer
+from sac.old_replay_buffer import ReplayBuffer
 from sac.utils import State, Step
 
 
@@ -29,7 +30,8 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = ReplayBuffer(buffer_size)
+        self.old_buffer = ReplayBuffer(buffer_size)
+        self.buffer = replay_buffer.ReplayBuffer(buffer_size)
         self.save_path = save_path
         self.agent = agent = self.build_agent(**kwargs)
 
@@ -89,8 +91,10 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
+            assert self.old_buffer.pos == self.buffer.pos
             self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
 
+            assert self.old_buffer.pos == self.buffer.pos
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
@@ -156,13 +160,18 @@ class Trainer:
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
+        assert self.old_buffer.pos == self.buffer.pos
+        self.old_buffer.append(step)
         self.buffer.append(step)
+        assert self.old_buffer.pos == self.buffer.pos
 
     def buffer_full(self):
-        return len(self.buffer) >= self.batch_size
+        assert self.old_buffer.pos == self.buffer.pos
+        assert len(self.old_buffer) == len(self.buffer)
+        return len(self.old_buffer) >= self.batch_size
 
     def sample_buffer(self) -> Step:
-        return Step(*self.buffer.sample(self.batch_size))
+        return Step(*self.old_buffer.sample(self.batch_size))
 
 
 class TrajectoryTrainer(Trainer):
@@ -173,7 +182,7 @@ class TrajectoryTrainer(Trainer):
         super().add_to_buffer(step)
 
     def trajectory(self) -> Iterable:
-        return self.buffer[-self.episode_count['timesteps']:]
+        return self.old_buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:
         return super().reset()
@@ -183,7 +192,7 @@ class TrajectoryTrainer(Trainer):
 
     def _trajectory(self) -> Iterable:
         if self.timesteps():
-            return self.buffer[-self.timesteps():]
+            return self.old_buffer[-self.timesteps():]
         return ()
 
 
@@ -201,15 +210,20 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        self.buffer.extend(
-            self.hindsight_env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
+        self.old_buffer.extend(
+            self.hindsight_env.old_recompute_trajectory(self._trajectory(), final_step=self.old_buffer[-1]))
+        if self.timesteps() > 0:
+            self.buffer.append(
+                self.hindsight_env.old_recompute_trajectory(self._trajectory(), final_step=self.old_buffer[-1]),
+                n=self.timesteps()
+            )
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
 
-            for final_state in self.buffer[final_indexes]:
-                self.buffer.extend(
-                    self.hindsight_env.recompute_trajectory(
+            for final_state in self.old_buffer[final_indexes]:
+                self.old_buffer.extend(
+                    self.hindsight_env.old_recompute_trajectory(
                         self._trajectory(), final_step=final_state))
 
     def reset(self) -> State:

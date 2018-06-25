@@ -2,7 +2,7 @@ import click
 import gym
 import tensorflow as tf
 
-from environments.hindsight_wrapper import MountaincarHindsightWrapper
+from environments.old_hindsight_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightTrainer
 
 

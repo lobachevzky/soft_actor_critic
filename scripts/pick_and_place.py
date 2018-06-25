@@ -10,7 +10,7 @@ import tensorflow as tf
 from gym.wrappers import Monitor
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
@@ -126,7 +126,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
         isolate_movements, obs_type):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
             env=TimeLimit(

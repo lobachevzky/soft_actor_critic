@@ -2,7 +2,7 @@ import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.train import MultiTaskHindsightTrainer
 

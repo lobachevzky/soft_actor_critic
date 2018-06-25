@@ -13,38 +13,16 @@ from environments.pick_and_place import Goal
 from sac.array_group import ArrayGroup
 from sac.utils import Step
 
-
-def get_size(x):
-    if np.isscalar(x):
-        return 1
-    return sum(map(get_size, x))
-
-
-def assign_to_vector(x, vector: np.ndarray):
-    dim = vector.size / vector.shape[-1]
-    if isinstance(x, np.ndarray) or np.isscalar(x):
-        vector[:] = x
-    else:
-        sizes = np.array(list(map(get_size, x)))
-        sizes = np.cumsum(sizes / dim, dtype=int)
-        for _x, start, stop in zip(x, [0] + list(sizes), sizes):
-            indices = [slice(None) for _ in vector.shape]
-            indices[-1] = slice(start, stop)
-            assign_to_vector(_x, vector[tuple(indices)])
-
-
-class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
+class State(namedtuple('State', 'observation achieved_goal desired_goal')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
 
 
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
-        self.state_vectors = {}
         super().__init__(env)
-        s = self.reset()
-        vector_state = self.vectorize_state(s)
-        self.observation_space = Box(-1, 1, vector_state.shape)
+        vector_state = self.vectorize_state(self.reset())
+        self.observation_space = Box(-1, 1, vector_state.shape[1:])
 
     @abstractmethod
     def _achieved_goal(self):
@@ -58,45 +36,46 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    def vectorize_state(self, state, shape=None):
-        if isinstance(state, np.ndarray):
-            return state
-        size = get_size(state)
-
-        # if size not in self.state_vectors:
-        vector = np.zeros(size)
-        if shape is not None:
-            vector = np.reshape(vector, shape)
-        # self.state_vectors[size] = vector
-        # vector = self.state_vectors[size]
-        assert isinstance(vector, np.ndarray)
-        assign_to_vector(x=state, vector=vector)
-        return vector
+    @staticmethod
+    def vectorize_state(state):
+        return np.concatenate(state)
 
     def step(self, action):
-        o2, r, t, info = self.env.step(action)
-        new_o2 = Observation(
-            observation=o2,
+        s2, r, t, info = self.env.step(action)
+        new_s2 = State(
+            observation=s2,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        is_success = self._is_success(new_o2.achieved_goal, new_o2.desired_goal)
-        new_t = is_success or t
-        new_r = float(is_success)
-        info['base_reward'] = r
-        return new_o2, new_r, new_t, info
+        return new_s2, r, t, info
 
     def reset(self):
-        return Observation(
+        return State(
             observation=self.env.reset(),
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
+
+    def old_recompute_trajectory(self, trajectory: Iterable, final_step: Step):
+        achieved_goal = None
+        for step in trajectory:
+            if achieved_goal is None:
+                achieved_goal = final_step.s2.achieved_goal
+            new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
+            r = float(new_t)
+            yield Step(
+                s1=step.s1.replace(desired_goal=achieved_goal),
+                a=step.a,
+                r=r,
+                s2=step.s2.replace(desired_goal=achieved_goal),
+                t=new_t)
+            if new_t:
+                break
 
     def recompute_trajectory(self, trajectory: Step):
         trajectory = deepcopy(trajectory)
 
         # get values
-        o1 = Observation(*trajectory.o1)
-        o2 = Observation(*trajectory.o2)
+        o1 = State(*trajectory.o1)
+        o2 = State(*trajectory.o2)
         achieved_goal = ArrayGroup(o2.achieved_goal)[-1]
 
         # perform assignment
@@ -107,7 +86,6 @@ class HindsightWrapper(gym.Wrapper):
 
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return trajectory[:first_terminal + 1]  # include first terminal
-
 
 class MountaincarHindsightWrapper(HindsightWrapper):
     """
@@ -123,21 +101,23 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return 0.45
 
+    @staticmethod
+    def vectorize_state(states: List[State]):
+        if isinstance(states, State):
+            states = [states]
+        return np.stack(
+            np.append(state.observation, state.desired_goal) for state in states)
+
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
         super().__init__(env)
 
     def _is_success(self, achieved_goal, desired_goal):
-
-        achieved_goal = Goal(*achieved_goal)
-        desired_goal = Goal(*desired_goal)
-
         geofence = self.env.unwrapped.geofence
-        block_distance = distance_between(achieved_goal.block, desired_goal.block)
-        goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
-        return np.logical_and(block_distance < geofence,
-                              goal_distance < geofence)
+        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
+            distance_between(achieved_goal.gripper,
+                             desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
         return Goal(
@@ -146,4 +126,26 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
+
+    @staticmethod
+    def vectorize_state(states: List[State]):
+        """
+        :returns
+        >>> np.stack([np.concatenate(
+        >>>    [state.observation, state.desired_goal.gripper, state.desired_goal.block])
+        >>>     for state in states])
+        """
+        if isinstance(states, State):
+            states = [states]
+
+        def get_arrays(s: State):
+            return [s.observation, s.desired_goal.gripper, s.desired_goal.block]
+
+        slices = np.cumsum([0] + [np.size(a) for a in get_arrays(states[0])])
+        state_vector = np.empty((len(states), slices[-1]))
+        for i, state in enumerate(states):
+            for (start, stop), array in zip(zip(slices, slices[1:]), get_arrays(state)):
+                state_vector[i, start:stop] = array
+
+        return state_vector
 

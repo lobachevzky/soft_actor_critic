@@ -99,6 +99,10 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         return self.env.unwrapped.state[0] >= self._desired_goal()
 
+    def step(self, action):
+        s, r, t, i = super().step(action)
+        return s, max([0, r]), t, i
+
     def _desired_goal(self):
         return 0.45
 

@@ -82,8 +82,8 @@ def put_in_xml_setter(ctx, param, value: str):
             for s in setters + mirroring]
 
 
-def parse_range(string):
-    low, high = map(int, string.split(','))
+def parse_range(ctx, param, string):
+    low, high = map(float, string.split(','))
     return low, high
 
 
@@ -117,8 +117,8 @@ def parse_range(string):
 @click.option('--add-qvel', 'obs_type', flag_value='qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
-@click.option('--block-xrange', default=(-.1, .1), callback=parse_range)
-@click.option('--block-yrange', default=(-.2, .2), callback=parse_range)
+@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_range)
+@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--use-dof', multiple=True, default=['slide_x',

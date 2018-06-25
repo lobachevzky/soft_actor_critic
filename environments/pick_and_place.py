@@ -64,7 +64,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self.grip = 0
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
-        self._min_lift_height = min_lift_height + geofence
+        self._min_lift_height = min_lift_height
         self.geofence = geofence
         self._discrete = discrete
         self._isolate_movements = isolate_movements

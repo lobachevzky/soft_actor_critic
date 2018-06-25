@@ -110,7 +110,7 @@ def put_in_xml_setter(ctx, param, value: str):
 @click.option('--record-dir', type=Path)
 @click.option('--no-qvel', 'obs_type', flag_value=None)
 @click.option('--add-qvel', 'obs_type', flag_value='qvel')
-@click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel')
+@click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
@@ -125,7 +125,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
-        isolate_movements, obs_type):
+        isolate_movements, obs_type, ):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(

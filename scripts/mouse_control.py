@@ -29,6 +29,7 @@ def cli(discrete, xml_file):
     env = PickAndPlaceHindsightWrapper(
         PickAndPlaceEnv(
             # fixed_block=False,
+            isolate_movements=True,
             steps_per_action=200,
             geofence=.1,
             min_lift_height=.02,

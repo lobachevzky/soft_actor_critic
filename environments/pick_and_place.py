@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv, at_goal
+from environments.mujoco import MujocoEnv, at_goal, print1
 from mujoco import ObjType
 
 CHEAT_STARTS = [[
@@ -68,6 +68,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self.geofence = geofence
         self._discrete = discrete
         self._isolate_movements = isolate_movements
+        self._prev_action = None
 
         super().__init__(
             xml_filepath=xml_filepath,
@@ -88,10 +89,16 @@ class PickAndPlaceEnv(MujocoEnv):
         if discrete:
             self.action_space = spaces.Discrete(7)
         else:
-            self.action_space = spaces.Box(
-                low=self.sim.actuator_ctrlrange[:-1, 0],
-                high=self.sim.actuator_ctrlrange[:-1, 1],
-                dtype=np.float32)
+            if self._isolate_movements:
+                self.action_space = spaces.Box(
+                    low=np.append(self.sim.actuator_ctrlrange[:-1, 0], -1),
+                    high=np.append(self.sim.actuator_ctrlrange[:-1, 1], 1),
+                    dtype=np.float32)
+            else:
+                self.action_space = spaces.Box(
+                    low=self.sim.actuator_ctrlrange[:-1, 0],
+                    high=self.sim.actuator_ctrlrange[:-1, 1],
+                    dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
@@ -105,7 +112,7 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-            # self.init_qpos[block_joint] = np.random.uniform(-.1, .1)
+            self.init_qpos[block_joint] = np.random.uniform(-.1, .1)
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
@@ -202,56 +209,35 @@ class PickAndPlaceEnv(MujocoEnv):
             action = np.insert(action, mirroring_index, action[mirrored_index])
 
         if self._isolate_movements:
-            base_motors = ['slide_x_motor', 'slide_y_motor']
-            base_joints = ['slide_x', 'slide_y']
-            other_motors = ['arm_lift_motor',
-                            'arm_flex_motor',
-                            'wrist_roll_motor',
-                            'hand_l_proximal_motor',
-                            'hand_r_proximal_motor']
-            other_joints = [m.replace('motor', 'joint') for m in other_motors]
+            if self._prev_action is not None:
+                base_motors = ['slide_x_motor', 'slide_y_motor']
+                other_motors = ['arm_lift_motor',
+                                'arm_flex_motor',
+                                'wrist_roll_motor',
+                                'hand_l_proximal_motor',
+                                'hand_r_proximal_motor']
 
-            def get_joint(name):
-                try:
-                    return self.sim.jnt_qposadr(name)
-                except RuntimeError:
-                    return None
+                def get_index(name):
+                    try:
+                        return self.sim.name2id(ObjType.ACTUATOR, name)
+                    except RuntimeError:
+                        return None
 
-            def get_actuator(name):
-                try:
-                    return self.sim.name2id(ObjType.ACTUATOR, name)
-                except RuntimeError:
-                    return None
+                def get_indexes(names):
+                    indexes = map(get_index, names)
+                    return [i for i in indexes if i is not None]
 
-            base_qpos_indexes = filter_none(map(get_joint, base_joints))
-            other_joint_indexes = filter_none(map(get_joint, other_joints))
-            base_action_indexes = filter_none(map(get_actuator, base_motors))
-            other_action_indexes = filter_none(map(get_actuator, other_motors))
+                base_indexes = get_indexes(base_motors)
+                other_indexes = get_indexes(other_motors)
 
-            action_range = self.sim.actuator_ctrlrange[:, 1] - self.sim.actuator_ctrlrange[:, 0]
-            base_range = action_range[base_action_indexes]
-            other_range = action_range[other_action_indexes]
-
-            base_diff = action[base_action_indexes] - self.sim.qpos[base_qpos_indexes]
-            base_diff = np.linalg.norm(base_diff)
-            base_diff /= np.linalg.norm(base_range)
-
-            other_diff = action[other_action_indexes] - self.sim.qpos[other_joint_indexes]
-            other_diff = np.linalg.norm(other_diff)
-            other_diff /= np.linalg.norm(other_range)
-
-            if 3 * base_diff < other_diff:
-                action[base_action_indexes] = 0
-            else:
-                for i in range(len(action)):
-                    if i not in base_action_indexes:
-                        action[i] = 0
+                self.sim.qvel[other_indexes] = 0
+                indexes = base_indexes if action[-1] > 0 else other_indexes
+                action[indexes] = self._prev_action[indexes]
+            action = action[:-1]
 
         s, r, t, i = super().step(action)
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
+        self._prev_action = action
         return s, r, t, i
 
-
-def filter_none(it: Iterable):
-    return [x for x in it if x is not None]

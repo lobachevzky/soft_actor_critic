@@ -113,7 +113,7 @@ def parse_range(ctx, param, string):
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
 @click.option('--record-dir', type=Path)
-@click.option('--no-qvel', 'obs_type', flag_value=None)
+@click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-qvel', 'obs_type', flag_value='qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
@@ -133,6 +133,8 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
         isolate_movements, obs_type, block_xrange, block_yrange):
+    print('Obs type:', obs_type)
+    print('Isolate movements:', isolate_movements)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(

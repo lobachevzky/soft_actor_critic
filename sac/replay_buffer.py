@@ -1,6 +1,6 @@
 import numpy as np
 
-from sac.array_group import X, Key, ArrayGroup
+from sac.array_group import X, Key, ArrayGroup, get_shapes
 
 
 class ReplayBuffer:
@@ -38,14 +38,15 @@ class ReplayBuffer:
         assert isinstance(indices, np.ndarray)
         return self[indices]
 
-    def append(self, x: X, n=None):
+    def append(self, x: X):
         if self.pos >= self.maxlen:
             self.full = True
 
         if self.buffer is None:
             self.buffer = ArrayGroup.shape_like(
                 x=x, pre_shape=(self.maxlen,))
-        self[slice(n) if n else 0] = x
+        n = common_dim(x)
+        self[get_shapes(x)] = x
         self.pos = self.modulate(n or 1)
         if self.pos == self.maxlen:
             self.pos = 0

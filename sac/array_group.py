@@ -25,6 +25,13 @@ def setitem(array_group: Union[list, np.ndarray],
             setitem(_group, key, _x)
 
 
+def common_dim(shapes: tuple):
+    try:
+        return np.array(shapes)
+    except ValueError:
+        for shape in shapes
+
+
 def allocate(pre_shape: tuple, shapes: Union[tuple, Iterable]):
     try:
         return np.zeros(pre_shape + shapes)
@@ -60,7 +67,7 @@ class ArrayGroup:
     @staticmethod
     def shape_like(x: X, pre_shape: tuple):
         return ArrayGroup(allocate(pre_shape=pre_shape,
-                                   shapes=(get_shapes(x))))
+                                   shapes=get_shapes(x)))
 
     def __init__(self, values):
         self.arrays = values
@@ -74,16 +81,16 @@ class ArrayGroup:
     def __setitem__(self, key: Key, value):
         setitem(self.arrays, key=key, x=value)
 
-    def zip_op(self, op, other):
-        assert callable(op)
-        assert isinstance(other, ArrayGroup)
-        return ArrayGroup(zip_op(op, self.arrays, other.arrays))
-
     def __or__(self, other):
         return self.zip_op(operator.or_, other)
 
     def __eq__(self, other):
         return self.zip_op(operator.eq, other)
+
+    def zip_op(self, op, other):
+        assert callable(op)
+        assert isinstance(other, ArrayGroup)
+        return ArrayGroup(zip_op(op, self.arrays, other.arrays))
 
     @property
     def shape(self):

@@ -74,8 +74,8 @@ class HindsightWrapper(gym.Wrapper):
         trajectory = deepcopy(trajectory)
 
         # get values
-        o1 = State(*trajectory.o1)
-        o2 = State(*trajectory.o2)
+        o1 = State(*trajectory.s1)
+        o2 = State(*trajectory.s2)
         achieved_goal = ArrayGroup(o2.achieved_goal)[-1]
 
         # perform assignment
@@ -85,7 +85,8 @@ class HindsightWrapper(gym.Wrapper):
         trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
 
         first_terminal = np.flatnonzero(trajectory.t)[0]
-        return trajectory[:first_terminal + 1]  # include first terminal
+
+        return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
 class MountaincarHindsightWrapper(HindsightWrapper):
     """
@@ -114,10 +115,12 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
 
     def _is_success(self, achieved_goal, desired_goal):
+        achieved_goal= Goal(*achieved_goal)
+        desired_goal = Goal(*desired_goal)
         geofence = self.env.unwrapped.geofence
-        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-            distance_between(achieved_goal.gripper,
-                             desired_goal.gripper) < geofence
+        return np.logical_and(
+            distance_between(achieved_goal.block, desired_goal.block) < geofence,
+            distance_between(achieved_goal.gripper, desired_goal.gripper) < geofence)
 
     def _achieved_goal(self):
         return Goal(

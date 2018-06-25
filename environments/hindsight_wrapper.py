@@ -106,7 +106,7 @@ class HindsightWrapper(gym.Wrapper):
         trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
 
         first_terminal = np.flatnonzero(trajectory.t)[0]
-        return trajectory[:first_terminal + 1]  # include first terminal
+        return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):

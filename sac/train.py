@@ -184,13 +184,21 @@ class TrajectoryTrainer(Trainer):
     def trajectory(self) -> Iterable:
         return self.old_buffer[-self.episode_count['timesteps']:]
 
+    def _trajectory(self, final_index=None) -> Optional[Step]:
+        if self.timesteps():
+            if final_index is None:
+                final_index = 0  # points to current time step
+            else:
+                final_index -= self.timesteps()
+            return Step(*self.buffer[-self.timesteps():final_index])
+
     def reset(self) -> State:
         return super().reset()
 
     def timesteps(self):
         return self.episode_count['timesteps']
 
-    def _trajectory(self) -> Iterable:
+    def _old_trajectory(self) -> Iterable:
         if self.timesteps():
             return self.old_buffer[-self.timesteps():]
         return ()
@@ -211,12 +219,9 @@ class HindsightTrainer(TrajectoryTrainer):
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
         self.old_buffer.extend(
-            self.hindsight_env.old_recompute_trajectory(self._trajectory(), final_step=self.old_buffer[-1]))
+            self.hindsight_env.old_recompute_trajectory(self._old_trajectory(), final_step=self.old_buffer[-1]))
         if self.timesteps() > 0:
-            self.buffer.append(
-                self.hindsight_env.old_recompute_trajectory(self._trajectory(), final_step=self.old_buffer[-1]),
-                n=self.timesteps()
-            )
+            self.buffer.append(self.hindsight_env.recompute_trajectory(self._trajectory()))
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
@@ -224,7 +229,7 @@ class HindsightTrainer(TrajectoryTrainer):
             for final_state in self.old_buffer[final_indexes]:
                 self.old_buffer.extend(
                     self.hindsight_env.old_recompute_trajectory(
-                        self._trajectory(), final_step=final_state))
+                        self._old_trajectory(), final_step=final_state))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

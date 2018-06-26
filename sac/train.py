@@ -1,18 +1,16 @@
 import itertools
 import time
 from collections import Counter, namedtuple
-from typing import Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import Wrapper, spaces
+from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac import replay_buffer
-from sac.agent import AbstractAgent, NetworkOutput
-from sac.networks import MlpAgent
+from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
@@ -225,17 +223,24 @@ class Trainer:
 class HindsightTrainer(Trainer):
     def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
+        self.hindsight_env = env
+        while not isinstance(self.hindsight_env, HindsightWrapper):
+            try:
+                self.hindsight_env = self.hindsight_env.env
+            except AttributeError:
+                raise RuntimeError(f"env {env} must include HindsightWrapper.")
+        assert isinstance(self.hindsight_env, HindsightWrapper)
         assert isinstance(env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        if self.timesteps() > 0:
+        if self.time_steps() > 0:
             self.buffer.append(
                 self.hindsight_env.recompute_trajectory(self._trajectory()))
-        if self.n_goals - 1 and self.timesteps() > 0:
+        if self.n_goals - 1 and self.time_steps() > 0:
             final_indexes = np.random.randint(
-                1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
+                1, self.time_steps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:

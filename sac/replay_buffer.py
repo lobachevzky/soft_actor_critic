@@ -9,7 +9,10 @@ def get_index(value):
     if np.isscalar(value):
         return 1
     if isinstance(value, np.ndarray):
-        return value.shape[0]
+        try:
+            return value.shape[0]
+        except IndexError:
+            return 1
     assert isinstance(value, Iterable)
     indices = set(map(get_index, value))
     if len(indices) == 1:  # all the same

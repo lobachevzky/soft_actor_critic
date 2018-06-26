@@ -171,13 +171,13 @@ class AbstractAgent:
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.network(s).output, 1, name='v'), [-1])
 
-    @ abstractmethod
+    @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:
         pass
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape: Iterable,
-                                  processed_s: tf.Tensor) -> tf.Tensor:
+                                  processed_o: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod

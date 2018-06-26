@@ -133,10 +133,6 @@ class AbstractAgent:
                 self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
                 # ensure that xi and xi_bar are the same at initialization
 
-            config = tf.ConfigProto(allow_soft_placement=True)
-            config.gpu_options.allow_growth = True
-            config.inter_op_parallelism_threads = 1
-            self.sess = sess = tf.Session(config=config)
             sess.run(tf.global_variables_initializer())
 
             # ensure that xi and xi_bar are the same at initialization

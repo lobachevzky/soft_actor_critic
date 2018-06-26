@@ -64,16 +64,17 @@ class AbstractAgent:
                     return self.policy_parameters_to_sample(parameters)
 
             # generate actions:
-            self.A_max_likelihood = tf.stop_gradient(self.get_best_action('pi'))
+            self.A_max_likelihood = tf.stop_gradient(
+                self.policy_parameters_to_max_likelihood_action(parameters))
             self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-                self.sample_pi_network('pi', reuse=True))
+                sample_pi_network('pi', reuse=True))
 
             # constructing V loss
             with tf.control_dependencies([self.A_sampled1]):
                 v1 = self.compute_v1()
                 q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
                                     'Q')
-                log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, 'pi', reuse=True)
+                log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
                 self.V_loss = V_loss = tf.reduce_mean(
                     0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
 

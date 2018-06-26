@@ -2,7 +2,7 @@ import functools
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 
 import gym
 import numpy as np
@@ -58,15 +58,16 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    def vectorize_state(self, state, shape=None):
+    def vectorize_state(self, state, shape : Optional[tuple]=None):
         if isinstance(state, np.ndarray):
             return state
-        size = get_size(state)
 
         # if size not in self.state_vectors:
+        size = get_size(state)
         vector = np.zeros(size)
-        if shape is not None:
-            vector = np.reshape(vector, shape)
+        if shape:
+            vector = vector.reshape(shape)
+
         # self.state_vectors[size] = vector
         # vector = self.state_vectors[size]
         assert isinstance(vector, np.ndarray)
@@ -79,11 +80,7 @@ class HindsightWrapper(gym.Wrapper):
             observation=o2,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        is_success = self._is_success(new_o2.achieved_goal, new_o2.desired_goal)
-        new_t = is_success or t
-        new_r = float(is_success)
-        info['base_reward'] = r
-        return new_o2, new_r, new_t, info
+        return new_o2, r, t, info
 
     def reset(self):
         return Observation(
@@ -106,7 +103,7 @@ class HindsightWrapper(gym.Wrapper):
         trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
 
         first_terminal = np.flatnonzero(trajectory.t)[0]
-        return trajectory[:first_terminal + 1]  # include first terminal
+        return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):
@@ -120,6 +117,10 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         return self.env.unwrapped.state[0] >= self._desired_goal()
 
+    def step(self, action):
+        s, r, t, i = super().step(action)
+        return s, max([0, r]), t, i
+
     def _desired_goal(self):
         return 0.45
 
@@ -129,7 +130,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
 
     def _is_success(self, achieved_goal, desired_goal):
-
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)
 
@@ -146,4 +146,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
-

@@ -10,7 +10,7 @@ import tensorflow as tf
 from gym.wrappers import Monitor
 from gym.wrappers import TimeLimit
 
-from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability

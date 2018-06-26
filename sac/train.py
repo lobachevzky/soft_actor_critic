@@ -1,6 +1,6 @@
 import itertools
 import time
-from collections import Counter
+from collections import Counter, namedtuple
 from typing import Iterable, Optional, Tuple
 
 import gym
@@ -12,14 +12,17 @@ from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac import replay_buffer
 from sac.agent import AbstractAgent
+from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.utils import State, Step
 
+Agents = namedtuple('Agents', 'train act')
+
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, logdir: str, save_path: str,
-                 load_path: str, render: bool, **kwargs):
+    def __init__(self, env: gym.Env, seed: Optional[int],
+                 buffer_size: int, batch_size: int, num_train_steps: int,
+                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -31,8 +34,21 @@ class Trainer:
         self.env = env
         self.buffer = replay_buffer.ReplayBuffer(buffer_size)
         self.save_path = save_path
-        self.agent = agent = self.build_agent(**kwargs)
 
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+        config.inter_op_parallelism_threads = 1
+        sess = tf.Session(config=config)
+
+        self.agent = agent = self.build_agent(
+                sess=sess,
+                base_agent=MlpAgent,
+                batch_size=None,
+                seq_len=None,
+                reuse=False,
+                **kwargs)
+
+        # self.seq_len = self.agents.train.seq_len
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -122,7 +138,7 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
+    def build_agent(self, base_agent: AbstractAgent, batch_size, reuse, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -132,10 +148,15 @@ class Trainer:
             policy_type = GaussianPolicy
 
         class Agent(policy_type, base_agent):
-            def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape=s_shape, a_shape=a_shape, **kwargs)
+            def __init__(self, batch_size, reuse):
+                super(Agent, self).__init__(
+                    batch_size=batch_size,
+                    o_shape=state_shape,
+                    a_shape=action_shape,
+                    reuse=reuse,
+                    **kwargs)
 
-        return Agent(state_shape, action_shape)
+        return Agent(batch_size=batch_size, reuse=reuse)
 
     def reset(self) -> State:
         return self.env.reset()

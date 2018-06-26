@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable, Sequence, List
 
 import numpy as np
 import tensorflow as tf
@@ -12,25 +12,44 @@ def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
         inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
     return inputs
+
 NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 
 class AbstractAgent:
-    def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable,
-                 reward_scale: float, n_layers: int, layer_size: int,
-                 learning_rate: float, grad_clip: float, device_num: int) -> None:
+    def __init__(self,
+                 sess: tf.Session,
+                 batch_size: int,
+                 seq_len: int,
+                 o_shape: Iterable,
+                 a_shape: Sequence,
+                 activation: Callable,
+                 reward_scale: float,
+                 n_layers: int,
+                 layer_size: int,
+                 learning_rate: float,
+                 grad_clip: float,
+                 device_num: int,
+                 reuse=False) -> None:
 
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
+        self._seq_len = seq_len
         self.reward_scale = reward_scale
+        self.initial_state = None
+        self.sess = sess
 
-        with tf.device('/gpu:' + str(device_num)):
-            self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
-            self.S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
-            self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
-            self.R = R = tf.placeholder(tf.float32, [None], name='R')
-            self.T = T = tf.placeholder(tf.float32, [None], name='T')
+        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(
+                'agent', reuse=reuse):
+            seq_dim = [batch_size]
+
+            self.S1 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='S1')
+            self.S2 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='S2')
+            self.A = A = tf.placeholder(
+                tf.float32, [batch_size] + list(a_shape), name='A')
+            self.R = R = tf.placeholder(tf.float32, [batch_size], name='R')
+            self.T = T = tf.placeholder(tf.float32, [batch_size], name='T')
             gamma = 0.99
             tau = 0.01
 
@@ -72,10 +91,10 @@ class AbstractAgent:
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
-            phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
-            theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
-            xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
-            xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+            phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/pi/')
+            theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/Q/')
+            xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/V/')
+            xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/V_bar/')
 
             def train_op(loss, var_list, dependency):
                 with tf.control_dependencies([dependency]):

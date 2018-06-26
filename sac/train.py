@@ -94,10 +94,11 @@ class Trainer:
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
+                    shape = [self.batch_size, -1]
                     step = self.agent.train_step(
                         sample_steps.replace(
-                            s1=self.vectorize_state(sample_steps.o1),
-                            s2=self.vectorize_state(sample_steps.o2),
+                            o1=self.vectorize_state(sample_steps.o1, shape=shape),
+                            o2=self.vectorize_state(sample_steps.o2, shape=shape),
                         ))
                     episode_mean.update(
                         Counter({
@@ -150,7 +151,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: State) -> np.ndarray:
+    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
         """ Preprocess state before feeding to network """
         return state
 
@@ -224,9 +225,9 @@ class HindsightTrainer(TrajectoryTrainer):
         self.add_hindsight_trajectories()
         return super().reset()
 
-    def vectorize_state(self, state: State, batch_dim: Optional[int] = None) -> np.ndarray:
+    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        return self.hindsight_env.vectorize_state(state, batch_dim=batch_dim)
+        return self.hindsight_env.vectorize_state(state, shape=shape)
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):

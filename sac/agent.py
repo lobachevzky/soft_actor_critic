@@ -135,10 +135,10 @@ class AbstractAgent:
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
         if feed_dict is None:
             feed_dict = {
-                self.S1: step.s1,
+                self.S1: step.o1,
                 self.A: step.a,
                 self.R: np.array(step.r) * self.reward_scale,
-                self.S2: step.s2,
+                self.S2: step.o2,
                 self.T: step.t
             }
         return TrainStep(*self.sess.run([getattr(self, attr)

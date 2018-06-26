@@ -58,16 +58,15 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    def vectorize_state(self, state, batch_dim : Optional[int]=None):
+    def vectorize_state(self, state, shape : Optional[tuple]=None):
         if isinstance(state, np.ndarray):
             return state
 
         # if size not in self.state_vectors:
-        import ipdb; ipdb.set_trace()
         size = get_size(state)
         vector = np.zeros(size)
-        if batch_dim:
-            vector = vector.reshape([batch_dim, -1])
+        if shape:
+            vector = vector.reshape(shape)
 
         # self.state_vectors[size] = vector
         # vector = self.state_vectors[size]

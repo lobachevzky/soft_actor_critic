@@ -140,7 +140,6 @@ class AbstractAgent:
 
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
-            self.saver = tf.train.Saver()
 
     @property
     def seq_len(self):
@@ -158,16 +157,15 @@ class AbstractAgent:
         return TrainStep(*self.sess.run([getattr(self, attr)
                                          for attr in TRAIN_VALUES], feed_dict))
 
-    def get_actions(self, o: ArrayLike, _, sample: bool = True) -> NetworkOutput:
+    def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0)
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            s = self.network(s).output
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(sa, 1, name='q'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(sa).output, 1, name='q'), [-1])
 
     def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):

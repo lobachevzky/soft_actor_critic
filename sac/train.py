@@ -73,7 +73,7 @@ class Trainer:
                 print("model saved in path:", saver.save(
                     sess, save_path=_save_path))
             self.episode_count = self.run_episode(
-                s1=self.reset(),
+                o1=self.reset(),
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
@@ -96,23 +96,23 @@ class Trainer:
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
 
-    def run_episode(self, s1, perform_updates, render):
+    def run_episode(self, o1, perform_updates, render):
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count(1):
             a, s = self.agents.act.get_actions(
-                self.vectorize_state(s1), sample=(not self.is_eval_period()))
+                self.vectorize_state(o1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
-            s2, r, t, info = self.step(a)
+            o2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(o1=s1, a=a, r=r, o2=s2, t=t))
+            self.add_to_buffer(Step(o1=o1, a=a, r=r, o2=o2, t=t))
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
@@ -136,7 +136,7 @@ class Trainer:
                                 'pi grad',
                             ]
                         }))
-            s1 = s2
+            o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
             episode_count.update(Counter(reward=r, timesteps=1))
@@ -265,18 +265,18 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
         self.eval = evaluation
         super().__init__(env, n_goals, **kwargs)
 
-    def run_episode(self, s1, perform_updates, render):
+    def run_episode(self, o1, perform_updates, render):
         if not self.is_eval_period():
             return super().run_episode(
-                s1=s1, perform_updates=perform_updates, render=render)
+                o1=o1, perform_updates=perform_updates, render=render)
         env = self.env.unwrapped
         assert isinstance(env, MultiTaskEnv), type(env)
         all_goals = itertools.product(*env.goals)
         for goal in all_goals:
-            s1 = self.reset()
+            o1 = self.reset()
             env.set_goal(goal)
             count = super().run_episode(
-                s1=s1, perform_updates=perform_updates, render=render)
+                o1=o1, perform_updates=perform_updates, render=render)
             for k in count:
                 print(f'{k}: {count[k]}')
         print('Evaluation complete.')

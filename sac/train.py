@@ -106,7 +106,6 @@ class Trainer:
     def time_steps(self):
         return self.episode_count['time_steps']
 
-
     def run_episode(self, o1, perform_updates, render):
         episode_count = Counter()
         episode_mean = Counter()
@@ -123,7 +122,8 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(o1=o1, a=a, r=r, o2=o2, t=t))
+            self.add_to_buffer(Step(s=np.squeeze(s, axis=1),
+                                    o1=o1, a=a, r=r, o2=o2, t=t))
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):

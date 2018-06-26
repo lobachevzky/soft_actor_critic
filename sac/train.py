@@ -44,7 +44,7 @@ class Trainer:
             act=self.build_agent(
                 sess=sess,
                 base_agent=base_agent,
-                batch_size=None,
+                batch_size=1,
                 seq_len=1,
                 reuse=False,
                 **kwargs),
@@ -55,7 +55,7 @@ class Trainer:
                 seq_len=seq_len,
                 reuse=True,
                 **kwargs))
-        self.seq_len = self.agents.act.seq_len
+        self.seq_len = self.agents.train.seq_len
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -118,7 +118,7 @@ class Trainer:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     shape = [self.batch_size, -1]
-                    step = self.agents.act.train_step(
+                    step = self.agents.train.train_step(
                         sample_steps.replace(
                             o1=self.vectorize_state(sample_steps.o1, shape=shape),
                             o2=self.vectorize_state(sample_steps.o2, shape=shape),

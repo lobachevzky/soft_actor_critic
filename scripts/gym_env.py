@@ -3,6 +3,7 @@ import gym
 import tensorflow as tf
 
 from sac.agent import AbstractAgent
+from sac.networks import MlpAgent
 from sac.train import Trainer
 
 

@@ -45,7 +45,7 @@ def xnor(check: Callable, *vals: X):
     return all(map(check, vals)) or not any(map(check, vals))
 
 
-def zip_op(op: Callable[[X, X], None], x: X, y: X):
+def zip_op(op: Callable[[X, X], list], x: X, y: X):
     assert xnor(np.isscalar, [x, y])
     assert xnor(lambda z: isinstance(z, np.ndarray), [x, y])
     if isinstance(x, np.ndarray) or np.isscalar(x):
@@ -57,27 +57,33 @@ def zip_op(op: Callable[[X, X], None], x: X, y: X):
 class ArrayGroup:
     @staticmethod
     def shape_like(x: X, pre_shape: tuple):
-        return ArrayGroup(allocate(pre_shape=pre_shape, shapes=(get_shapes(x))))
+        return ArrayGroup(allocate(pre_shape=pre_shape, shapes=get_shapes(x)))
 
     def __init__(self, values):
-        self.arrays = values
+        self.values = values
 
     def __iter__(self):
-        return iter(self.arrays)
+        return iter(self.values)
 
     def __getitem__(self, key: Key):
-        return ArrayGroup(getitem(self.arrays, key=key))
+        return ArrayGroup(getitem(self.values, key=key))
 
     def __setitem__(self, key: Key, value):
-        setitem(self.arrays, key=key, x=value)
-
-    def zip_op(self, op: Callable[[None], None], other):
-        assert isinstance(other, ArrayGroup)
-        return zip_op(op, self.arrays, other.arrays)
+        if isinstance(value, ArrayGroup):
+            value = value.values
+        setitem(self.values, key=key, x=value)
 
     def __or__(self, other):
         return self.zip_op(operator.or_, other)
 
+    def __eq__(self, other):
+        return self.zip_op(operator.eq, other)
+
+    def zip_op(self, op, other):
+        assert callable(op)
+        assert isinstance(other, ArrayGroup)
+        return ArrayGroup(zip_op(op, self.values, other.arrays))
+
     @property
     def shape(self):
-        return get_shapes(self.arrays)
+        return get_shapes(self.values)

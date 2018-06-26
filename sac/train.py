@@ -1,16 +1,18 @@
 import itertools
 import time
 from collections import Counter, namedtuple
-from typing import Optional, Tuple
+from typing import Iterable, Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import spaces
+from gym import Wrapper, spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac.agent import AbstractAgent
+from sac import replay_buffer
+from sac.agent import AbstractAgent, NetworkOutput
+from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
@@ -185,10 +187,8 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: State, shape=None) -> np.ndarray:
-        """ Preprocess state before feeding to network
-        :param shape:
-        """
+    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
+        """ Preprocess state before feeding to network """
         return state
 
     def add_to_buffer(self, step: Step) -> None:
@@ -229,28 +229,27 @@ class HindsightTrainer(Trainer):
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
-        assert isinstance(self.env, HindsightWrapper)
-        if self.time_steps() > 0:
+        assert isinstance(self.hindsight_env, HindsightWrapper)
+        if self.timesteps() > 0:
             self.buffer.append(
-                self.env.recompute_trajectory(self._trajectory()), n=self.time_steps())
-            if self.n_goals - 1 > 0:
-                final_indexes = np.random.randint(
-                    1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
-                assert isinstance(final_indexes, np.ndarray)
+                self.hindsight_env.recompute_trajectory(self._trajectory()))
+        if self.n_goals - 1 and self.timesteps() > 0:
+            final_indexes = np.random.randint(
+                1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
+            assert isinstance(final_indexes, np.ndarray)
 
-                for final_index in self.buffer[final_indexes]:
-                    self.buffer.append(
-                        self.env.recompute_trajectory(self._trajectory(final_index)),
-                        n=self.time_steps())
+            for final_index in final_indexes:
+                self.buffer.append(
+                    self.hindsight_env.recompute_trajectory(
+                        self._trajectory()[:final_index]))
 
     def reset(self) -> State:
-        if not self.buffer.empty:
-            self.add_hindsight_trajectories()
+        self.add_hindsight_trajectories()
         return super().reset()
 
-    def vectorize_state(self, state: State, shape=None) -> np.ndarray:
-        assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize_state(state, shape=shape)
+    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
+        assert isinstance(self.hindsight_env, HindsightWrapper)
+        return self.hindsight_env.vectorize_state(state, shape=shape)
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):

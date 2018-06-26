@@ -157,14 +157,9 @@ class AbstractAgent:
         return TrainStep(*self.sess.run([getattr(self, attr)
                                          for attr in TRAIN_VALUES], feed_dict))
 
-    def get_actions(self, o1: ArrayLike, sample: bool = True) -> np.ndarray:
-        if np.ndim(o1) == 1:
-            o1 = [o1]
-        if sample:
-            actions = self.sess.run(self.A_sampled1, feed_dict={self.O1: o1})
-        else:
-            actions = self.sess.run(self.A_max_likelihood, feed_dict={self.O1: o1})
-        return actions[0]
+    def get_actions(self, o: ArrayLike, sample: bool = True) -> tf.Tensor:
+        A = self.A_sampled1 if sample else self.A_max_likelihood
+        return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0).output
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:

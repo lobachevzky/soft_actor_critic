@@ -31,7 +31,7 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
         batch_size, num_train_steps, logdir, save_path, load_path, render):
     Trainer(
         env=gym.make(env),
-        base_agent=AbstractAgent,
+        base_agent=MlpAgent,
         device_num=1,
         seed=seed,
         buffer_size=buffer_size,

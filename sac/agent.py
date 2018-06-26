@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections import namedtuple
 from typing import Callable, Iterable, Sequence
 
 import numpy as np
@@ -11,6 +12,7 @@ def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
         inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
     return inputs
+NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 
 class AbstractAgent:

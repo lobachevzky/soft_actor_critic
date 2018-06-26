@@ -6,10 +6,10 @@ from typing import Iterable, Optional, Tuple
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import spaces, Wrapper
+from gym import Wrapper, spaces
 
-from environments.multi_task import MultiTaskEnv
 from environments.hindsight_wrapper import HindsightWrapper
+from environments.multi_task import MultiTaskEnv
 from sac import replay_buffer
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -211,9 +211,11 @@ class HindsightTrainer(TrajectoryTrainer):
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
         if self.timesteps() > 0:
-            self.buffer.append(self.hindsight_env.recompute_trajectory(self._trajectory()))
+            self.buffer.append(
+                self.hindsight_env.recompute_trajectory(self._trajectory()))
         if self.n_goals - 1 and self.timesteps() > 0:
-            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
+            final_indexes = np.random.randint(
+                1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:

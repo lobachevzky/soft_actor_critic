@@ -1,6 +1,5 @@
 import random
-from collections import namedtuple, Iterable
-from pathlib import Path
+from collections import Iterable, namedtuple
 
 import numpy as np
 from gym import spaces
@@ -78,7 +77,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -119,12 +118,10 @@ class PickAndPlaceEnv(MujocoEnv):
             qvel = self.sim.qvel
 
         elif self._obs_type == 'robot-qvel':
-            qvel = get_qvels(['slide_x', 'slide_y',
-                              'arm_lift_joint',
-                              'arm_flex_joint',
-                              'wrist_roll_joint',
-                              'hand_l_proximal_joint',
-                              'hand_r_proximal_joint'])
+            qvel = get_qvels([
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
+            ])
         elif self._obs_type == 'base-qvel':
             qvel = get_qvels(['slide_x', 'slide_x'])
         else:
@@ -172,7 +169,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-            ]
+        ]
         # necessary because np.insert can't append multiple values to end:
         mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
         action = np.insert(action, mirroring_index, action[mirrored_index])

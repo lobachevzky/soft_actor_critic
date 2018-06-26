@@ -7,8 +7,7 @@ from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
-from gym.wrappers import Monitor
-from gym.wrappers import TimeLimit
+from gym.wrappers import Monitor, TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
@@ -22,8 +21,7 @@ def put_in_xml_setter(ctx, param, value: str):
                  for p, v in setters if '_l_' in p] \
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
                    for p, v in setters if '_r_' in p]
-    return [s._replace(path=PurePath(s.path))
-            for s in setters + mirroring]
+    return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
 
 
 @click.command()
@@ -54,36 +52,41 @@ def put_in_xml_setter(ctx, param, value: str):
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True, default=['slide_x',
-                                                   'slide_y',
-                                                   'arm_lift_joint',
-                                                   'arm_flex_joint',
-                                                   'wrist_roll_joint',
-                                                   'hand_l_proximal_joint',
-                                                   'hand_r_proximal_joint'])
-def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
-        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+    ])
+def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
+        activation, n_layers, layer_size, learning_rate, reward_scale, cheat_prob,
+        grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
+        load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
         obs_type):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
-    with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models',
+                        xml_file).absolute()
+    with mutate_xml(
+            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
-                env=PickAndPlaceEnv(cheat_prob=cheat_prob,
-                                    steps_per_action=steps_per_action,
-                                    fixed_block=fixed_block,
-                                    min_lift_height=min_lift_height,
-                                    geofence=geofence,
-                                    render_freq=render_freq,
-                                    xml_filepath=temp_path,
-                                    obs_type=obs_type,
-                                    )))
+                env=PickAndPlaceEnv(
+                    cheat_prob=cheat_prob,
+                    steps_per_action=steps_per_action,
+                    fixed_block=fixed_block,
+                    min_lift_height=min_lift_height,
+                    geofence=geofence,
+                    render_freq=render_freq,
+                    xml_filepath=temp_path,
+                    obs_type=obs_type,
+                )))
         if record_dir:
-            env = Monitor(env=env,
-                          directory=str(record_dir),
-                          force=True, )
+            env = Monitor(
+                env=env,
+                directory=str(record_dir),
+                force=True,
+            )
         HindsightTrainer(
             env=env,
             seed=seed,
@@ -143,11 +146,14 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
         return tree
 
-    included_files = [rel_to_abs(e.get('file')) for e in
-                      ET.parse(xml_filepath).findall('*/include')]
+    included_files = [
+        rel_to_abs(e.get('file')) for e in ET.parse(xml_filepath).findall('*/include')
+    ]
 
-    temp = {path: tempfile.NamedTemporaryFile()
-            for path in (included_files + [xml_filepath])}
+    temp = {
+        path: tempfile.NamedTemporaryFile()
+        for path in (included_files + [xml_filepath])
+    }
     try:
         for path, f in temp.items():
             tree = ET.parse(path)

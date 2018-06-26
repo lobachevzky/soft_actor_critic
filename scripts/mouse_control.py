@@ -1,17 +1,15 @@
 #! /usr/bin/env python3
 """Agent that executes random actions"""
 # import gym
-import pickle
 from pathlib import Path
 
 import numpy as np
 from click._unicodefun import click
-
-from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
-from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
+
+from environments.mujoco import print1
+from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.pick_and_place import PickAndPlaceEnv
 from sac.utils import Step
 
 saved_pos = None

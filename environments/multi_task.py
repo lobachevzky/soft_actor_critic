@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 from gym import spaces
 from mujoco import ObjType
@@ -33,15 +31,14 @@ class MultiTaskEnv(PickAndPlaceEnv):
 
     def reset_qpos(self):
         if self.randomize_pose:
-            for joint in ['slide_x',
-                          'slide_y',
-                          'arm_lift_joint',
-                          'arm_flex_joint',
-                          'wrist_roll_joint',
-                          'hand_l_proximal_joint']:
+            for joint in [
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
+            ]:
                 qpos_idx = self.sim.jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                self.init_qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
+                self.init_qpos[qpos_idx] = np.random.uniform(
+                    *self.sim.jnt_range[jnt_range_idx])
 
         r = self.sim.jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.jnt_qposadr('hand_l_proximal_joint')

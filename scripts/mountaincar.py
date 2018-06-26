@@ -24,7 +24,8 @@ from sac.train import HindsightTrainer
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, grad_clip, batch_size, num_train_steps, logdir, save_path, load_path, render, n_goals):
+        reward_scale, grad_clip, batch_size, num_train_steps, logdir, save_path,
+        load_path, render, n_goals):
 
     HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),

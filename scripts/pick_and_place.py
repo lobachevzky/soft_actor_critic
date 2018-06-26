@@ -15,62 +15,6 @@ from environments.pick_and_place import PickAndPlaceEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
-XMLSetter = namedtuple('XMLSetter', 'path value')
-
-
-@contextmanager
-def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
-    def rel_to_abs(path: Path):
-        return Path(xml_filepath.parent, path)
-
-    def mutate_tree(tree: ET.ElementTree):
-        for change in changes:
-            element_to_change = tree.find(str(change.path.parent))
-            if isinstance(element_to_change, ET.Element):
-                print('setting', change.path, 'to', change.value)
-                element_to_change.set(change.path.name, change.value)
-
-        for actuators in tree.iter('actuator'):
-            for actuator in list(actuators):
-                if actuator.get('joint') not in dofs:
-                    print('removing', actuator.get('name'))
-                    actuators.remove(actuator)
-        for body in tree.iter('body'):
-            for joint in body.findall('joint'):
-                if not joint.get('name') in dofs:
-                    print('removing', joint.get('name'))
-                    body.remove(joint)
-
-        parent = Path(temp[xml_filepath].name).parent
-
-        for include_elt in tree.findall('*/include'):
-            original_abs_path = rel_to_abs(include_elt.get('file'))
-            tmp_abs_path = Path(temp[original_abs_path].name)
-            include_elt.set('file', str(tmp_abs_path.relative_to(parent)))
-
-        for compiler in tree.findall('compiler'):
-            abs_path = rel_to_abs(compiler.get('meshdir'))
-            compiler.set('meshdir', str(abs_path))
-
-        return tree
-
-    included_files = [rel_to_abs(e.get('file')) for e in
-                      ET.parse(xml_filepath).findall('*/include')]
-
-    temp = {path: tempfile.NamedTemporaryFile()
-            for path in (included_files + [xml_filepath])}
-    try:
-        for path, f in temp.items():
-            tree = ET.parse(path)
-            mutate_tree(tree)
-            tree.write(f)
-            f.flush()
-
-        yield Path(temp[xml_filepath].name)
-    finally:
-        for f in temp.values():
-            f.close()
-
 
 def put_in_xml_setter(ctx, param, value: str):
     setters = [XMLSetter(*v.split(',')) for v in value]
@@ -145,7 +89,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         if record_dir:
             env = Monitor(env=env,
                           directory=str(record_dir),
-                          force=True,)
+                          force=True, )
         HindsightTrainer(
             env=env,
             seed=seed,
@@ -164,6 +108,63 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
             save_path=save_path,
             load_path=load_path,
             render=False)  # because render is handled inside env
+
+
+XMLSetter = namedtuple('XMLSetter', 'path value')
+
+
+@contextmanager
+def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
+    def rel_to_abs(path: Path):
+        return Path(xml_filepath.parent, path)
+
+    def mutate_tree(tree: ET.ElementTree):
+        for change in changes:
+            element_to_change = tree.find(str(change.path.parent))
+            if isinstance(element_to_change, ET.Element):
+                print('setting', change.path, 'to', change.value)
+                element_to_change.set(change.path.name, change.value)
+
+        for actuators in tree.iter('actuator'):
+            for actuator in list(actuators):
+                if actuator.get('joint') not in dofs:
+                    print('removing', actuator.get('name'))
+                    actuators.remove(actuator)
+        for body in tree.iter('body'):
+            for joint in body.findall('joint'):
+                if not joint.get('name') in dofs:
+                    print('removing', joint.get('name'))
+                    body.remove(joint)
+
+        parent = Path(temp[xml_filepath].name).parent
+
+        for include_elt in tree.findall('*/include'):
+            original_abs_path = rel_to_abs(include_elt.get('file'))
+            tmp_abs_path = Path(temp[original_abs_path].name)
+            include_elt.set('file', str(tmp_abs_path.relative_to(parent)))
+
+        for compiler in tree.findall('compiler'):
+            abs_path = rel_to_abs(compiler.get('meshdir'))
+            compiler.set('meshdir', str(abs_path))
+
+        return tree
+
+    included_files = [rel_to_abs(e.get('file')) for e in
+                      ET.parse(xml_filepath).findall('*/include')]
+
+    temp = {path: tempfile.NamedTemporaryFile()
+            for path in (included_files + [xml_filepath])}
+    try:
+        for path, f in temp.items():
+            tree = ET.parse(path)
+            mutate_tree(tree)
+            tree.write(f)
+            f.flush()
+
+        yield Path(temp[xml_filepath].name)
+    finally:
+        for f in temp.values():
+            f.close()
 
 
 if __name__ == '__main__':

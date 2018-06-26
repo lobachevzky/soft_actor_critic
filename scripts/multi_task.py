@@ -37,31 +37,34 @@ from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_range)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True, default=['slide_x',
-                                                   'slide_y',
-                                                   'arm_lift_joint',
-                                                   'arm_flex_joint',
-                                                   'wrist_roll_joint',
-                                                   'hand_l_proximal_joint',
-                                                   'hand_r_proximal_joint'])
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+    ])
 def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
         n_goals, eval, set_xml, use_dof, block_xrange, block_yrange, obs_type):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
-    with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+    xml_filepath = Path(
+        Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
+    with mutate_xml(
+            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
-                env=MultiTaskEnv(steps_per_action=steps_per_action,
-                                 min_lift_height=min_lift_height,
-                                 obs_type=obs_type,
-                                 geofence=geofence,
-                                 render_freq=render_freq,
-                                 xml_filepath=temp_path,
-                                 block_xrange=block_xrange,
-                                 block_yrange=block_yrange,
-                                 )))
+                env=MultiTaskEnv(
+                    steps_per_action=steps_per_action,
+                    min_lift_height=min_lift_height,
+                    obs_type=obs_type,
+                    geofence=geofence,
+                    render_freq=render_freq,
+                    xml_filepath=temp_path,
+                    block_xrange=block_xrange,
+                    block_yrange=block_yrange,
+                )))
     MultiTaskHindsightTrainer(
         env=env,
         seed=seed,

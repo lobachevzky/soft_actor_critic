@@ -194,13 +194,6 @@ class Trainer:
         return Step(*self.buffer.sample(self.batch_size))
 
 
-class TrajectoryTrainer(Trainer):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def add_to_buffer(self, step: Step):
-        super().add_to_buffer(step)
-
     def trajectory(self) -> Iterable:
         return self.buffer[-self.episode_count['timesteps']:]
 
@@ -212,19 +205,11 @@ class TrajectoryTrainer(Trainer):
                 final_index -= self.timesteps()
             return Step(*self.buffer[-self.timesteps():final_index])
 
-    def reset(self) -> State:
-        return super().reset()
-
     def timesteps(self):
         return self.episode_count['timesteps']
 
-    def _old_trajectory(self) -> Iterable:
-        if self.timesteps():
-            return self.buffer[-self.timesteps():]
-        return ()
 
-
-class HindsightTrainer(TrajectoryTrainer):
+class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
         self.hindsight_env = env

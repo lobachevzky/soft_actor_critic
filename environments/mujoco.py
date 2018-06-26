@@ -140,7 +140,7 @@ def at_goal(pos, goal, geofence, verbose=False):
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \
-           or np.any(pos < world_lower_bound)
+        or np.any(pos < world_lower_bound)
 
 
 def get_limits(pos, size):

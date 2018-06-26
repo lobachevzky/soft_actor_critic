@@ -48,7 +48,8 @@ class ReplayBuffer:
         return (key + self.pos) % self.maxlen
 
     def sample(self, batch_size: int, seq_len=None):
-        indices = np.random.randint(-len(self), 0, size=batch_size)  # type: np.ndarray
+        # type: np.ndarray
+        indices = np.random.randint(-len(self), 0, size=batch_size)
         if seq_len is not None:
             indices = np.array([np.arange(i, i + seq_len) for i in indices])
         assert isinstance(indices, np.ndarray)

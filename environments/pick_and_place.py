@@ -143,7 +143,7 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def goal(self):
         goal_pos = self._initial_block_pos + \
-                   np.array([0, 0, self._min_lift_height])
+            np.array([0, 0, self._min_lift_height])
         return Goal(gripper=goal_pos, block=goal_pos)
 
     def goal_3d(self):

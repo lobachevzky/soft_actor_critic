@@ -37,6 +37,8 @@ class LstmAgent(AbstractAgent):
         return 8
 
     def __init__(self, batch_size: int, layer_size: int, device_num: int, **kwargs):
+        self.batch_size = batch_size
+        self.layer_size = layer_size
         with tf.device('/gpu:' + str(device_num)):
             state_args = tf.float32, [batch_size, layer_size]
             self.S = LSTMStateTuple(
@@ -50,8 +52,6 @@ class LstmAgent(AbstractAgent):
         assert self.S.c.shape == self.S.h.shape == (batch_size, layer_size)
 
     def network(self, inputs: tf.Tensor, reuse=False) -> tf.Tensor:
-        # inputs = tf.layers.dense(inputs, self.layer_size)  # TODO: this should be unnecessary
-        # inputs = tf.reshape(inputs, [-1, self.seq_len, self.layer_size])
         split_inputs = tf.split(inputs, self.seq_len, axis=1)
         s = self.S
         for x in split_inputs:
@@ -77,10 +77,17 @@ class LstmAgent(AbstractAgent):
             }
         return super().train_step(step, feed_dict)
 
-    def get_actions(self, o: ArrayLike, s: ArrayLike, sample: bool = True) -> \
-            Tuple[np.ndarray, LSTMStateTuple]:
+    def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str, reuse: bool = None) \
+            -> tf.Tensor:
+        with tf.variable_scope(name, reuse=reuse):
+            o = self.network(o).output
+            oa = tf.concat([o, a], axis=1)
+            return tf.reshape(tf.layers.dense(oa, 1, name='q'), [-1])
+
+    def get_actions(self, o: ArrayLike, sample: bool = True, state=None) \
+            -> Tuple[np.ndarray, LSTMStateTuple]:
         assert len(np.shape(o)) == 1
-        assert np.shape(s) == np.shape(self.initial_state)
-        feed_dict = {**{self.O1: [[o]]}, **self.state_feed(s)}
+        assert np.shape(state) == np.shape(self.initial_state)
+        feed_dict = {**{self.O1: [[o]]}, **self.state_feed(state)}
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return self.sess.run([A[0], self.S_new], feed_dict)

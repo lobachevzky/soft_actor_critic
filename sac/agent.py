@@ -166,27 +166,21 @@ class AbstractAgent:
             actions = self.sess.run(self.A_max_likelihood, feed_dict={self.O1: o1})
         return actions[0]
 
-    def mlp(self, inputs: tf.Tensor) -> tf.Tensor:
-        return self.network(inputs).output
-    
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(self.mlp(sa), 1, name='q'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(sa).output, 1, name='q'), [-1])
 
     def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(s).output, 1, name='v'), [-1])
 
     def compute_v1(self) -> tf.Tensor:
         return self.v_network(self.O1, 'V')
 
     def compute_v2(self) -> tf.Tensor:
         return self.v_network(self.O2, 'V_bar')
-
-    def input_processing(self, s: tf.Tensor) -> tf.Tensor:
-        return self.mlp(s)
 
     @ abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

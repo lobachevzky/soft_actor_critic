@@ -106,6 +106,9 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
+    def step(self, action):
+        s2, r, t, info = super().step(action)
+        return s2, max([0, r]), t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]

@@ -77,7 +77,7 @@ class Trainer:
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
-            episode_timesteps = self.episode_count['timesteps']
+            episode_timesteps = self.episode_count['time_steps']
             count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
@@ -125,21 +125,21 @@ class Trainer:
                         ))
                     episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
-                        }))
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, timesteps=1))
+            episode_count.update(Counter(reward=r, time_steps=1))
             if t:
                 for k in episode_mean:
                     episode_count[k] = episode_mean[k] / float(time_steps)
@@ -193,20 +193,19 @@ class Trainer:
     def sample_buffer(self) -> Step:
         return Step(*self.buffer.sample(self.batch_size))
 
-
     def trajectory(self) -> Iterable:
-        return self.buffer[-self.episode_count['timesteps']:]
+        return self.buffer[-self.episode_count['time_steps']:]
 
     def _trajectory(self, final_index=None) -> Optional[Step]:
-        if self.timesteps():
+        if self.time_steps():
             if final_index is None:
                 final_index = 0  # points to current time step
             else:
-                final_index -= self.timesteps()
-            return Step(*self.buffer[-self.timesteps():final_index])
+                final_index -= self.time_steps()
+            return Step(*self.buffer[-self.time_steps():final_index])
 
-    def timesteps(self):
-        return self.episode_count['timesteps']
+    def time_steps(self):
+        return self.episode_count['time_steps']
 
 
 class HindsightTrainer(Trainer):
@@ -223,12 +222,12 @@ class HindsightTrainer(Trainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        if self.timesteps() > 0:
+        if self.time_steps() > 0:
             self.buffer.append(
                 self.hindsight_env.recompute_trajectory(self._trajectory()))
-        if self.n_goals - 1 and self.timesteps() > 0:
+        if self.n_goals - 1 and self.time_steps() > 0:
             final_indexes = np.random.randint(
-                1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
+                1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:

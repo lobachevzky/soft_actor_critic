@@ -11,7 +11,7 @@ from gym import Wrapper, spaces
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac import replay_buffer
-from sac.agent import AbstractAgent
+from sac.agent import AbstractAgent, NetworkOutput
 from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.utils import State, Step
@@ -94,7 +94,7 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count(1):
-            a = self.agent.get_actions(
+            a, s = self.agent.get_actions(
                 self.vectorize_state(s1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()

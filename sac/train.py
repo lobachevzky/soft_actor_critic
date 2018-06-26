@@ -1,27 +1,27 @@
 import itertools
 import time
-from collections import Counter, namedtuple
-from typing import Iterable, Optional, Tuple
+from collections import Counter, namedtuple, Iterable
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import Wrapper, spaces
+from gym import Wrapper
+from gym import spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac import replay_buffer
-from sac.agent import AbstractAgent, NetworkOutput
-from sac.networks import MlpAgent
+from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
+from sac.replay_buffer import ReplayBuffer
 from sac.utils import State, Step
 
 Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int],
-                 buffer_size: int, batch_size: int, num_train_steps: int,
+    def __init__(self, base_agent: AbstractAgent, env: gym.Env, seed: Optional[int],
+                 buffer_size: int, batch_size: int, seq_len: int, num_train_steps: int,
                  logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
@@ -32,7 +32,7 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = replay_buffer.ReplayBuffer(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
 
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -40,22 +40,29 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        self.agent = agent = self.build_agent(
+        self.agents = Agents(
+            act=self.build_agent(
                 sess=sess,
-                base_agent=MlpAgent,
+                base_agent=base_agent,
                 batch_size=None,
-                seq_len=None,
+                seq_len=1,
                 reuse=False,
-                **kwargs)
-
-        # self.seq_len = self.agents.train.seq_len
+                **kwargs),
+            train=self.build_agent(
+                sess=sess,
+                base_agent=base_agent,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                **kwargs))
+        self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
-            saver.restore(agent.sess, load_path)
+            saver.restore(sess, load_path)
             print("Model restored from", load_path)
         if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
@@ -64,7 +71,7 @@ class Trainer:
             if save_path and episodes % 25 == 1:
                 _save_path = save_path.replace('<episode>', str(episodes))
                 print("model saved in path:", saver.save(
-                    agent.sess, save_path=_save_path))
+                    sess, save_path=_save_path))
             self.episode_count = self.run_episode(
                 s1=self.reset(),
                 render=render,
@@ -94,7 +101,7 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count(1):
-            a, s = self.agent.get_actions(
+            a, s = self.agents.act.get_actions(
                 self.vectorize_state(s1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
@@ -111,7 +118,7 @@ class Trainer:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     shape = [self.batch_size, -1]
-                    step = self.agent.train_step(
+                    step = self.agents.act.train_step(
                         sample_steps.replace(
                             o1=self.vectorize_state(sample_steps.o1, shape=shape),
                             o2=self.vectorize_state(sample_steps.o2, shape=shape),

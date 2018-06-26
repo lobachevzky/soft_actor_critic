@@ -11,6 +11,7 @@ from gym.wrappers import Monitor, TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
+from sac.networks import LstmAgent, MlpAgent
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
@@ -34,6 +35,9 @@ def parse_range(ctx, param, string):
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
+@click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
+@click.option('--lstm', 'agent', flag_value=LstmAgent)
+@click.option('--seq-len', default=8, type=int)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=2e-4, type=float)
@@ -60,21 +64,22 @@ def parse_range(ctx, param, string):
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True, default=['slide_x',
-                                                   'slide_y',
-                                                   'arm_lift_joint',
-                                                   'arm_flex_joint',
-                                                   'wrist_roll_joint',
-                                                   'hand_l_proximal_joint',
-                                                   'hand_r_proximal_joint'])
-def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
-        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
-         obs_type, block_xrange, block_yrange):
-    print('Obs type:', obs_type)
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
-    with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+    ])
+def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
+        activation, seq_len, n_layers, layer_size, learning_rate, reward_scale, cheat_prob,
+        grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
+        load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
+        obs_type, agent, block_xrange, block_yrange):
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models',
+                        xml_file).absolute()
+    with mutate_xml(
+            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
@@ -95,6 +100,8 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
                           force=True, )
         HindsightTrainer(
             env=env,
+            seq_len=seq_len,
+            base_agent=agent,
             seed=seed,
             device_num=device_num,
             n_goals=n_goals,

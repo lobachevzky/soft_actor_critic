@@ -2,7 +2,7 @@ import click
 import gym
 import tensorflow as tf
 
-from sac.agent import AbstractAgent
+from sac.networks import MlpAgent
 from sac.train import Trainer
 
 
@@ -30,6 +30,8 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
         batch_size, num_train_steps, logdir, save_path, load_path, render):
     Trainer(
         env=gym.make(env),
+        base_agent=MlpAgent,
+        seq_len=0,
         device_num=1,
         seed=seed,
         buffer_size=buffer_size,

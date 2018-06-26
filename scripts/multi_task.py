@@ -24,7 +24,7 @@ from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.1, type=float)
+@click.option('--geofence', default=.01, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)

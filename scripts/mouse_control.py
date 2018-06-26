@@ -7,9 +7,9 @@ import numpy as np
 from click._unicodefun import click
 from mujoco import ObjType
 
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
-from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environments.pick_and_place import PickAndPlaceEnv
+from environments.multi_task import MultiTaskEnv
 from sac.utils import Step
 
 saved_pos = None
@@ -27,7 +27,6 @@ def cli(discrete, xml_file):
     env = PickAndPlaceHindsightWrapper(
         PickAndPlaceEnv(
             # fixed_block=False,
-            isolate_movements=False,
             steps_per_action=200,
             geofence=.1,
             min_lift_height=.02,

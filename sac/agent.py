@@ -141,6 +141,10 @@ class AbstractAgent:
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
 
+    @property
+    def seq_len(self):
+        return self._seq_len
+
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
         if feed_dict is None:
             feed_dict = {

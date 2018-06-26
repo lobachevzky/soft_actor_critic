@@ -62,14 +62,11 @@ class HindsightWrapper(gym.Wrapper):
         if isinstance(state, np.ndarray):
             return state
 
-        # if size not in self.state_vectors:
         size = get_size(state)
         vector = np.zeros(size)
         if shape:
             vector = vector.reshape(shape)
 
-        # self.state_vectors[size] = vector
-        # vector = self.state_vectors[size]
         assert isinstance(vector, np.ndarray)
         assign_to_vector(x=state, vector=vector)
         return vector

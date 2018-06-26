@@ -4,9 +4,9 @@ from pathlib import Path
 
 import numpy as np
 from gym import spaces
+from mujoco import ObjType
 
 from environments.mujoco import MujocoEnv, at_goal
-from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -56,7 +56,8 @@ class PickAndPlaceEnv(MujocoEnv):
                      Path(__file__).parent, 'models', 'pick-and-place', 'world.xml'),
                  render_freq=0):
         if discrete:
-            xml_filepath =  Path(__file__).parent, 'models', 'pick-and-place', 'discrete.xml'
+            xml_filepath = Path(
+                __file__).parent, 'models', 'pick-and-place', 'discrete.xml'
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
@@ -80,7 +81,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
         if discrete:
             self.action_space = spaces.Discrete(7)
         else:
@@ -151,7 +152,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 action -= 1
                 joint = action // 2
                 assert 0 <= joint <= 2
-                direction = (-1) ** (action % 2)
+                direction = (-1)**(action % 2)
                 joint_scale = [.2, .05, .5]
                 a[2] = self.grip
                 a[joint] = direction * joint_scale[joint]
@@ -165,7 +166,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-            ]
+        ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:
             action[mirroring_index] = action[mirrored_index]

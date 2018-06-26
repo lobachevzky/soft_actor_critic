@@ -1,11 +1,11 @@
 #! /usr/bin/env python
 
-import tensorflow as tf
-from collections import deque
-from pathlib import Path
-import sys
 import argparse
 from itertools import islice
+from pathlib import Path
+
+import tensorflow as tf
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -20,13 +20,14 @@ def main():
         events = islice(iterator, max(length - n_reward, 0), length)
 
         def get_reward(event):
-            return next((v.simple_value for v in event.summary.value
-                         if v.tag == 'reward'), None)
+            return next(
+                (v.simple_value for v in event.summary.value if v.tag == 'reward'), None)
 
         rewards = (get_reward(e) for e in events)
         rewards = [r for r in rewards if r is not None]
         with Path(path.parent, 'reward').open('w') as f:
             f.write(str(sum(rewards) / float(len(rewards))))
+
 
 if __name__ == '__main__':
     main()

@@ -1,8 +1,7 @@
-import functools
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
-from typing import Iterable, List, Optional
+from typing import Optional
 
 import gym
 import numpy as np
@@ -58,7 +57,7 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    def vectorize_state(self, state, shape : Optional[tuple]=None):
+    def vectorize_state(self, state, shape: Optional[tuple] = None):
         if isinstance(state, np.ndarray):
             return state
 
@@ -133,8 +132,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         geofence = self.env.unwrapped.geofence
         block_distance = distance_between(achieved_goal.block, desired_goal.block)
         goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
-        return np.logical_and(block_distance < geofence,
-                              goal_distance < geofence)
+        return np.logical_and(block_distance < geofence, goal_distance < geofence)
 
     def _achieved_goal(self):
         return Goal(

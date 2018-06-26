@@ -2,9 +2,8 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
-import numpy as np
-
 import mujoco
+import numpy as np
 
 
 class MujocoEnv:

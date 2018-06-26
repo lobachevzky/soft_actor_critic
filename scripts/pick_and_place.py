@@ -43,7 +43,9 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, seq_len, num_train_steps, steps_per_action,
         logdir, save_path, load_path, render_freq, n_goals, xml_file, agent):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
+    xml_filepath = Path(
+        Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place',
+        xml_file)
 
     HindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
@@ -75,7 +77,8 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=False,)  # because render is handled inside env
+        render=False,
+    )  # because render is handled inside env
 
 
 if __name__ == '__main__':

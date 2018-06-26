@@ -1,7 +1,6 @@
-from collections import namedtuple
 import operator
 from numbers import Number
-from typing import Union, Iterable, Callable, Any
+from typing import Callable, Iterable, Union
 
 import numpy as np
 
@@ -15,8 +14,7 @@ def getitem(array_group, key: np.ndarray):
     return [getitem(a, key) for a in array_group]
 
 
-def setitem(array_group: Union[list, np.ndarray],
-            key: Key, x: X):
+def setitem(array_group: Union[list, np.ndarray], key: Key, x: X):
     if isinstance(array_group, np.ndarray):
         array_group[key] = x
     else:
@@ -59,8 +57,7 @@ def zip_op(op: Callable[[X, X], None], x: X, y: X):
 class ArrayGroup:
     @staticmethod
     def shape_like(x: X, pre_shape: tuple):
-        return ArrayGroup(allocate(pre_shape=pre_shape,
-                                   shapes=(get_shapes(x))))
+        return ArrayGroup(allocate(pre_shape=pre_shape, shapes=(get_shapes(x))))
 
     def __init__(self, values):
         self.arrays = values
@@ -80,7 +77,7 @@ class ArrayGroup:
 
     def __or__(self, other):
         return self.zip_op(operator.or_, other)
-    
+
     @property
     def shape(self):
         return get_shapes(self.arrays)

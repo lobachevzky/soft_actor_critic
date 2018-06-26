@@ -1,20 +1,29 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Callable, Iterable, Sequence, List
+from typing import Callable, Iterable, List, Sequence
 
 import numpy as np
 import tensorflow as tf
 
-from sac.utils import Step, TrainStep, TRAIN_VALUES, ArrayLike
+from sac.utils import TRAIN_VALUES, ArrayLike, Step, TrainStep
 
 NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 
 class AbstractAgent:
-    def __init__(self, sess: tf.Session, batch_size: int, seq_len: int,
-                 o_shape: Iterable, a_shape: Sequence,
-                 activation: Callable, reward_scale: float, n_layers: int, layer_size: int,
-                 learning_rate: float, grad_clip: float, device_num: int,
+    def __init__(self,
+                 sess: tf.Session,
+                 batch_size: int,
+                 seq_len: int,
+                 o_shape: Iterable,
+                 a_shape: Sequence,
+                 activation: Callable,
+                 reward_scale: float,
+                 n_layers: int,
+                 layer_size: int,
+                 learning_rate: float,
+                 grad_clip: float,
+                 device_num: int,
                  reuse=False) -> None:
 
         self.activation = activation
@@ -25,14 +34,16 @@ class AbstractAgent:
         self.initial_state = None
         self.sess = sess
 
-        with tf.device('/gpu:' + str(device_num)), tf.variable_scope('agent', reuse=reuse):
+        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(
+                'agent', reuse=reuse):
             seq_dim = [batch_size]
             if self.seq_len is not None:
                 seq_dim = [batch_size, self.seq_len]
 
             self.O1 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O1')
             self.O2 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O2')
-            self.A = A = tf.placeholder(tf.float32, [batch_size] + list(a_shape), name='A')
+            self.A = A = tf.placeholder(
+                tf.float32, [batch_size] + list(a_shape), name='A')
             self.R = R = tf.placeholder(tf.float32, [batch_size], name='R')
             self.T = T = tf.placeholder(tf.float32, [batch_size], name='T')
             gamma = 0.99
@@ -61,7 +72,8 @@ class AbstractAgent:
             # constructing V loss
             with tf.control_dependencies([self.A_sampled1]):
                 v1 = self.v_network(self.O1, 'V')
-                q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
+                q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
+                                    'Q')
                 log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
                 self.V_loss = V_loss = tf.reduce_mean(
                     0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
@@ -79,15 +91,17 @@ class AbstractAgent:
             with tf.control_dependencies([self.Q_loss]):
                 self.A_sampled2 = A_sampled2 = tf.stop_gradient(
                     sample_pi_network('pi', reuse=True))
-                q2 = self.q_network(self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+                q2 = self.q_network(
+                    self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
                 log_pi_sampled2 = pi_network_log_prob(A_sampled2, 'pi', reuse=True)
                 self.pi_loss = pi_loss = tf.reduce_mean(
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
             def get_variables(name: str) -> List[tf.Variable]:
-                return tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                         scope=f'agent/{name}/')
+                return tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'agent/{name}/')
+
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
             def train_op(loss, var_list, dependency):
@@ -113,7 +127,7 @@ class AbstractAgent:
                 soft_update_xi_bar_ops = [
                     tf.assign(xbar, tau * x + (1 - tau) * xbar)
                     for (xbar, x) in zip(xi_bar, xi)
-                    ]
+                ]
                 self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
                 # self.check = tf.add_check_numerics_ops()
                 self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
@@ -146,8 +160,7 @@ class AbstractAgent:
 
     def get_actions(self, o: ArrayLike, _, sample: bool = True) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
-        return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0],
-                             state=0)
+        return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0)
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:

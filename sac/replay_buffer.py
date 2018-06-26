@@ -1,6 +1,6 @@
 import numpy as np
 
-from sac.array_group import X, Key, ArrayGroup
+from sac.array_group import ArrayGroup, Key, X
 
 
 class ReplayBuffer:
@@ -26,9 +26,7 @@ class ReplayBuffer:
 
     def modulate(self, key: Key):
         if isinstance(key, slice):
-            key = np.arange(key.start or 0,
-                            0 if key.stop is None else key.stop,
-                            key.step)
+            key = np.arange(key.start or 0, 0 if key.stop is None else key.stop, key.step)
         return (key + self.pos) % self.maxlen
 
     def sample(self, batch_size: int, seq_len=None):
@@ -43,8 +41,7 @@ class ReplayBuffer:
             self.full = True
 
         if self.buffer is None:
-            self.buffer = ArrayGroup.shape_like(
-                x=x, pre_shape=(self.maxlen,))
+            self.buffer = ArrayGroup.shape_like(x=x, pre_shape=(self.maxlen, ))
         self[slice(n) if n else 0] = x
         self.pos = self.modulate(n or 1)
         if self.pos == self.maxlen:

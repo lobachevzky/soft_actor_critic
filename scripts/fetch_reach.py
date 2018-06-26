@@ -1,12 +1,10 @@
 import click
 import gym
-import numpy as np
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import str_to_activation
 
 ACHIEVED_GOAL = 'achieved_goal'
 

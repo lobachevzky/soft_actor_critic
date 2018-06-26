@@ -1,14 +1,14 @@
 import itertools
 import time
 from collections import Counter, namedtuple
-from typing import Iterable, Optional, Tuple, List
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper, get_size, assign_to_vector
+from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -39,18 +39,21 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        self.agents = Agents(act=self.build_agent(sess=sess,
-                                                  base_agent=base_agent,
-                                                  batch_size=1,
-                                                  seq_len=1,
-                                                  reuse=False,
-                                                  **kwargs),
-                             train=self.build_agent(sess=sess,
-                                                    base_agent=base_agent,
-                                                    batch_size=batch_size,
-                                                    seq_len=seq_len,
-                                                    reuse=True,
-                                                    **kwargs))
+        self.agents = Agents(
+            act=self.build_agent(
+                sess=sess,
+                base_agent=base_agent,
+                batch_size=1,
+                seq_len=1,
+                reuse=False,
+                **kwargs),
+            train=self.build_agent(
+                sess=sess,
+                base_agent=base_agent,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                **kwargs))
         self.seq_len = self.agents.train.seq_len
         saver = tf.train.Saver()
 
@@ -59,8 +62,7 @@ class Trainer:
             saver.restore(sess, load_path)
             print("Model restored from", load_path)
         if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir,
-                                              graph=sess.graph)
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
@@ -112,8 +114,7 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.agents.act.get_actions(
-                self.vectorize_state(o1), s,
-                sample=(not self.is_eval_period()))
+                self.vectorize_state(o1), s, sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             o2, r, t, info = self.step(a)
@@ -123,25 +124,24 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(s=np.squeeze(s, axis=1),
-                                    o1=o1, a=a, r=r, o2=o2, t=t))
+            self.add_to_buffer(Step(s=np.squeeze(s, axis=1), o1=o1, a=a, r=r, o2=o2, t=t))
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
                     step = self.agents.train.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in [
+                                'entropy',
+                                'V loss',
+                                'Q loss',
+                                'pi loss',
+                                'V grad',
+                                'Q grad',
+                                'pi grad',
+                            ]
+                        }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -151,8 +151,7 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def build_agent(self, base_agent: AbstractAgent, batch_size,
-                    reuse, **kwargs):
+    def build_agent(self, base_agent: AbstractAgent, batch_size, reuse, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -163,11 +162,12 @@ class Trainer:
 
         class Agent(policy_type, base_agent):
             def __init__(self, batch_size, reuse):
-                super(Agent, self).__init__(batch_size=batch_size,
-                                            o_shape=state_shape,
-                                            a_shape=action_shape,
-                                            reuse=reuse,
-                                            **kwargs)
+                super(Agent, self).__init__(
+                    batch_size=batch_size,
+                    o_shape=state_shape,
+                    a_shape=action_shape,
+                    reuse=reuse,
+                    **kwargs)
 
         return Agent(batch_size=batch_size, reuse=reuse)
 
@@ -203,21 +203,23 @@ class Trainer:
         if self.seq_len is None:
             # leave state as dummy value fr non-recurrent
             shape = [self.batch_size, -1]
-            return Step(o1=self.vectorize_state(sample.o1, shape=shape),
-                        o2=self.vectorize_state(sample.o2, shape=shape),
-                        s=sample.s,
-                        a=sample.a,
-                        r=sample.r,
-                        t=sample.t)
+            return Step(
+                o1=self.vectorize_state(sample.o1, shape=shape),
+                o2=self.vectorize_state(sample.o2, shape=shape),
+                s=sample.s,
+                a=sample.a,
+                r=sample.r,
+                t=sample.t)
         else:
             # adjust state for recurrent networks
             shape = [self.batch_size, self.seq_len, -1]
-            return Step(o1=self.vectorize_state(sample.o1, shape=shape),
-                        o2=self.vectorize_state(sample.o2, shape=shape),
-                        s=np.swapaxes(sample.s[:, -1], 0, 1),
-                        a=sample.a[:, -1],
-                        r=sample.r[:, -1],
-                        t=sample.t[:, -1])
+            return Step(
+                o1=self.vectorize_state(sample.o1, shape=shape),
+                o2=self.vectorize_state(sample.o2, shape=shape),
+                s=np.swapaxes(sample.s[:, -1], 0, 1),
+                a=sample.a[:, -1],
+                r=sample.r[:, -1],
+                t=sample.t[:, -1])
 
 
 class HindsightTrainer(Trainer):
@@ -229,10 +231,11 @@ class HindsightTrainer(Trainer):
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.env, HindsightWrapper)
         if self.time_steps() > 0:
-            self.buffer.append(self.env.recompute_trajectory(self._trajectory()),
-                               n=self.time_steps())
+            self.buffer.append(
+                self.env.recompute_trajectory(self._trajectory()), n=self.time_steps())
             if self.n_goals - 1 > 0:
-                final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
+                final_indexes = np.random.randint(
+                    1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
                 assert isinstance(final_indexes, np.ndarray)
 
                 for final_index in self.buffer[final_indexes]:

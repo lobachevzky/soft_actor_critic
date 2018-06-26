@@ -1,17 +1,15 @@
 #! /usr/bin/env python3
 """Agent that executes random actions"""
 # import gym
-import pickle
 from pathlib import Path
 
 import numpy as np
 from click._unicodefun import click
+from mujoco import ObjType
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
 from environments.multi_task import MultiTaskEnv
-from environments.pick_and_place import PickAndPlaceEnv
-from mujoco import ObjType
 from sac.utils import Step
 
 saved_pos = None
@@ -25,7 +23,9 @@ def cli(discrete, xml_file):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place', xml_file)
+    xml_filepath = Path(
+        Path(__file__).parent.parent, 'environments', 'models', 'pick-and-place',
+        xml_file)
     env = PickAndPlaceHindsightWrapper(
         MultiTaskEnv(
             # fixed_block=False,

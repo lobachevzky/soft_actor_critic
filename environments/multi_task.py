@@ -8,7 +8,12 @@ from environments.pick_and_place import Goal, PickAndPlaceEnv
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, steps_per_action, geofence, min_lift_height, render_freq, fixed_pose=True):
+    def __init__(self,
+                 steps_per_action,
+                 geofence,
+                 min_lift_height,
+                 render_freq,
+                 fixed_pose=True):
         self.fixed_pose = fixed_pose
         self._goal = None
         super().__init__(
@@ -39,15 +44,14 @@ class MultiTaskEnv(PickAndPlaceEnv):
 
     def reset_qpos(self):
         if not self.fixed_pose:
-            for joint in ['slide_x',
-                          'slide_y',
-                          'arm_lift_joint',
-                          'arm_flex_joint',
-                          'wrist_roll_joint',
-                          'hand_l_proximal_joint']:
+            for joint in [
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
+            ]:
                 qpos_idx = self.sim.jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                self.init_qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
+                self.init_qpos[qpos_idx] = np.random.uniform(
+                    *self.sim.jnt_range[jnt_range_idx])
 
         r = self.sim.jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.jnt_qposadr('hand_l_proximal_joint')

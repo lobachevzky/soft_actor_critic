@@ -1,11 +1,11 @@
-from collections import Iterable, Sequence, Callable
-from typing import Tuple, Optional, Any
+from typing import Tuple
 
 import numpy as np
 import tensorflow as tf
+from tensorflow.contrib.rnn import BasicLSTMCell, LSTMStateTuple
+
 from sac.agent import AbstractAgent, NetworkOutput
-from sac.utils import Step, TrainStep, TRAIN_VALUES, ArrayLike
-from tensorflow.contrib.rnn import LSTMBlockCell, LSTMStateTuple, BasicLSTMCell
+from sac.utils import ArrayLike, Step, TrainStep
 
 
 def mlp(inputs, layer_size, n_layers, activation):
@@ -20,11 +20,13 @@ class MlpAgent(AbstractAgent):
         return None
 
     def network(self, inputs: tf.Tensor) -> NetworkOutput:
-        return NetworkOutput(output=mlp(inputs=inputs,
-                                        layer_size=self.layer_size,
-                                        n_layers=self.n_layers,
-                                        activation=self.activation),
-                             state=None)
+        return NetworkOutput(
+            output=mlp(
+                inputs=inputs,
+                layer_size=self.layer_size,
+                n_layers=self.n_layers,
+                activation=self.activation),
+            state=None)
 
 
 class LstmAgent(AbstractAgent):
@@ -37,12 +39,12 @@ class LstmAgent(AbstractAgent):
     def __init__(self, batch_size: int, layer_size: int, device_num: int, **kwargs):
         with tf.device('/gpu:' + str(device_num)):
             state_args = tf.float32, [batch_size, layer_size]
-            self.S = LSTMStateTuple(c=tf.placeholder(*state_args, name='C'),
-                                    h=tf.placeholder(*state_args, name='H'))
+            self.S = LSTMStateTuple(
+                c=tf.placeholder(*state_args, name='C'),
+                h=tf.placeholder(*state_args, name='H'))
             self.lstm = BasicLSTMCell(layer_size)
-        super().__init__(batch_size=batch_size,
-                         layer_size=layer_size,
-                         device_num=device_num, **kwargs)
+        super().__init__(
+            batch_size=batch_size, layer_size=layer_size, device_num=device_num, **kwargs)
         self.initial_state = self.sess.run(self.lstm.zero_state(batch_size, tf.float32))
         assert np.shape(self.initial_state) == (2, batch_size, layer_size)
         assert self.S.c.shape == self.S.h.shape == (batch_size, layer_size)
@@ -63,12 +65,16 @@ class LstmAgent(AbstractAgent):
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
         assert np.shape(step.s) == np.shape(self.initial_state)
         if feed_dict is None:
-            feed_dict = {**self.state_feed(step.s),
-                         **{self.O1: step.o1,
-                            self.A: step.a,
-                            self.R: np.array(step.r) * self.reward_scale,
-                            self.O2: step.o2,
-                            self.T: step.t}}
+            feed_dict = {
+                **self.state_feed(step.s),
+                **{
+                    self.O1: step.o1,
+                    self.A: step.a,
+                    self.R: np.array(step.r) * self.reward_scale,
+                    self.O2: step.o2,
+                    self.T: step.t
+                }
+            }
         return super().train_step(step, feed_dict)
 
     def get_actions(self, o: ArrayLike, s: ArrayLike, sample: bool = True) -> \

@@ -122,31 +122,24 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(s=np.squeeze(s, axis=1),
-                                    o1=o1, a=a, r=r, o2=o2, t=t))
+            self.add_to_buffer(Step(s=np.squeeze(s, axis=1), o1=o1, a=a, r=r, o2=o2, t=t))
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    sample_steps = self.sample_buffer()
-                    shape = [self.batch_size, -1]
-                    step = self.agents.train.train_step(
-                        sample_steps.replace(
-                            o1=self.vectorize_state(sample_steps.o1, shape=shape),
-                            o2=self.vectorize_state(sample_steps.o2, shape=shape),
-                        ))
+                    step = self.agents.train.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in [
+                                'entropy',
+                                'V loss',
+                                'Q loss',
+                                'pi loss',
+                                'V grad',
+                                'Q grad',
+                                'pi grad',
+                            ]
+                        }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -202,7 +195,27 @@ class Trainer:
         return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self) -> Step:
-        return Step(*self.buffer.sample(self.batch_size))
+        sample = Step(*self.buffer.sample(self.batch_size, seq_len=self.seq_len))
+        if self.seq_len is None:
+            # leave state as dummy value fr non-recurrent
+            shape = [self.batch_size, -1]
+            return Step(
+                o1=self.vectorize_state(sample.o1, shape=shape),
+                o2=self.vectorize_state(sample.o2, shape=shape),
+                s=sample.s,
+                a=sample.a,
+                r=sample.r,
+                t=sample.t)
+        else:
+            # adjust state for recurrent networks
+            shape = [self.batch_size, self.seq_len, -1]
+            return Step(
+                o1=self.vectorize_state(sample.o1, shape=shape),
+                o2=self.vectorize_state(sample.o2, shape=shape),
+                s=np.swapaxes(sample.s[:, -1], 0, 1),
+                a=sample.a[:, -1],
+                r=sample.r[:, -1],
+                t=sample.t[:, -1])
 
 
 class HindsightTrainer(Trainer):

@@ -77,9 +77,8 @@ class Trainer:
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
             episode_reward = self.episode_count['reward']
-            episode_timesteps = self.episode_count['time_steps']
             count.update(
-                Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
+                Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 count['time_steps'], episode_reward))
@@ -95,6 +94,18 @@ class Trainer:
 
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
+
+    def trajectory(self, final_index=None) -> Optional[Step]:
+        if self.time_steps():
+            if final_index is None:
+                final_index = 0  # points to current time step
+            else:
+                final_index -= self.time_steps()
+            return Step(*self.buffer[-self.time_steps():final_index])
+
+    def time_steps(self):
+        return self.episode_count['time_steps']
+
 
     def run_episode(self, o1, perform_updates, render):
         episode_count = Counter()
@@ -193,20 +204,6 @@ class Trainer:
     def sample_buffer(self) -> Step:
         return Step(*self.buffer.sample(self.batch_size))
 
-    def trajectory(self) -> Iterable:
-        return self.buffer[-self.episode_count['time_steps']:]
-
-    def _trajectory(self, final_index=None) -> Optional[Step]:
-        if self.time_steps():
-            if final_index is None:
-                final_index = 0  # points to current time step
-            else:
-                final_index -= self.time_steps()
-            return Step(*self.buffer[-self.time_steps():final_index])
-
-    def time_steps(self):
-        return self.episode_count['time_steps']
-
 
 class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
@@ -224,7 +221,7 @@ class HindsightTrainer(Trainer):
         assert isinstance(self.hindsight_env, HindsightWrapper)
         if self.time_steps() > 0:
             self.buffer.append(
-                self.hindsight_env.recompute_trajectory(self._trajectory()))
+                self.hindsight_env.recompute_trajectory(self.trajectory()))
         if self.n_goals - 1 and self.time_steps() > 0:
             final_indexes = np.random.randint(
                 1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
@@ -233,7 +230,7 @@ class HindsightTrainer(Trainer):
             for final_index in final_indexes:
                 self.buffer.append(
                     self.hindsight_env.recompute_trajectory(
-                        self._trajectory()[:final_index]))
+                        self.trajectory()[:final_index]))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

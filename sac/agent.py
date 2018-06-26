@@ -161,15 +161,15 @@ class AbstractAgent:
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0)
 
-    def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
+    def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(self.network(sa).output, 1, name='q'), [-1])
+            oa = tf.concat([o, a], axis=1)
+            return tf.reshape(tf.layers.dense(self.network(oa).output, 1, name='q'), [-1])
 
-    def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
+    def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(tf.layers.dense(self.network(s).output, 1, name='v'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(o).output, 1, name='v'), [-1])
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

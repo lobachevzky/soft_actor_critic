@@ -22,8 +22,7 @@ def put_in_xml_setter(ctx, param, value: str):
                  for p, v in setters if '_l_' in p] \
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
                    for p, v in setters if '_r_' in p]
-    return [s._replace(path=PurePath(s.path))
-            for s in setters + mirroring]
+    return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
 
 
 def parse_range(ctx, param, string):
@@ -72,10 +71,10 @@ def parse_range(ctx, param, string):
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
 def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
-        activation, seq_len, n_layers, layer_size, learning_rate, reward_scale, cheat_prob,
-        grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
-        load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
-        obs_type, agent, block_xrange, block_yrange):
+        activation, seq_len, n_layers, layer_size, learning_rate, reward_scale,
+        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
+        save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml,
+        use_dof, obs_type, agent, block_xrange, block_yrange):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models',
                         xml_file).absolute()
     with mutate_xml(
@@ -83,21 +82,24 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         env = PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
-                env=PickAndPlaceEnv(cheat_prob=cheat_prob,
-                                    steps_per_action=steps_per_action,
-                                    fixed_block=fixed_block,
-                                    min_lift_height=min_lift_height,
-                                    geofence=geofence,
-                                    render_freq=render_freq,
-                                    xml_filepath=temp_path,
-                                    obs_type=obs_type,
-                                    block_xrange=block_xrange,
-                                    block_yrange=block_yrange,
-                                    )))
+                env=PickAndPlaceEnv(
+                    cheat_prob=cheat_prob,
+                    steps_per_action=steps_per_action,
+                    fixed_block=fixed_block,
+                    min_lift_height=min_lift_height,
+                    geofence=geofence,
+                    render_freq=render_freq,
+                    xml_filepath=temp_path,
+                    obs_type=obs_type,
+                    block_xrange=block_xrange,
+                    block_yrange=block_yrange,
+                )))
         if record_dir:
-            env = Monitor(env=env,
-                          directory=str(record_dir),
-                          force=True, )
+            env = Monitor(
+                env=env,
+                directory=str(record_dir),
+                force=True,
+            )
         HindsightTrainer(
             env=env,
             seq_len=seq_len,

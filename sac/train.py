@@ -1,13 +1,12 @@
 import itertools
 import time
-from collections import Counter, namedtuple, Iterable
+from collections import Counter, namedtuple
 from typing import Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import Wrapper
-from gym import spaces
+from gym import Wrapper, spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
@@ -70,8 +69,7 @@ class Trainer:
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
                 _save_path = save_path.replace('<episode>', str(episodes))
-                print("model saved in path:", saver.save(
-                    sess, save_path=_save_path))
+                print("model saved in path:", saver.save(sess, save_path=_save_path))
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
@@ -233,8 +231,7 @@ class HindsightTrainer(Trainer):
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
         if self.time_steps() > 0:
-            self.buffer.append(
-                self.hindsight_env.recompute_trajectory(self.trajectory()))
+            self.buffer.append(self.hindsight_env.recompute_trajectory(self.trajectory()))
         if self.n_goals - 1 and self.time_steps() > 0:
             final_indexes = np.random.randint(
                 1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()

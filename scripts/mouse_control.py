@@ -9,7 +9,6 @@ from mujoco import ObjType
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
 from sac.utils import Step
 
 saved_pos = None

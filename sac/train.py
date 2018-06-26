@@ -68,8 +68,8 @@ class Trainer:
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
-                _save_path = save_path.replace('<episode>', str(episodes))
-                print("model saved in path:", saver.save(sess, save_path=_save_path))
+                print("model saved in path:", saver.save(sess, save_path=save_path))
+                saver.save(sess, save_path.replace('<episode>', str(episodes)))
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
@@ -108,9 +108,10 @@ class Trainer:
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
+        s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.agents.act.get_actions(
-                self.vectorize_state(o1), sample=(not self.is_eval_period()))
+                self.vectorize_state(o1), state=s, sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             o2, r, t, info = self.step(a)

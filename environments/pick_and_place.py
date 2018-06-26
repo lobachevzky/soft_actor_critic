@@ -1,5 +1,6 @@
 import random
-from collections import Iterable, namedtuple
+from collections import namedtuple
+from pathlib import Path
 
 import numpy as np
 from gym import spaces
@@ -46,6 +47,8 @@ class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  xml_filepath,
                  steps_per_action,
+                 block_xrange,
+                 block_yrange,
                  fixed_block=False,
                  min_lift_height=.02,
                  geofence=.04,
@@ -53,6 +56,8 @@ class PickAndPlaceEnv(MujocoEnv):
                  cheat_prob=0,
                  render_freq=0,
                  obs_type=None):
+        self.block_xrange = block_xrange
+        self.block_yrange = block_yrange
         self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
@@ -77,7 +82,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -95,7 +100,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.init_qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.jnt_qposadr('block1joint')
-            # self.init_qpos[block_joint] = np.random.uniform(-.1, .1)
+            self.init_qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
+            self.init_qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
             self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
@@ -118,10 +124,12 @@ class PickAndPlaceEnv(MujocoEnv):
             qvel = self.sim.qvel
 
         elif self._obs_type == 'robot-qvel':
-            qvel = get_qvels([
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
-            ])
+            qvel = get_qvels(['slide_x', 'slide_y',
+                              'arm_lift_joint',
+                              'arm_flex_joint',
+                              'wrist_roll_joint',
+                              'hand_l_proximal_joint',
+                              'hand_r_proximal_joint'])
         elif self._obs_type == 'base-qvel':
             qvel = get_qvels(['slide_x', 'slide_x'])
         else:
@@ -179,6 +187,3 @@ class PickAndPlaceEnv(MujocoEnv):
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
 
-
-def filter_none(it: Iterable):
-    return [x for x in it if x is not None]

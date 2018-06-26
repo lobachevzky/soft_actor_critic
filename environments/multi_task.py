@@ -14,7 +14,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
         self.goals = [
             np.linspace(start, stop, num) for start, stop, num in zip(
-                self.goal_space.low, self.goal_space.high, [1, 1, 1])
+                self.goal_space.low, self.goal_space.high, [6, 8, 1])
         ]
 
     def _set_new_goal(self):

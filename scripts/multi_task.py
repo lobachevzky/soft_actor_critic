@@ -31,12 +31,9 @@ from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', default=0, type=int)
-@click.option('--baseline', is_flag=True)
 @click.option('--eval', is_flag=True)
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
-@click.option('--add-qvel', 'obs_type', flag_value='qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
-@click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_range)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
@@ -50,7 +47,7 @@ from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
 def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, baseline, eval, set_xml, use_dof, block_xrange, block_yrange, obs_type):
+        n_goals, eval, set_xml, use_dof, block_xrange, block_yrange, obs_type):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(

@@ -1,12 +1,12 @@
 import random
-from collections import namedtuple, Iterable
+from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
 from gym import spaces
-
-from environments.mujoco import MujocoEnv, at_goal, print1
 from mujoco import ObjType
+
+from environments.mujoco import MujocoEnv
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -53,16 +53,12 @@ class PickAndPlaceEnv(MujocoEnv):
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
-                 discrete=False,
                  cheat_prob=0,
                  render_freq=0,
-                 isolate_movements=False,
                  obs_type=None):
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
         self._obs_type = obs_type
-        if discrete:
-            xml_filepath = Path(__file__).parent, 'models', 'discrete.xml'
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
@@ -70,8 +66,6 @@ class PickAndPlaceEnv(MujocoEnv):
         self._goal_block_name = 'block1'
         self._min_lift_height = min_lift_height
         self.geofence = geofence
-        self._discrete = discrete
-        self._isolate_movements = isolate_movements
         self._prev_action = None
 
         super().__init__(
@@ -90,19 +84,10 @@ class PickAndPlaceEnv(MujocoEnv):
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
-        if discrete:
-            self.action_space = spaces.Discrete(7)
-        else:
-            if self._isolate_movements:
-                self.action_space = spaces.Box(
-                    low=np.append(self.sim.actuator_ctrlrange[:-1, 0], -1),
-                    high=np.append(self.sim.actuator_ctrlrange[:-1, 1], 1),
-                    dtype=np.float32)
-            else:
-                self.action_space = spaces.Box(
-                    low=self.sim.actuator_ctrlrange[:-1, 0],
-                    high=self.sim.actuator_ctrlrange[:-1, 1],
-                    dtype=np.float32)
+        self.action_space = spaces.Box(
+            low=self.sim.actuator_ctrlrange[:-1, 0],
+            high=self.sim.actuator_ctrlrange[:-1, 1],
+            dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
@@ -185,18 +170,6 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def step(self, action):
         # action = np.array([1, 1, 0, 0, 0, 0])
-        if self._discrete:
-            a = np.zeros(4)
-            if action > 0:
-                action -= 1
-                joint = action // 2
-                assert 0 <= joint <= 2
-                direction = (-1) ** (action % 2)
-                joint_scale = [.2, .05, .5]
-                a[2] = self.grip
-                a[joint] = direction * joint_scale[joint]
-                self.grip = a[2]
-            action = a
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'
@@ -207,38 +180,8 @@ class PickAndPlaceEnv(MujocoEnv):
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
             ]
         # necessary because np.insert can't append multiple values to end:
-        if self._discrete:
-            action[mirroring_index] = action[mirrored_index]
-        else:
-            mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
-            action = np.insert(action, mirroring_index, action[mirrored_index])
-
-        if self._isolate_movements:
-            if self._prev_action is not None:
-                base_motors = ['slide_x_motor', 'slide_y_motor']
-                other_motors = ['arm_lift_motor',
-                                'arm_flex_motor',
-                                'wrist_roll_motor',
-                                'hand_l_proximal_motor',
-                                'hand_r_proximal_motor']
-
-                def get_index(name):
-                    try:
-                        return self.sim.name2id(ObjType.ACTUATOR, name)
-                    except RuntimeError:
-                        return None
-
-                def get_indexes(names):
-                    indexes = map(get_index, names)
-                    return [i for i in indexes if i is not None]
-
-                base_indexes = get_indexes(base_motors)
-                other_indexes = get_indexes(other_motors)
-
-                self.sim.qvel[other_indexes] = 0
-                indexes = base_indexes if action[-1] > 0 else other_indexes
-                action[indexes] = self._prev_action[indexes]
-            action = action[:-1]
+        mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
+        action = np.insert(action, mirroring_index, action[mirrored_index])
 
         s, r, t, i = super().step(action)
         if not self._cheated:

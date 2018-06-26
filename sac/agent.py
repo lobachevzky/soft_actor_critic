@@ -90,18 +90,19 @@ class AbstractAgent:
             # constructing pi loss
             with tf.control_dependencies([self.Q_loss]):
                 self.A_sampled2 = A_sampled2 = tf.stop_gradient(
-                    self.sample_pi_network('pi', reuse=True))
+                    sample_pi_network('pi', reuse=True))
                 q2 = self.q_network(
                     self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-                log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, 'pi', reuse=True)
+                log_pi_sampled2 = pi_network_log_prob(A_sampled2, 'pi', reuse=True)
                 self.pi_loss = pi_loss = tf.reduce_mean(
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
-            phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/pi/')
-            theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/Q/')
-            xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/V/')
-            xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='agent/V_bar/')
+            def get_variables(name: str) -> List[tf.Variable]:
+                return tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'agent/{name}/')
+
+            phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
             def train_op(loss, var_list, dependency):
                 with tf.control_dependencies([dependency]):

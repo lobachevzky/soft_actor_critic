@@ -2,7 +2,7 @@ import click
 import gym
 import tensorflow as tf
 
-from sac.networks import MlpAgent
+from sac.agent import AbstractAgent
 from sac.train import Trainer
 
 

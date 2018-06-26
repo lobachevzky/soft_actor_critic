@@ -1,5 +1,6 @@
 import click
 import gym
+import numpy as np
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
 
@@ -27,8 +28,16 @@ class FetchReachHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return self.env.unwrapped.goal.copy()
 
+    @staticmethod
+    def vectorize_state(state):
+        return np.concatenate([
+            state.obs['achieved_goal'], state.obs['desired_goal'],
+            state.obs['observation']
+        ])
+
 
 @click.option('--seed', default=0, type=int)
+@click.option('--activation', default='relu', callback=str_to_activation)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)

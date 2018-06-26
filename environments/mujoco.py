@@ -11,7 +11,9 @@ class MujocoEnv:
                  neg_reward: bool, steps_per_action: int, render_freq: int):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
+
         self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
+
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._step_num = 0
@@ -138,7 +140,7 @@ def at_goal(pos, goal, geofence, verbose=False):
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \
-        or np.any(pos < world_lower_bound)
+           or np.any(pos < world_lower_bound)
 
 
 def get_limits(pos, size):

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 from gym import spaces
 from mujoco import ObjType
@@ -8,21 +6,10 @@ from environments.pick_and_place import Goal, PickAndPlaceEnv
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self,
-                 steps_per_action,
-                 geofence,
-                 min_lift_height,
-                 render_freq,
-                 fixed_pose=True):
-        self.fixed_pose = fixed_pose
+    def __init__(self, fixed_pose=True, **kwargs):
+        self.randomize_pose = fixed_pose
         self._goal = None
-        super().__init__(
-            fixed_block=False,
-            steps_per_action=steps_per_action,
-            geofence=geofence,
-            min_lift_height=min_lift_height,
-            xml_filepath=Path('models', '6dof', 'world.xml'),
-            render_freq=render_freq)
+        super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
         self.goals = [
@@ -43,7 +30,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         return self._goal
 
     def reset_qpos(self):
-        if not self.fixed_pose:
+        if self.randomize_pose:
             for joint in [
                     'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
                     'wrist_roll_joint', 'hand_l_proximal_joint'

@@ -1,12 +1,11 @@
 import random
-from collections import namedtuple
-from pathlib import Path
+from collections import Iterable, namedtuple
 
 import numpy as np
 from gym import spaces
 from mujoco import ObjType
 
-from environments.mujoco import MujocoEnv, at_goal
+from environments.mujoco import MujocoEnv
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -45,34 +44,31 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
+                 xml_filepath,
                  steps_per_action,
                  fixed_block=False,
                  min_lift_height=.02,
                  geofence=.04,
                  neg_reward=False,
-                 discrete=False,
                  cheat_prob=0,
-                 xml_filepath=Path(
-                     Path(__file__).parent, 'models', 'pick-and-place', 'world.xml'),
-                 render_freq=0):
-        if discrete:
-            xml_filepath = Path(
-                __file__).parent, 'models', 'pick-and-place', 'discrete.xml'
+                 render_freq=0,
+                 obs_type=None):
+        self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
-        self._min_lift_height = min_lift_height + geofence
+        self._min_lift_height = min_lift_height
         self.geofence = geofence
-        self._discrete = discrete
 
         super().__init__(
             xml_filepath=xml_filepath,
             neg_reward=neg_reward,
             steps_per_action=steps_per_action,
             image_dimensions=None,
-            render_freq=render_freq)
+            render_freq=render_freq,
+        )
 
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self.block_pos())
@@ -82,28 +78,26 @@ class PickAndPlaceEnv(MujocoEnv):
         assert obs_size != 0
         self.observation_space = spaces.Box(
             -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
-        if discrete:
-            self.action_space = spaces.Discrete(7)
-        else:
-            self.action_space = spaces.Box(
-                low=self.sim.actuator_ctrlrange[:-1, 0],
-                high=self.sim.actuator_ctrlrange[:-1, 1],
-                dtype=np.float32)
+        self.action_space = spaces.Box(
+            low=self.sim.actuator_ctrlrange[:-1, 0],
+            high=self.sim.actuator_ctrlrange[:-1, 1],
+            dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
     def reset_qpos(self):
-        if not self._fixed_block:
-            block_joint = self.sim.jnt_qposadr('block1joint')
-            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
             self.init_qpos = self.initial_qpos
+        if not self._fixed_block:
+            block_joint = self.sim.jnt_qposadr('block1joint')
+            # self.init_qpos[block_joint] = np.random.uniform(-.1, .1)
+            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         return self.init_qpos
 
@@ -111,7 +105,29 @@ class PickAndPlaceEnv(MujocoEnv):
         pass
 
     def _get_obs(self):
-        return np.copy(self.sim.qpos)
+        def get_qvels(joints):
+            base_qvel = []
+            for joint in joints:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except RuntimeError:
+                    pass
+            return np.array(base_qvel)
+
+        if self._obs_type == 'qvel':
+            qvel = self.sim.qvel
+
+        elif self._obs_type == 'robot-qvel':
+            qvel = get_qvels([
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
+            ])
+        elif self._obs_type == 'base-qvel':
+            qvel = get_qvels(['slide_x', 'slide_x'])
+        else:
+            qvel = []
+
+        return np.concatenate([self.sim.qpos, qvel])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)
@@ -128,10 +144,8 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def at_goal(self, goal):
-        gripper_at_goal = at_goal(self.gripper_pos(), goal.gripper, self.geofence)
-        block_at_goal = at_goal(self.block_pos(), goal.block, self.geofence)
-        return gripper_at_goal and block_at_goal
+    def at_goal(self, _):
+        return self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height
 
     def compute_terminal(self, goal, obs):
         # return False
@@ -146,18 +160,7 @@ class PickAndPlaceEnv(MujocoEnv):
             return 0
 
     def step(self, action):
-        if self._discrete:
-            a = np.zeros(4)
-            if action > 0:
-                action -= 1
-                joint = action // 2
-                assert 0 <= joint <= 2
-                direction = (-1)**(action % 2)
-                joint_scale = [.2, .05, .5]
-                a[2] = self.grip
-                a[joint] = direction * joint_scale[joint]
-                self.grip = a[2]
-            action = a
+        # action = np.array([1, 1, 0, 0, 0, 0])
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'
@@ -168,12 +171,14 @@ class PickAndPlaceEnv(MujocoEnv):
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
-        if self._discrete:
-            action[mirroring_index] = action[mirrored_index]
-        else:
-            mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
-            action = np.insert(action, mirroring_index, action[mirrored_index])
+        mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
+        action = np.insert(action, mirroring_index, action[mirrored_index])
+
         s, r, t, i = super().step(action)
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
+
+
+def filter_none(it: Iterable):
+    return [x for x in it if x is not None]

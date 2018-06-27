@@ -15,7 +15,7 @@ from sac.train import MultiTaskHindsightTrainer
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=3e-4, type=float)
+@click.option('--learning-rate', default=1e-4, type=float)
 @click.option('--buffer-size', default=1e5, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=200, type=int)
@@ -23,7 +23,6 @@ from sac.train import MultiTaskHindsightTrainer
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.0063, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
@@ -32,7 +31,7 @@ from sac.train import MultiTaskHindsightTrainer
 @click.option('--render-freq', default=0, type=int)
 @click.option('--baseline', is_flag=True)
 @click.option('--eval', is_flag=True)
-def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, activation,
+def cli(max_steps, min_lift_height, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
         n_goals, baseline, eval):
@@ -44,7 +43,7 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, act
                 env=MultiTaskEnv(
                     xml_filepath=xml_filepath,
                     steps_per_action=steps_per_action,
-                    geofence=geofence,
+                    geofence=None,
                     min_lift_height=min_lift_height,
                     render_freq=render_freq))),
         seed=seed,

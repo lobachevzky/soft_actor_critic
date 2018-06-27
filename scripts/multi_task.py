@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import click
+import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
@@ -43,7 +44,7 @@ def cli(max_steps, min_lift_height, seed, device_num, buffer_size, activation,
                 env=MultiTaskEnv(
                     xml_filepath=xml_filepath,
                     steps_per_action=steps_per_action,
-                    geofence=None,
+                    geofence=np.inf,
                     min_lift_height=min_lift_height,
                     render_freq=render_freq))),
         seed=seed,

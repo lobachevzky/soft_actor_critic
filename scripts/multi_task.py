@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
@@ -21,7 +23,7 @@ from sac.train import MultiTaskHindsightTrainer
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.1, type=float)
+@click.option('--geofence', default=.0063, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
@@ -34,11 +36,13 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, act
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
         n_goals, baseline, eval):
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
     MultiTaskHindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(
+                    xml_filepath=xml_filepath,
                     steps_per_action=steps_per_action,
                     geofence=geofence,
                     min_lift_height=min_lift_height,

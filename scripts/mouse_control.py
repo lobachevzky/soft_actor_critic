@@ -27,10 +27,10 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     env = PickAndPlaceHindsightWrapper(
-        PickAndPlaceEnv(
+        MultiTaskEnv(
             # fixed_block=False,
             steps_per_action=200,
-            geofence=.1,
+            geofence=.0063,
             min_lift_height=.02,
             render_freq=10,
             xml_filepath=xml_filepath,
@@ -69,12 +69,22 @@ def cli(discrete, xml_file):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            print('gipper pos', env.env.gripper_pos())
-            for joint in [
-                    'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
-                    'hand_l_proximal_joint'
-            ]:
-                print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
+            eu = env.unwrapped
+            block_pos = eu.block_pos()
+            print('\n')
+            low = eu.goal().block - eu.goal_size / 2
+            print('low', low)
+            print('pos', block_pos)
+            high = eu.goal().block + eu.goal_size / 2
+            print('high', high)
+            print('in between', (low <= block_pos) * (block_pos <= high))
+            import ipdb; ipdb.set_trace()
+            # print('gipper pos', env.env.gripper_pos())
+            # for joint in [
+            #         'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
+            #         'hand_l_proximal_joint'
+            # ]:
+            #     print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
         # self.init_qpos[[self.sim.jnt_qposadr('slide_x'),
         #                 self.sim.jnt_qposadr('slide_y'),
         #                 self.sim.jnt_qposadr('arm_flex_joint'),
@@ -135,3 +145,6 @@ def assert_equal(val1, val2, atol=1e-5):
             assert_equal(a, b, atol=atol)
     except TypeError:
         assert np.allclose(val1, val2, atol=atol), "{} vs. {}".format(val1, val2)
+
+if __name__ == '__main__':
+    cli()

@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 from gym import spaces
 from mujoco import ObjType
@@ -14,16 +12,26 @@ class MultiTaskEnv(PickAndPlaceEnv):
         super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
-        self.goals = [
-            np.linspace(start, stop, num) for start, stop, num in zip(
-                self.goal_space.low, self.goal_space.high, [1, 1, 1])
-        ]
+        self.goal_size = np.array([.0635, .0317, .0234]) / 10
+        self.goal_corners = list(map(np.array, zip(*(
+            [np.arange(l, h, s) for l, h, s in
+             zip(self.goal_space.low, self.goal_space.high, self.goal_size)]))))
+        g1, g2, *_ = self.goal_corners
+        self.goal_size = np.abs(g1 - g2)
 
     def _set_new_goal(self):
-        self._goal = np.array([np.random.choice(x) for x in self.goals])
+        i = np.random.randint(len(self.goal_corners))
+        self._goal = self.goal_corners[i] + self.goal_size / 2
 
     def set_goal(self, goal):
         self._goal = np.array(goal)
+
+    def at_goal(self, goal: Goal):
+        assert isinstance(goal.block, np.ndarray)
+        assert isinstance(self.goal_size, np.ndarray)
+        block_pos = self.block_pos()
+        return np.all((goal.block - self.goal_size / 2 <= block_pos) *
+                      (goal.block + self.goal_size / 2 >= block_pos))
 
     def goal(self):
         return Goal(gripper=self._goal, block=self._goal)

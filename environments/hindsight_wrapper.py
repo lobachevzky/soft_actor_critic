@@ -92,14 +92,11 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-
     def _is_success(self, achieved_goal, desired_goal):
         geofence = self.env.unwrapped.geofence
         return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-            distance_between(achieved_goal.gripper,
-                             desired_goal.gripper) < geofence
+               distance_between(achieved_goal.gripper,
+                                desired_goal.gripper) < geofence
 
     def _achieved_goal(self):
         return Goal(

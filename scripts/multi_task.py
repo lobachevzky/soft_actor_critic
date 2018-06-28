@@ -22,7 +22,7 @@ from sac.train import MultiTaskHindsightTrainer
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
-@click.option('--max-steps', default=300, type=int)
+@click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--min-lift-height', default=.02, type=float)
 @click.option('--goal-scale', default=.1, type=float)

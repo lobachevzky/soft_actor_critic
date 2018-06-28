@@ -6,13 +6,13 @@ from environments.pick_and_place import Goal, PickAndPlaceEnv
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, fixed_pose=True, **kwargs):
+    def __init__(self, fixed_pose=True, goal_scale: float = .1, **kwargs):
         self.randomize_pose = fixed_pose
         self._goal = None
         super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
-        self.goal_size = np.array([.0635, .0317, .0234]) / 10
+        self.goal_size = np.array([.0635, .0317, .0234]) * goal_scale
         self.goal_corners = list(map(np.array, zip(*(
             [np.arange(l, h, s) for l, h, s in
              zip(self.goal_space.low, self.goal_space.high, self.goal_size)]))))

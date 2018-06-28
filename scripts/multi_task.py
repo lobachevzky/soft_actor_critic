@@ -25,6 +25,7 @@ from sac.train import MultiTaskHindsightTrainer
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--min-lift-height', default=.02, type=float)
+@click.option('--goal-scale', default=.1, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
@@ -35,13 +36,14 @@ from sac.train import MultiTaskHindsightTrainer
 def cli(max_steps, min_lift_height, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, baseline, eval):
+        n_goals, baseline, eval, goal_scale):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
     MultiTaskHindsightTrainer(
         env=PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(
+                    goal_scale=goal_scale,
                     xml_filepath=xml_filepath,
                     steps_per_action=steps_per_action,
                     geofence=np.inf,

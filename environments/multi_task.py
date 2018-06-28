@@ -16,6 +16,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.goal_corners = list(map(np.array, zip(*(
             [np.arange(l, h, s) for l, h, s in
              zip(self.goal_space.low, self.goal_space.high, self.goal_size)]))))
+        import ipdb; ipdb.set_trace()
         g1, g2, *_ = self.goal_corners
         self.goal_size = np.abs(g1 - g2)
 

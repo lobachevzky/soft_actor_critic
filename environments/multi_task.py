@@ -12,17 +12,18 @@ class MultiTaskEnv(PickAndPlaceEnv):
         super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
-        self.goal_size = np.array([.0635, .0317, .0234]) * goal_scale
-        self.goal_corners = list(map(np.array, zip(*(
-            [np.arange(l, h, s) for l, h, s in
-             zip(self.goal_space.low, self.goal_space.high, self.goal_size)]))))
-        import ipdb; ipdb.set_trace()
-        g1, g2, *_ = self.goal_corners
+        self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale
+        self.goal_x, self.goal_y, self.goal_z = [
+            np.arange(l, h, s) for l, h, s in
+             zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
+        g1, g2, *_ = map(np.array, zip(self.goal_x, self.goal_y, self.goal_z))
+
         self.goal_size = np.abs(g1 - g2)
 
     def _set_new_goal(self):
-        i = np.random.randint(len(self.goal_corners))
-        self._goal = self.goal_corners[i] + self.goal_size / 2
+        goal_corner = np.array([np.random.choice(d) for d in
+                                (self.goal_x, self.goal_y, self.goal_z)])
+        self._goal = goal_corner + self.goal_size / 2
 
     def set_goal(self, goal):
         self._goal = np.array(goal)

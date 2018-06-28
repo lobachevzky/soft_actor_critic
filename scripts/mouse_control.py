@@ -119,9 +119,12 @@ def cli(discrete, xml_file):
                 print('\nresetting', total_reward)
             pause = True
             total_reward = 0
-        env.env.render(labels={f'x{i}': g
-                               for i, g in
-                               enumerate(env.env.goal_corners)})
+        labels = {f'x{i}': g for i, g in
+                  enumerate([(x, y, z)
+                   for x in env.env.goal_x
+                   for y in env.env.goal_y
+                   for z in env.env.goal_z])}
+        env.env.render(labels=labels)
 
 
 def run_tests(env, obs):

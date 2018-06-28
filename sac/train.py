@@ -74,6 +74,7 @@ class Trainer:
                 o1=self.reset(),
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
+
             episode_reward = self.episode_count['reward']
             count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
@@ -94,18 +95,17 @@ class Trainer:
         return self.count['episode'] % 100 == 99
 
     def trajectory(self, final_index=None) -> Optional[Step]:
-        if self.time_steps():
-            if final_index is None:
-                final_index = 0  # points to current time step
-            else:
-                final_index -= self.time_steps()
-            return Step(*self.buffer[-self.time_steps():final_index])
+        if final_index is None:
+            final_index = 0  # points to current time step
+        else:
+            final_index -= self.time_steps()
+        return Step(*self.buffer[-self.time_steps():final_index])
 
     def time_steps(self):
         return self.episode_count['time_steps']
 
     def run_episode(self, o1, perform_updates, render):
-        episode_count = Counter()
+        self.episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
@@ -118,10 +118,11 @@ class Trainer:
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                episode_count.update(Counter(info['log count']))
+                self.episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(s=np.squeeze(s, axis=1), o1=o1, a=a, r=r, o2=o2, t=t))
+            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
+            self.episode_count.update(Counter(reward=r, time_steps=1))
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
@@ -142,11 +143,10 @@ class Trainer:
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, time_steps=1))
             if t:
                 for k in episode_mean:
-                    episode_count[k] = episode_mean[k] / float(time_steps)
-                return episode_count
+                    self.episode_count[k] = episode_mean[k] / float(time_steps)
+                return self.episode_count
 
     def build_agent(self, base_agent: AbstractAgent, batch_size, reuse, **kwargs):
         state_shape = self.env.observation_space.shape
@@ -253,9 +253,9 @@ class HindsightTrainer(Trainer):
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):
-    def __init__(self, evaluation, env: HindsightWrapper, n_goals: int, **kwargs):
+    def __init__(self, evaluation, **kwargs):
         self.eval = evaluation
-        super().__init__(env, n_goals, **kwargs)
+        super().__init__(**kwargs)
 
     def run_episode(self, o1, perform_updates, render):
         if not self.is_eval_period():

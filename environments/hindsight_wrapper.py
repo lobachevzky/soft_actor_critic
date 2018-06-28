@@ -22,7 +22,7 @@ def get_size(x):
 def assign_to_vector(x, vector: np.ndarray):
     dim = vector.size / vector.shape[-1]
     if isinstance(x, np.ndarray) or np.isscalar(x):
-        vector[:] = x
+        vector.reshape(x.shape)[:] = x
     else:
         sizes = np.array(list(map(get_size, x)))
         sizes = np.cumsum(sizes / dim, dtype=int)
@@ -57,7 +57,8 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    def vectorize_state(self, state, shape: Optional[tuple] = None):
+    @staticmethod
+    def vectorize_state(state, shape: Optional[tuple] = None):
         if isinstance(state, np.ndarray):
             return state
 
@@ -99,8 +100,7 @@ class HindsightWrapper(gym.Wrapper):
         trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
 
         first_terminal = np.flatnonzero(trajectory.t)[0]
-        # include first terminal
-        return ArrayGroup(trajectory)[:first_terminal + 1]
+        return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):
@@ -117,10 +117,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def _is_success(self, achieved_goal, desired_goal):
         return self.env.unwrapped.state[0] >= self._desired_goal()
-
-    def step(self, action):
-        s, r, t, i = super().step(action)
-        return s, max([0, r]), t, i
 
     def _desired_goal(self):
         return 0.45
@@ -146,3 +142,9 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
+
+    @staticmethod
+    def vectorize_state(state, shape=None):
+        state = Observation(*state)
+        return HindsightWrapper.vectorize_state(
+            [state.observation, state.desired_goal], shape=shape)

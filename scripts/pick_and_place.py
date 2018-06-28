@@ -20,8 +20,8 @@ def put_in_xml_setter(ctx, param, value: str):
     setters = [XMLSetter(*v.split(',')) for v in value]
     mirroring = [XMLSetter(p.replace('_l_', '_r_'), v)
                  for p, v in setters if '_l_' in p] \
-        + [XMLSetter(p.replace('_r_', '_l_'), v)
-           for p, v in setters if '_r_' in p]
+                + [XMLSetter(p.replace('_r_', '_l_'), v)
+                   for p, v in setters if '_r_' in p]
     return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
 
 

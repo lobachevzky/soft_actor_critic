@@ -35,6 +35,7 @@ class MujocoEnv:
             if not record_freq:
                 record_freq = 20
 
+            print(f'Recording video to {record_dir}.')
             record_dir.mkdir(exist_ok=True)
             self._record_dir = record_dir
             self._record_freq = record_freq

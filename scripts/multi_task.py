@@ -5,9 +5,8 @@ import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.multi_task import MultiTaskEnv
-from environments.old_hindsight_wrapper import PickAndPlaceHindsightWrapper
 from sac.train import MultiTaskHindsightTrainer
-from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
+from scripts.pick_and_place import mutate_xml, parse_double, put_in_xml_setter
 
 
 @click.command()
@@ -16,13 +15,13 @@ from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=3e-4, type=float)
+@click.option('--learning-rate', default=1e-4, type=float)
 @click.option('--buffer-size', default=1e5, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
-@click.option('--max-steps', default=300, type=int)
+@click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.01, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
@@ -34,8 +33,8 @@ from scripts.pick_and_place import mutate_xml, parse_range, put_in_xml_setter
 @click.option('--eval', is_flag=True)
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
-@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_range)
-@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
+@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
+@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option(
     '--use-dof',

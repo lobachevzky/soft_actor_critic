@@ -25,9 +25,11 @@ def put_in_xml_setter(ctx, param, value: str):
     return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
 
 
-def parse_range(ctx, param, string):
-    low, high = map(float, string.split(','))
-    return low, high
+def parse_double(ctx, param, string):
+    if string is None:
+        return
+    a, b = map(float, string.split(','))
+    return a, b
 
 
 @click.command()
@@ -56,25 +58,28 @@ def parse_range(ctx, param, string):
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', type=int, default=0)
+@click.option('--record-freq', type=int, default=0)
 @click.option('--record-dir', type=Path)
+@click.option('--record-dims', type=str, callback=parse_double)
+@click.option('--record', is_flag=True)
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
-@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_range)
-@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
+@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
+@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option(
-    '--use-dof',
-    multiple=True,
-    default=[
-        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
-        'hand_l_proximal_joint', 'hand_r_proximal_joint'
-    ])
-def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
-        activation, seq_len, n_layers, layer_size, learning_rate, reward_scale,
+@click.option('--use-dof', multiple=True, default=['slide_x',
+                                                   'slide_y',
+                                                   'arm_lift_joint',
+                                                   'arm_flex_joint',
+                                                   'wrist_roll_joint',
+                                                   'hand_l_proximal_joint',
+                                                   'hand_r_proximal_joint'])
+def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
+        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml,
-        use_dof, obs_type, agent, block_xrange, block_yrange):
+        save_path, load_path, render_freq, record_freq, record_dir, record_dims, record, n_goals, xml_file, set_xml,
+        use_dof, obs_type, block_xrange, block_yrange, agent, seq_len):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models',
                         xml_file).absolute()
     with mutate_xml(
@@ -93,13 +98,12 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
                     obs_type=obs_type,
                     block_xrange=block_xrange,
                     block_yrange=block_yrange,
+                    record=record,
+                    record_dir=record_dir,
+                    record_freq=record_freq,
+                    image_dimensions=record_dims,
+                    neg_reward=False,
                 )))
-        if record_dir:
-            env = Monitor(
-                env=env,
-                directory=str(record_dir),
-                force=True,
-            )
         HindsightTrainer(
             env=env,
             seq_len=seq_len,

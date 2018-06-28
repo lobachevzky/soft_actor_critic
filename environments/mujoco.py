@@ -4,21 +4,16 @@ from typing import Optional, Tuple
 
 import mujoco
 import numpy as np
+from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 
 class MujocoEnv:
-    def __init__(self, xml_filepath: Path, image_dimensions: Optional[Tuple[int]],
+    def __init__(self, xml_filepath: Path,
+                 image_dimensions: Optional[Tuple[int]], record_dir: Optional[Path],
+                 record_freq: int, record: bool,
                  neg_reward: bool, steps_per_action: int, render_freq: int):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
-
-        self.sim = mujoco.Sim(str(xml_filepath), n_substeps=1)
-
-        self.init_qpos = self.sim.qpos.ravel().copy()
-        self.init_qvel = self.sim.qvel.ravel().copy()
-        self._step_num = 0
-        self._neg_reward = neg_reward
-        self._image_dimensions = image_dimensions
 
         self.observation_space = self.action_space = None
 
@@ -28,6 +23,34 @@ class MujocoEnv:
         self.spec = None
         self.render_freq = render_freq
         self.steps_per_action = steps_per_action
+        self.episode_id = 0
+
+        self.video_recorder = None
+        self._record_video = any((record_dir, record_freq, record))
+        if self._record_video:
+            if not record_dir:
+                record_dir = Path('/tmp/training-video')
+            if not image_dimensions:
+                image_dimensions = (800, 800)
+            if not record_freq:
+                record_freq = 20
+
+            print(f'Recording video to {record_dir}.')
+            record_dir.mkdir(exist_ok=True)
+            self._record_dir = record_dir
+            self._record_freq = record_freq
+            self._image_dimensions = image_dimensions
+        else:
+            image_dimensions = image_dimensions or []
+
+        self.sim = mujoco.Sim(str(xml_filepath), *image_dimensions, n_substeps=1)
+
+        self.init_qpos = self.sim.qpos.ravel().copy()
+        self.init_qvel = self.sim.qvel.ravel().copy()
+        self._step_num = 0
+        self._neg_reward = neg_reward
+        self._image_dimensions = image_dimensions
+
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -37,13 +60,13 @@ class MujocoEnv:
 
     def render(self, mode=None, camera_name=None, labels=None):
         if mode == 'rgb_array':
-            return self.sim.render_offscreen(height=256, width=256)
+            return self.sim.render_offscreen(camera_name=camera_name)
         if labels is None:
             labels = dict(x=self.goal_3d())
         self.sim.render(camera_name, labels)
 
     def image(self, camera_name='rgb'):
-        return self.sim.render_offscreen(*self._image_dimensions, camera_name)
+        return self.sim.render_offscreen(camera_name)
 
     def step(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
@@ -59,6 +82,8 @@ class MujocoEnv:
             self.sim.step()
             if self.render_freq > 0 and i % self.render_freq == 0:
                 self.render()
+            if self._record_video and i % self._record_freq == 0:
+                self.video_recorder.capture_frame()
 
     def reset(self):
         self.sim.reset()
@@ -70,6 +95,14 @@ class MujocoEnv:
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
+        if self._record_video:
+            self.video_recorder = VideoRecorder(
+                env=self,
+                base_path=str(self._record_dir.joinpath(str(self.episode_id))),
+                metadata={'episode_id': self.episode_id},
+                enabled=True,
+            )
+        self.episode_id += 1
         return self._get_obs()
 
     @abstractmethod

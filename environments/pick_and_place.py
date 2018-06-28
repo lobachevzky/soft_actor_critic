@@ -44,17 +44,14 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
-                 xml_filepath,
-                 steps_per_action,
                  block_xrange,
                  block_yrange,
                  fixed_block=False,
                  min_lift_height=.02,
                  geofence=.04,
-                 neg_reward=False,
                  cheat_prob=0,
-                 render_freq=0,
-                 obs_type=None):
+                 obs_type=None,
+                 **kwargs):
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
         self._obs_type = obs_type
@@ -66,14 +63,9 @@ class PickAndPlaceEnv(MujocoEnv):
         self._min_lift_height = min_lift_height
         self.geofence = geofence
 
-        super().__init__(
-            xml_filepath=xml_filepath,
-            neg_reward=neg_reward,
-            steps_per_action=steps_per_action,
-            image_dimensions=None,
-            render_freq=render_freq,
-        )
+        super().__init__(**kwargs)
 
+        self.reward_range = 0, 1
         self.initial_qpos = np.copy(self.init_qpos)
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import click
+import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
@@ -23,8 +24,8 @@ from scripts.pick_and_place import mutate_xml, parse_double, put_in_xml_setter
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.01, type=float)
 @click.option('--min-lift-height', default=.02, type=float)
+@click.option('--goal-scale', default=.1, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
@@ -46,16 +47,17 @@ from scripts.pick_and_place import mutate_xml, parse_double, put_in_xml_setter
 def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, eval, set_xml, use_dof, block_xrange, block_yrange, obs_type):
-    xml_filepath = Path(
-        Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
-    with mutate_xml(
-            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = PickAndPlaceHindsightWrapper(
+        n_goals, baseline, eval, goal_scale):
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
+    MultiTaskHindsightTrainer(
+        env=PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(
+                    goal_scale=goal_scale,
+                    xml_filepath=xml_filepath,
                     steps_per_action=steps_per_action,
+                    geofence=np.inf,
                     min_lift_height=min_lift_height,
                     obs_type=obs_type,
                     geofence=geofence,

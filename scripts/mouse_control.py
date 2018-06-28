@@ -23,17 +23,15 @@ def cli(discrete, xml_file):
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
+
     env = PickAndPlaceHindsightWrapper(
-        PickAndPlaceEnv(
-            # fixed_block=False,
-            steps_per_action=200,
-            geofence=.1,
-            min_lift_height=.02,
-            render_freq=10,
-            xml_filepath=xml_filepath,
-            block_yrange=(0, 0),
-            block_xrange=(-.1, .1),
-        ))
+                env=MultiTaskEnv(
+                    goal_scale=3,
+                    xml_filepath=xml_filepath,
+                    steps_per_action=200,
+                    geofence=np.inf,
+                    min_lift_height=np.inf,
+                    render_freq=0))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -68,12 +66,22 @@ def cli(discrete, xml_file):
             moving = not moving
             print('\rmoving:', moving)
         if lastkey is 'P':
-            print('gipper pos', env.env.gripper_pos())
-            for joint in [
-                    'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
-                    'hand_l_proximal_joint'
-            ]:
-                print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
+            eu = env.unwrapped
+            block_pos = eu.block_pos()
+            print('\n')
+            low = eu.goal().block - eu.goal_size / 2
+            print('low', low)
+            print('pos', block_pos)
+            high = eu.goal().block + eu.goal_size / 2
+            print('high', high)
+            print('in between', (low <= block_pos) * (block_pos <= high))
+            import ipdb; ipdb.set_trace()
+            # print('gipper pos', env.env.gripper_pos())
+            # for joint in [
+            #         'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
+            #         'hand_l_proximal_joint'
+            # ]:
+            #     print(joint, env.env.sim.qpos[env.env.sim.jnt_qposadr(joint)])
         # self.init_qpos[[self.sim.jnt_qposadr('slide_x'),
         #                 self.sim.jnt_qposadr('slide_y'),
         #                 self.sim.jnt_qposadr('arm_flex_joint'),
@@ -108,7 +116,12 @@ def cli(discrete, xml_file):
                 print('\nresetting', total_reward)
             pause = True
             total_reward = 0
-        env.env.render(labels={'x': env.env.goal_3d()})
+        labels = {f'x{i}': g for i, g in
+                  enumerate([(x, y, z)
+                   for x in env.env.goal_x
+                   for y in env.env.goal_y
+                   for z in env.env.goal_z])}
+        env.env.render(labels=labels)
 
 
 def run_tests(env, obs):
@@ -134,3 +147,6 @@ def assert_equal(val1, val2, atol=1e-5):
             assert_equal(a, b, atol=atol)
     except TypeError:
         assert np.allclose(val1, val2, atol=atol), "{} vs. {}".format(val1, val2)
+
+if __name__ == '__main__':
+    cli()

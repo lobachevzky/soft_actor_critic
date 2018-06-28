@@ -123,9 +123,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)

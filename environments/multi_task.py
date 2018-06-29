@@ -15,13 +15,13 @@ class MultiTaskEnv(PickAndPlaceEnv):
         super().__init__(fixed_block=False,
                          **kwargs)
         self.goal_space = spaces.Box(
-            low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
+            low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
         self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale
-        x, y, z = [np.arange(l, h, s) for l, h, s in
-                   zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
+        # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
+        x, y = [np.arange(l, h, s) for l, h, s in
+                zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
+        z = np.ones_like(x) * .40
         self.goal_corners = np.array(list(itertools.product(x, y, z)))
-        g1, g2, *_ = map(np.array, zip(x, y, z))
-        self.goal_size = np.abs(g1 - g2)
         self.labels = {tuple(g): '.' for g in self.goal_corners}
 
     def _set_new_goal(self):

@@ -24,11 +24,12 @@ def cli(discrete, xml_file):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'archive', xml_file)
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
     env = PickAndPlaceHindsightWrapper(
         env=MultiTaskEnv(
             xml_filepath=xml_filepath,
+            goal_scale=4,
             steps_per_action=200,
             block_xrange=(0, 0),
             block_yrange=(0, 0), ))
@@ -119,8 +120,7 @@ def cli(discrete, xml_file):
         #                      for x in env.env.goal_x
         #                      for y in env.env.goal_y
         #                      for z in env.env.goal_z])}
-        labels = {'x': env.env.goal_3d()}
-        env.env.render(labels=labels)
+        env.env.render()
 
 
 def run_tests(env, obs):

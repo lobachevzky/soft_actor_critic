@@ -1,28 +1,31 @@
+from pprint import pprint
+
 import numpy as np
 from gym import spaces
 from mujoco import ObjType
 
 from environments.pick_and_place import Goal, PickAndPlaceEnv
+import itertools
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, fixed_pose=True, goal_scale: float = .1, **kwargs):
-        self.randomize_pose = fixed_pose
+    def __init__(self, randomize_pose=False, goal_scale: float = .1, **kwargs):
+        self.randomize_pose = randomize_pose
         self._goal = None
-        super().__init__(fixed_block=False, **kwargs)
+        super().__init__(fixed_block=False,
+                         **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .45]), high=np.array([.11, .22, .63]))
         self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale
-        self.goal_x, self.goal_y, self.goal_z = [
-            np.arange(l, h, s) for l, h, s in
-             zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
-        g1, g2, *_ = map(np.array, zip(self.goal_x, self.goal_y, self.goal_z))
-
+        x, y, z = [np.arange(l, h, s) for l, h, s in
+                   zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
+        self.goal_corners = np.array(list(itertools.product(x, y, z)))
+        g1, g2, *_ = map(np.array, zip(x, y, z))
         self.goal_size = np.abs(g1 - g2)
+        self.labels = {tuple(g): '.' for g in self.goal_corners}
 
     def _set_new_goal(self):
-        goal_corner = np.array([np.random.choice(d) for d in
-                                (self.goal_x, self.goal_y, self.goal_z)])
+        goal_corner = self.goal_corners[np.random.randint(len(self.goal_corners))]
         self._goal = goal_corner + self.goal_size / 2
 
     def set_goal(self, goal):
@@ -37,9 +40,6 @@ class MultiTaskEnv(PickAndPlaceEnv):
 
     def goal(self):
         return Goal(gripper=self._goal, block=self._goal)
-
-    def goal_3d(self):
-        return self._goal
 
     def reset_qpos(self):
         if self.randomize_pose:
@@ -65,3 +65,9 @@ class MultiTaskEnv(PickAndPlaceEnv):
             low=list(self.goal_space.low)[:2] + [0, -1],
             high=list(self.goal_space.high)[:2] + [1, 1])
         return self.init_qpos
+
+    def render(self, labels=None, **kwargs):
+        if labels is None:
+            labels = self.labels
+        labels[tuple(self._goal)] = 'x'
+        super().render(labels=labels, **kwargs)

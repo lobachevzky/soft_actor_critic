@@ -44,14 +44,18 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
-                 block_xrange,
-                 block_yrange,
+                 block_xrange=None,
+                 block_yrange=None,
                  fixed_block=False,
                  min_lift_height=.02,
                  geofence=.04,
                  cheat_prob=0,
                  obs_type=None,
                  **kwargs):
+        if block_xrange is None:
+            block_xrange = (0, 0)
+        if block_yrange is None:
+            block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
         self._obs_type = obs_type
@@ -73,7 +77,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -164,7 +168,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-        ]
+            ]
         # necessary because np.insert can't append multiple values to end:
         mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
         action = np.insert(action, mirroring_index, action[mirrored_index])

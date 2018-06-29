@@ -5,9 +5,12 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.multi_task import MultiTaskEnv
+from sac.networks import LstmAgent
+from sac.networks import MlpAgent
 from sac.train import MultiTaskHindsightTrainer
-from scripts.pick_and_place import mutate_xml, parse_double, put_in_xml_setter
+from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
 
 
 @click.command()
@@ -24,18 +27,20 @@ from scripts.pick_and_place import mutate_xml, parse_double, put_in_xml_setter
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--min-lift-height', default=.02, type=float)
 @click.option('--goal-scale', default=.1, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', default=0, type=int)
+@click.option('--render', is_flag=True)
+@click.option('--record-freq', type=int, default=0)
+@click.option('--record-dir', type=Path)
+@click.option('--image-dims', type=str, callback=parse_double)
+@click.option('--record', is_flag=True)
 @click.option('--eval', is_flag=True)
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
-@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
-@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option(
     '--use-dof',
@@ -44,30 +49,34 @@ from scripts.pick_and_place import mutate_xml, parse_double, put_in_xml_setter
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
-def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, activation,
+def cli(max_steps, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
-        num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, baseline, eval, goal_scale):
+        num_train_steps, steps_per_action, logdir, save_path, load_path,
+        n_goals, eval, goal_scale, set_xml, use_dof, obs_type,
+        render_freq, render, record, record_dir, record_freq, image_dims):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
-    MultiTaskHindsightTrainer(
-        env=PickAndPlaceHindsightWrapper(
+    if render and not render_freq:
+        render_freq = 20
+    with mutate_xml(
+            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+        env = PickAndPlaceHindsightWrapper(
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(
                     goal_scale=goal_scale,
-                    xml_filepath=xml_filepath,
-                    steps_per_action=steps_per_action,
-                    geofence=np.inf,
-                    min_lift_height=min_lift_height,
-                    obs_type=obs_type,
-                    geofence=geofence,
-                    render_freq=render_freq,
                     xml_filepath=temp_path,
-                    block_xrange=block_xrange,
-                    block_yrange=block_yrange,
+                    steps_per_action=steps_per_action,
+                    obs_type=obs_type,
+                    render_freq=render_freq,
+                    record=record,
+                    record_dir=record_dir,
+                    record_freq=record_freq,
+                    image_dimensions=image_dims,
                 )))
     MultiTaskHindsightTrainer(
         env=env,
+        base_agent=MlpAgent,
+        seq_len=None,
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,

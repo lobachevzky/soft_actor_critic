@@ -53,7 +53,6 @@ class MujocoEnv:
         self._step_num = 0
         self._image_dimensions = image_dimensions
 
-
     def seed(self, seed=None):
         np.random.seed(seed)
 
@@ -63,9 +62,7 @@ class MujocoEnv:
     def render(self, mode=None, camera_name=None, labels=None):
         if mode == 'rgb_array':
             return self.sim.render_offscreen(camera_name=camera_name)
-        if labels is None:
-            labels = dict(x=self.goal_3d())
-        self.sim.render(camera_name, labels)
+        self.sim.render(camera_name=camera_name, labels=labels)
 
     def image(self, camera_name='rgb'):
         return self.sim.render_offscreen(camera_name)
@@ -93,7 +90,7 @@ class MujocoEnv:
 
         self._set_new_goal()
         qpos = self.reset_qpos()
-        assert qpos.shape == (self.sim.nq, )
+        assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
@@ -127,10 +124,6 @@ class MujocoEnv:
 
     @abstractmethod
     def goal(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def goal_3d(self):
         raise NotImplementedError
 
     @abstractmethod
@@ -175,7 +168,7 @@ def at_goal(pos, goal, geofence, verbose=False):
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \
-        or np.any(pos < world_lower_bound)
+           or np.any(pos < world_lower_bound)
 
 
 def get_limits(pos, size):

@@ -27,7 +27,7 @@ def cli(discrete, xml_file):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'archive', xml_file)
 
     env = PickAndPlaceHindsightWrapper(
-        env=PickAndPlaceEnv(
+        env=MultiTaskEnv(
             xml_filepath=xml_filepath,
             steps_per_action=200,
             block_xrange=(0, 0),

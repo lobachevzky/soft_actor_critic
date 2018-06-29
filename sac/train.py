@@ -196,7 +196,7 @@ class Trainer:
     def sample_buffer(self) -> Step:
         sample = Step(*self.buffer.sample(self.batch_size, seq_len=self.seq_len))
         if self.seq_len is None:
-            # leave state as dummy value fr non-recurrent
+            # leave state as dummy value for non-recurrent
             shape = [self.batch_size, -1]
             return Step(
                 o1=self.vectorize_state(sample.o1, shape=shape),

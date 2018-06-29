@@ -49,7 +49,7 @@ class ReplayBuffer:
 
     def sample(self, batch_size: int, seq_len=None):
         # indices are negative because indices are relative to pos
-        indices = -np.random.randint(len(self), size=batch_size)  # type: np.ndarray
+        indices = np.random.randint(-len(self), 0, size=batch_size) # type: np.ndarray
         if seq_len is not None:
             indices = np.array([np.arange(i, i + seq_len) for i in indices])
         assert isinstance(indices, np.ndarray)

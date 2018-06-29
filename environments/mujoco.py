@@ -9,9 +9,12 @@ from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 class MujocoEnv:
     def __init__(self, xml_filepath: Path,
-                 image_dimensions: Optional[Tuple[int]], record_dir: Optional[Path],
-                 record_freq: int, record: bool,
-                 neg_reward: bool, steps_per_action: int, render_freq: int):
+                 steps_per_action: int,
+                 image_dimensions: Optional[Tuple[int]] = None,
+                 record_dir: Optional[Path] = None,
+                 record_freq: int = 0,
+                 record: bool = None,
+                 render_freq: int = 0):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
@@ -48,7 +51,6 @@ class MujocoEnv:
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._step_num = 0
-        self._neg_reward = neg_reward
         self._image_dimensions = image_dimensions
 
 

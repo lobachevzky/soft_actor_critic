@@ -9,6 +9,8 @@ from mujoco import ObjType
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
+from environments.multi_task import MultiTaskEnv
+from environments.pick_and_place import PickAndPlaceEnv
 from sac.utils import Step
 
 saved_pos = None
@@ -22,16 +24,14 @@ def cli(discrete, xml_file):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
+    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'archive', xml_file)
 
     env = PickAndPlaceHindsightWrapper(
-                env=MultiTaskEnv(
-                    goal_scale=3,
-                    xml_filepath=xml_filepath,
-                    steps_per_action=200,
-                    geofence=np.inf,
-                    min_lift_height=np.inf,
-                    render_freq=0))
+        env=PickAndPlaceEnv(
+            xml_filepath=xml_filepath,
+            steps_per_action=200,
+            block_xrange=(0, 0),
+            block_yrange=(0, 0), ))
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -47,7 +47,6 @@ def cli(discrete, xml_file):
     done = False
     total_reward = 0
     s1 = env.reset()
-    traj = []
 
     while True:
         lastkey = env.env.sim.get_last_key_press()
@@ -75,7 +74,8 @@ def cli(discrete, xml_file):
             high = eu.goal().block + eu.goal_size / 2
             print('high', high)
             print('in between', (low <= block_pos) * (block_pos <= high))
-            import ipdb; ipdb.set_trace()
+            import ipdb;
+            ipdb.set_trace()
             # print('gipper pos', env.env.gripper_pos())
             # for joint in [
             #         'slide_x', 'slide_y', 'arm_flex_joint', 'wrist_roll_joint',
@@ -106,8 +106,6 @@ def cli(discrete, xml_file):
             if discrete:
                 action = 0
 
-            traj.append(Step(s1, action, r, s2, done))
-            s1 = s2
             total_reward += r
             # run_tests(env, s2)
 
@@ -116,11 +114,12 @@ def cli(discrete, xml_file):
                 print('\nresetting', total_reward)
             pause = True
             total_reward = 0
-        labels = {f'x{i}': g for i, g in
-                  enumerate([(x, y, z)
-                   for x in env.env.goal_x
-                   for y in env.env.goal_y
-                   for z in env.env.goal_z])}
+        # labels = {f'x{i}': g for i, g in
+        #           enumerate([(x, y, z)
+        #                      for x in env.env.goal_x
+        #                      for y in env.env.goal_y
+        #                      for z in env.env.goal_z])}
+        labels = {'x': env.env.goal_3d()}
         env.env.render(labels=labels)
 
 
@@ -147,6 +146,7 @@ def assert_equal(val1, val2, atol=1e-5):
             assert_equal(a, b, atol=atol)
     except TypeError:
         assert np.allclose(val1, val2, atol=atol), "{} vs. {}".format(val1, val2)
+
 
 if __name__ == '__main__':
     cli()

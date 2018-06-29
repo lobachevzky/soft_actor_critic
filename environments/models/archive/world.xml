@@ -39,7 +39,7 @@
     <visual>
         <map znear=".03"/>
     </visual>
-    <compiler coordinate="local" angle="degree" meshdir="../../../hsr_meshes/meshes/" inertiafromgeom="true"/>
+    <compiler coordinate="local" angle="degree" meshdir="../../hsr_meshes/meshes/" inertiafromgeom="true"/>
     <size njmax="500" nconmax="100"/>
     <asset>
         <mesh name="base_light" file="base_v2/base_light.stl"/>

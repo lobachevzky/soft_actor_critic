@@ -10,7 +10,7 @@ from environments.multi_task import MultiTaskEnv
 from sac.networks import LstmAgent
 from sac.networks import MlpAgent
 from sac.train import MultiTaskHindsightTrainer
-from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
+from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double, env_wrapper
 
 
 @click.command()
@@ -49,30 +49,26 @@ from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
+@env_wrapper
 def cli(max_steps, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path,
-        n_goals, eval, goal_scale, set_xml, use_dof, obs_type,
-        render_freq, render, record, record_path, record_freq, image_dims):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
-    if render and not render_freq:
-        render_freq = 20
-    with mutate_xml(
-            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = PickAndPlaceHindsightWrapper(
-            env=TimeLimit(
-                max_episode_steps=max_steps,
-                env=MultiTaskEnv(
-                    goal_scale=goal_scale,
-                    xml_filepath=temp_path,
-                    steps_per_action=steps_per_action,
-                    obs_type=obs_type,
-                    render_freq=render_freq,
-                    record=record,
-                    record_path=record_path,
-                    record_freq=record_freq,
-                    image_dimensions=image_dims,
-                )))
+        n_goals, eval, goal_scale, obs_type, temp_path,
+        render_freq, record, record_path, record_freq, image_dims):
+    env = PickAndPlaceHindsightWrapper(
+        env=TimeLimit(
+            max_episode_steps=max_steps,
+            env=MultiTaskEnv(
+                goal_scale=goal_scale,
+                xml_filepath=temp_path,
+                steps_per_action=steps_per_action,
+                obs_type=obs_type,
+                render_freq=render_freq,
+                record=record,
+                record_path=record_path,
+                record_freq=record_freq,
+                image_dimensions=image_dims,
+            )))
     MultiTaskHindsightTrainer(
         env=env,
         base_agent=MlpAgent,

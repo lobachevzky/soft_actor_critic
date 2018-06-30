@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
-from gym.wrappers import Monitor, TimeLimit
+from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv

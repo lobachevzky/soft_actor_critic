@@ -35,7 +35,7 @@ from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
 @click.option('--render-freq', default=0, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--record-freq', type=int, default=0)
-@click.option('--record-dir', type=Path)
+@click.option('--record-path', type=Path)
 @click.option('--image-dims', type=str, callback=parse_double)
 @click.option('--record', is_flag=True)
 @click.option('--eval', is_flag=True)
@@ -53,7 +53,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation,
         n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path,
         n_goals, eval, goal_scale, set_xml, use_dof, obs_type,
-        render_freq, render, record, record_dir, record_freq, image_dims):
+        render_freq, render, record, record_path, record_freq, image_dims):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
     if render and not render_freq:
         render_freq = 20
@@ -69,7 +69,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation,
                     obs_type=obs_type,
                     render_freq=render_freq,
                     record=record,
-                    record_dir=record_dir,
+                    record_path=record_path,
                     record_freq=record_freq,
                     image_dimensions=image_dims,
                 )))

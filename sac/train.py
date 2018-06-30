@@ -43,7 +43,7 @@ class Trainer:
             act=self.build_agent(
                 sess=sess,
                 base_agent=base_agent,
-                batch_size=1,
+                batch_size=None,
                 seq_len=1,
                 reuse=False,
                 **kwargs),
@@ -54,7 +54,7 @@ class Trainer:
                 seq_len=seq_len,
                 reuse=True,
                 **kwargs))
-        self.seq_len = self.agents.train.seq_len
+        self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -126,7 +126,7 @@ class Trainer:
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    step = self.agents.train.train_step(self.sample_buffer())
+                    step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
                             k: getattr(step, k.replace(' ', '_'))

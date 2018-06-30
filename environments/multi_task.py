@@ -70,4 +70,4 @@ class MultiTaskEnv(PickAndPlaceEnv):
         if labels is None:
             labels = self.labels
         labels[tuple(self._goal)] = 'x'
-        super().render(labels=labels, **kwargs)
+        return super().render(labels=labels, **kwargs)

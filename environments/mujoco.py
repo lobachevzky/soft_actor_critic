@@ -11,7 +11,7 @@ class MujocoEnv:
     def __init__(self, xml_filepath: Path,
                  steps_per_action: int,
                  image_dimensions: Optional[Tuple[int]] = None,
-                 record_dir: Optional[Path] = None,
+                 record_path: Optional[Path] = None,
                  record_freq: int = 0,
                  record: bool = None,
                  render_freq: int = 0):
@@ -29,20 +29,25 @@ class MujocoEnv:
         self.episode_id = 0
 
         self.video_recorder = None
-        self._record_video = any((record_dir, record_freq, record))
+        self._record_video = any((record_path, record_freq, record))
         if self._record_video:
-            if not record_dir:
-                record_dir = Path('/tmp/training-video')
+            if not record_path:
+                record_path = Path('/tmp/training-video')
             if not image_dimensions:
                 image_dimensions = (800, 800)
             if not record_freq:
                 record_freq = 20
 
-            print(f'Recording video to {record_dir}.')
-            record_dir.mkdir(exist_ok=True)
-            self._record_dir = record_dir
+            print(f'Recording video to {record_path}.')
+            record_path.mkdir(exist_ok=True)
             self._record_freq = record_freq
             self._image_dimensions = image_dimensions
+
+            self.video_recorder = VideoRecorder(
+                env=self,
+                base_path=str(record_path),
+                enabled=True,
+            )
         else:
             image_dimensions = image_dimensions or []
 
@@ -94,13 +99,7 @@ class MujocoEnv:
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
-        if self._record_video:
-            self.video_recorder = VideoRecorder(
-                env=self,
-                base_path=str(self._record_dir.joinpath(str(self.episode_id))),
-                metadata={'episode_id': self.episode_id},
-                enabled=True,
-            )
+        # if self._record_video:
         self.episode_id += 1
         return self._get_obs()
 

@@ -61,7 +61,7 @@ def parse_double(ctx, param, string):
 @click.option('--render-freq', type=int, default=0)
 @click.option('--render', is_flag=True)
 @click.option('--record-freq', type=int, default=0)
-@click.option('--record-dir', type=Path)
+@click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
@@ -79,7 +79,7 @@ def parse_double(ctx, param, string):
 def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_freq, record_dir, image_dims, record, n_goals, xml_file, set_xml,
+        save_path, load_path, render_freq, record_freq, record_path, image_dims, record, n_goals, xml_file, set_xml,
         use_dof, obs_type, block_xrange, block_yrange, agent, seq_len, render):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models',
                         xml_file).absolute()
@@ -102,7 +102,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
                     block_yrange=block_yrange,
                     render_freq=render_freq,
                     record=record,
-                    record_dir=record_dir,
+                    record_path=record_path,
                     record_freq=record_freq,
                     image_dimensions=image_dims,
                 )))

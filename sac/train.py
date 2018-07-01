@@ -99,6 +99,8 @@ class Trainer:
             final_index = 0  # points to current time step
         else:
             final_index -= self.time_steps()
+        if self.buffer.empty:
+            return None
         return Step(*self.buffer[-self.time_steps():final_index])
 
     def time_steps(self):

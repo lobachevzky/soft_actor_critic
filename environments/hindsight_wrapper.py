@@ -21,7 +21,9 @@ def get_size(x):
 
 def assign_to_vector(x, vector: np.ndarray):
     dim = vector.size / vector.shape[-1]
-    if isinstance(x, np.ndarray) or np.isscalar(x):
+    if np.isscalar(x):
+        x = np.array([x])
+    if isinstance(x, np.ndarray):
         vector.reshape(x.shape)[:] = x
     else:
         sizes = np.array(list(map(get_size, x)))

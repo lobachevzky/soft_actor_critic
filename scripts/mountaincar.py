@@ -3,6 +3,7 @@ import gym
 import tensorflow as tf
 
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
+from sac.networks import MlpAgent
 from sac.train import HindsightTrainer
 
 
@@ -44,6 +45,8 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
+        base_agent=MlpAgent,
+        seq_len=None,
         render=render)
 
 

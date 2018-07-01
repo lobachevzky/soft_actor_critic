@@ -99,6 +99,8 @@ class Trainer:
             final_index = 0  # points to current time step
         else:
             final_index -= self.time_steps()
+        if self.buffer.empty:
+            return None
         return Step(*self.buffer[-self.time_steps():final_index])
 
     def time_steps(self):
@@ -129,17 +131,17 @@ class Trainer:
                     step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
-                        }))
+                                    k: getattr(step, k.replace(' ', '_'))
+                                    for k in [
+                                        'entropy',
+                                        'V loss',
+                                        'Q loss',
+                                        'pi loss',
+                                        'V grad',
+                                        'Q grad',
+                                        'pi grad',
+                                    ]
+                                    }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -184,7 +186,10 @@ class Trainer:
 
     def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
         """ Preprocess state before feeding to network """
-        return state
+        try:
+            return self.env.vectorize_state(state, shape)
+        except AttributeError:
+            return state
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -230,27 +235,25 @@ class HindsightTrainer(Trainer):
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
-        return
-        # assert isinstance(self.hindsight_env, HindsightWrapper)
-        # if self.time_steps() > 0:
-        #     self.buffer.append(self.hindsight_env.recompute_trajectory(self.trajectory()))
-        # if self.n_goals - 1 and self.time_steps() > 0:
-        #     final_indexes = np.random.randint(
-        #         1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
-        #     assert isinstance(final_indexes, np.ndarray)
-        #
-        #     for final_index in final_indexes:
-        #         self.buffer.append(
-        #             self.hindsight_env.recompute_trajectory(
-        #                 self.trajectory()[:final_index]))
+        assert isinstance(self.hindsight_env, HindsightWrapper)
+        if self.time_steps() > 0:
+            new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
+            for t in Step(*new_trajectory).r:
+                print(t)
+            self.buffer.append(new_trajectory)
+        if self.n_goals - 1 and self.time_steps() > 0:
+            final_indexes = np.random.randint(
+                1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
+            assert isinstance(final_indexes, np.ndarray)
+
+            for final_index in final_indexes:
+                self.buffer.append(
+                    self.hindsight_env.recompute_trajectory(
+                        self.trajectory()[:final_index]))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()
         return super().reset()
-
-    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
-        assert isinstance(self.hindsight_env, HindsightWrapper)
-        return self.hindsight_env.vectorize_state(state, shape=shape)
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):

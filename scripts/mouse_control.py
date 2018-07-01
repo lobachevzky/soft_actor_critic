@@ -75,7 +75,6 @@ def cli(discrete, xml_file):
             high = eu.goal().block + eu.goal_size / 2
             print('high', high)
             print('in between', (low <= block_pos) * (block_pos <= high))
-            import ipdb;
             ipdb.set_trace()
             # print('gipper pos', env.env.gripper_pos())
             # for joint in [

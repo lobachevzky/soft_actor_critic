@@ -71,3 +71,4 @@ class MultiTaskEnv(PickAndPlaceEnv):
             labels = self.labels
         labels[tuple(self._goal)] = 'x'
         return super().render(labels=labels, **kwargs)
+

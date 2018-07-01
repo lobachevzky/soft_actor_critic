@@ -1,4 +1,6 @@
 * pull out non-training Runner class
-* Incorporate non-hindsight wrapper
 * debug `render_offscreen`
-* implement observation normalizeation
+* reset if block falls
+* fix rendering (onscreen and offscreen)
+* implement observation normalization
+* master deterministic FrozenLake

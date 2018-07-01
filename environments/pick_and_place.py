@@ -150,7 +150,9 @@ class PickAndPlaceEnv(MujocoEnv):
 
     def compute_terminal(self, goal, obs):
         # return False
-        return self.at_goal(goal)
+        EPSILON = .01
+        below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
+        return below_table or self.at_goal(goal)
 
     def compute_reward(self, goal, obs):
         if self.at_goal(goal):
@@ -177,3 +179,4 @@ class PickAndPlaceEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
+

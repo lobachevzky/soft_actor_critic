@@ -3,7 +3,7 @@ from collections import namedtuple
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType, JointType
+from mujoco import ObjType
 
 from environments.mujoco import MujocoEnv
 
@@ -74,10 +74,8 @@ class PickAndPlaceEnv(MujocoEnv):
         self._initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._get_obs()))
-        assert obs_size != 0
-        self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+
+        self.observation_space = spaces.Box(*self._obs_limits(), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -102,10 +100,16 @@ class PickAndPlaceEnv(MujocoEnv):
 
         return self.init_qpos
 
-    def _set_new_goal(self):
-        pass
+    def _obs_limits(self):
+        qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
+        qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]
+        for joint_id in range(self.sim.njnt):
+            if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
+                qposadr = self.sim.get_jnt_qposadr(joint_id)
+                qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
+        return tuple(map(np.array, zip(*qpos_limits + qvel_limits)))
 
-    def _get_obs(self):
+    def _qvel_obs(self):
         def get_qvels(joints):
             base_qvel = []
             for joint in joints:
@@ -116,19 +120,23 @@ class PickAndPlaceEnv(MujocoEnv):
             return np.array(base_qvel)
 
         if self._obs_type == 'qvel':
-            qvel = self.sim.qvel
+            return self.sim.qvel
 
         elif self._obs_type == 'robot-qvel':
-            qvel = get_qvels([
+            return get_qvels([
                 'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
                 'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
             ])
         elif self._obs_type == 'base-qvel':
-            qvel = get_qvels(['slide_x', 'slide_x'])
+            return get_qvels(['slide_x', 'slide_x'])
         else:
-            qvel = []
+            return []
 
-        return np.concatenate([self.sim.qpos, qvel])
+    def _get_obs(self):
+        return np.concatenate([self.sim.qpos, self._qvel_obs()])
+
+    def _set_new_goal(self):
+        pass
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)
@@ -179,4 +187,3 @@ class PickAndPlaceEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
-

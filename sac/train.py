@@ -238,8 +238,6 @@ class HindsightTrainer(Trainer):
         assert isinstance(self.hindsight_env, HindsightWrapper)
         if self.time_steps() > 0:
             new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
-            for t in Step(*new_trajectory).r:
-                print(t)
             self.buffer.append(new_trajectory)
         if self.n_goals - 1 and self.time_steps() > 0:
             final_indexes = np.random.randint(

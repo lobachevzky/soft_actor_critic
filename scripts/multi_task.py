@@ -42,6 +42,7 @@ from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double, 
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
+@click.option('--xml-file', type=Path, default='world.xml')
 @click.option(
     '--use-dof',
     multiple=True,

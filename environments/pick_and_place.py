@@ -1,5 +1,4 @@
 import random
-from collections import namedtuple
 
 import numpy as np
 from gym import spaces
@@ -39,9 +38,6 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-Goal = namedtuple('Goal', 'gripper block')
-
-
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  block_xrange=None,
@@ -63,7 +59,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._cheat_prob = cheat_prob
         self.grip = 0
         self._fixed_block = fixed_block
-        self._goal_block_name = 'block1'
+        self._block_name = 'block1'
         self._min_lift_height = min_lift_height
         self.geofence = geofence
 
@@ -84,7 +80,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
-    def reset_qpos(self):
+    def _reset_qpos(self):
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
@@ -135,35 +131,23 @@ class PickAndPlaceEnv(MujocoEnv):
     def _get_obs(self):
         return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
-    def _set_new_goal(self):
-        pass
-
     def block_pos(self):
-        return self.sim.get_body_xpos(self._goal_block_name)
+        return self.sim.get_body_xpos(self._block_name)
 
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
 
-    def goal(self):
-        goal_pos = self._initial_block_pos + \
-                   np.array([0, 0, self._min_lift_height])
-        return Goal(gripper=goal_pos, block=goal_pos)
-
-    def goal_3d(self):
-        return self.goal()[0]
-
-    def at_goal(self, _):
+    def _is_successful(self):
         return self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height
 
-    def compute_terminal(self, goal, obs):
-        # return False
+    def compute_terminal(self):
         EPSILON = .01
         below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
-        return below_table or self.at_goal(goal)
+        return below_table or self._is_successful()
 
-    def compute_reward(self, goal, obs):
-        if self.at_goal(goal):
+    def compute_reward(self):
+        if self._is_successful():
             return 1
         else:
             return 0

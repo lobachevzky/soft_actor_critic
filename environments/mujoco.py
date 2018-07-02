@@ -26,7 +26,6 @@ class MujocoEnv:
         self.spec = None
         self.render_freq = render_freq
         self.steps_per_action = steps_per_action
-        self.episode_id = 0
 
         self.video_recorder = None
         self._record_video = any((record_path, record_freq, record))
@@ -55,7 +54,6 @@ class MujocoEnv:
 
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
-        self._step_num = 0
         self._image_dimensions = image_dimensions
 
     def seed(self, seed=None):
@@ -75,8 +73,8 @@ class MujocoEnv:
     def step(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         self._set_action(action)
-        done = self.compute_terminal(self.goal(), self._get_obs())
-        reward = self.compute_reward(self.goal(), self._get_obs())
+        done = self.compute_terminal()
+        reward = self.compute_reward()
         return self._get_obs(), reward, done, {}
 
     def _set_action(self, action):
@@ -91,20 +89,15 @@ class MujocoEnv:
 
     def reset(self):
         self.sim.reset()
-        self._step_num = 0
-
-        self._set_new_goal()
-        qpos = self.reset_qpos()
+        qpos = self._reset_qpos()
         assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
-        # if self._record_video:
-        self.episode_id += 1
         return self._get_obs()
 
     @abstractmethod
-    def reset_qpos(self):
+    def _reset_qpos(self):
         raise NotImplemented
 
     def __enter__(self):
@@ -113,24 +106,17 @@ class MujocoEnv:
     def __exit__(self, *args):
         self.sim.__exit__()
 
-    @abstractmethod
-    def _set_new_goal(self):
-        raise NotImplementedError
 
     @abstractmethod
     def _get_obs(self):
         raise NotImplementedError
 
     @abstractmethod
-    def goal(self):
+    def compute_terminal(self):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_terminal(self, goal, obs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def compute_reward(self, goal, obs):
+    def compute_reward(self):
         raise NotImplementedError
 
 

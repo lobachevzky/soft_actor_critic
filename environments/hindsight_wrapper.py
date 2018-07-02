@@ -8,7 +8,6 @@ import numpy as np
 from gym.spaces import Box
 
 from environments.mujoco import distance_between
-from environments.pick_and_place import Goal
 from sac.array_group import ArrayGroup
 from sac.utils import Step
 
@@ -32,6 +31,9 @@ def assign_to_vector(x, vector: np.ndarray):
             indices = [slice(None) for _ in vector.shape]
             indices[-1] = slice(start, stop)
             assign_to_vector(_x, vector[tuple(indices)])
+
+
+Goal = namedtuple('Goal', 'gripper block')
 
 
 class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
@@ -128,7 +130,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)
-
         geofence = self.env.unwrapped.geofence
         block_distance = distance_between(achieved_goal.block, desired_goal.block)
         goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
@@ -140,7 +141,8 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
             block=self.env.unwrapped.block_pos())
 
     def _desired_goal(self):
-        return self.env.unwrapped.goal()
+        return Goal(gripper=self.env.unwrapped.goal,
+                    block=self.env.unwrapped.goal)
 
     @staticmethod
     def vectorize_state(state, shape=None):

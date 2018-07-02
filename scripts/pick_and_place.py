@@ -96,8 +96,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
         n_goals, obs_type, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
-    env = PickAndPlaceHindsightWrapper(
-        env=TimeLimit(
+    env = TimeLimit(
             max_episode_steps=max_steps,
             env=PickAndPlaceEnv(
                 cheat_prob=cheat_prob,
@@ -114,9 +113,8 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
                 record_path=record_path,
                 record_freq=record_freq,
                 image_dimensions=image_dims,
-            )))
+            ))
     kwargs = dict(
-        env=env,
         seq_len=seq_len,
         base_agent=agent,
         seed=seed,
@@ -135,9 +133,10 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
         load_path=load_path,
         render=False)  # because render is handled inside env
     if hindsight:
-        HindsightTrainer(n_goals=n_goals, **kwargs)
+        HindsightTrainer(env=PickAndPlaceHindsightWrapper(env),
+                         n_goals=n_goals, **kwargs)
     else:
-        Trainer(**kwargs)
+        Trainer(env=env, **kwargs)
 
 
 XMLSetter = namedtuple('XMLSetter', 'path value')

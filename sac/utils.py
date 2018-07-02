@@ -96,6 +96,7 @@ def normalize(vector: np.ndarray, low: np.ndarray, high: np.ndarray):
     high[np.isinf(high)] = .5
     mean = (low + high) / 2
     dev = high - low
+    dev[dev == 0] = 1
     return (vector - mean) / dev
 
 

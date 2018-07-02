@@ -1,12 +1,19 @@
 import numpy as np
 from gym import spaces
 from gym.envs.toy_text import FrozenLakeEnv as gym_env
+from gym.envs.toy_text.frozen_lake import MAPS
+
+MAPS["3x3"] = [
+                  "SFF",
+                  "FHF",
+                  "FFG",
+              ]
 
 
 class FrozenLakeEnv(gym_env):
     def __init__(self, *args, **kwargs):
         self.n_states = None
-        super().__init__(*args, **kwargs)
+        super().__init__(map_name="3x3", *args, **kwargs)
         self.observation_space = spaces.Box(
             low=np.zeros(self.n_states),
             high=np.ones(self.n_states)
@@ -25,4 +32,3 @@ class FrozenLakeEnv(gym_env):
         array = np.zeros(self.n_states)
         array[s] = 1
         return array
-

@@ -127,7 +127,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
-        import ipdb; ipdb.set_trace()
         return vectorize(obs, shape=shape)
 
 

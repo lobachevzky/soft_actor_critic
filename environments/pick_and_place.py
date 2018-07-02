@@ -101,6 +101,12 @@ class PickAndPlaceEnv(MujocoEnv):
             if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
                 qposadr = self.sim.get_jnt_qposadr(joint_id)
                 qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
+        if not self._fixed_block:
+            block_joint = self.sim.get_jnt_qposadr('block1joint')
+            qpos_limits[block_joint + 0] = self.block_xrange
+            qpos_limits[block_joint + 1] = self.block_yrange
+            qpos_limits[block_joint + 3] = 0, 1
+            qpos_limits[block_joint + 6] = -1, 1
         return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
 
     def _qvel_obs(self):

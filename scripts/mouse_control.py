@@ -3,6 +3,7 @@
 # import gym
 from pathlib import Path
 
+import ipdb
 import numpy as np
 from click._unicodefun import click
 
@@ -57,7 +58,8 @@ def cli(discrete, xml_file):
                 action[i] += env.sim.get_mouse_dy() * .05
 
         if lastkey is 'R':
-            env.reset()
+            print(env.reset())
+
         if lastkey is ' ':
             moving = not moving
             print('\rmoving:', moving)

@@ -8,6 +8,7 @@ import numpy as np
 from gym import spaces
 
 from environments.mujoco import distance_between
+from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
@@ -89,8 +90,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.pap_env = unwrap_env(env, PickAndPlaceEnv)
         self._geofence = geofence
-        self.goal_space = spaces.Box(
-            low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
         self.observation_space = spaces.Box(
             low=vectorize(
                 Observation(
@@ -102,6 +101,11 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
                     observation=env.observation_space.high,
                     desired_goal=Goal(self.goal_space.high, self.goal_space.high),
                     achieved_goal=None)))
+
+    @property
+    def goal_space(self):
+        return spaces.Box(
+            low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
@@ -123,4 +127,35 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
+        import ipdb; ipdb.set_trace()
         return vectorize(obs, shape=shape)
+
+
+class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+    def __init__(self, env, geofence):
+        self.multi_task_env = unwrap_env(env, MultiTaskEnv)
+        super().__init__(env, geofence)
+
+    @property
+    def goal_space(self):
+        return spaces.Box(low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
+
+    def _desired_goal(self):
+        assert isinstance(self.multi_task_env, MultiTaskEnv)
+        goal = np.append(self.multi_task_env.goal, .4)
+        return Goal(goal, goal)
+
+    def step(self, action):
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=o2.observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        return new_o2, r, t, info
+
+    def reset(self):
+        return Observation(
+            observation=self.env.reset().observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+

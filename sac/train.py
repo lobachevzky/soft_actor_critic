@@ -200,9 +200,10 @@ class Trainer:
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
-        return normalize(vector=obs,
-                         low=self.env.observation_space.low,
-                         high=self.env.observation_space.high)
+        return normalize(
+            vector=obs,
+            low=self.env.observation_space.low,
+            high=self.env.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)

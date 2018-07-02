@@ -4,7 +4,7 @@ import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.networks import MlpAgent
 from sac.train import MultiTaskHindsightTrainer, MultiTaskTrainer
@@ -91,7 +91,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
     )
 
     if hindsight:
-        env = PickAndPlaceHindsightWrapper(env=env, geofence=geofence)
+        env = MultiTaskHindsightWrapper(env=env, geofence=geofence)
         MultiTaskHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
         MultiTaskTrainer(env=env, **kwargs)

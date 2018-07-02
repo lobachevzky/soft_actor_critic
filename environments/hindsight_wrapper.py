@@ -5,33 +5,12 @@ from typing import Optional
 
 import gym
 import numpy as np
-from gym.spaces import Box
+from gym import spaces
 
 from environments.mujoco import distance_between
+from environments.pick_and_place import PickAndPlaceEnv
 from sac.array_group import ArrayGroup
-from sac.utils import Step
-
-
-def get_size(x):
-    if np.isscalar(x):
-        return 1
-    return sum(map(get_size, x))
-
-
-def assign_to_vector(x, vector: np.ndarray):
-    dim = vector.size / vector.shape[-1]
-    if np.isscalar(x):
-        x = np.array([x])
-    if isinstance(x, np.ndarray):
-        vector.reshape(x.shape)[:] = x
-    else:
-        sizes = np.array(list(map(get_size, x)))
-        sizes = np.cumsum(sizes / dim, dtype=int)
-        for _x, start, stop in zip(x, [0] + list(sizes), sizes):
-            indices = [slice(None) for _ in vector.shape]
-            indices[-1] = slice(start, stop)
-            assign_to_vector(_x, vector[tuple(indices)])
-
+from sac.utils import Step, unwrap_env, vectorize
 
 Goal = namedtuple('Goal', 'gripper block')
 
@@ -42,13 +21,6 @@ class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env):
-        self.state_vectors = {}
-        super().__init__(env)
-        s = self.reset()
-        vector_state = self.vectorize_state(s)
-        self.observation_space = Box(-1, 1, vector_state.shape)
-
     @abstractmethod
     def _achieved_goal(self):
         raise NotImplementedError
@@ -60,20 +32,6 @@ class HindsightWrapper(gym.Wrapper):
     @abstractmethod
     def _desired_goal(self):
         raise NotImplementedError
-
-    @staticmethod
-    def vectorize_state(state, shape: Optional[tuple] = None):
-        if isinstance(state, np.ndarray):
-            return state
-
-        size = get_size(state)
-        vector = np.zeros(size)
-        if shape:
-            vector = vector.reshape(shape)
-
-        assert isinstance(vector, np.ndarray)
-        assign_to_vector(x=state, vector=vector)
-        return vector
 
     def step(self, action):
         o2, r, t, info = self.env.step(action)
@@ -127,25 +85,42 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
+    def __init__(self, env, geofence):
+        super().__init__(env)
+        self.pap_env = unwrap_env(env, PickAndPlaceEnv)
+        self._geofence = geofence
+        self.goal_space = spaces.Box(
+            low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+        self.observation_space = spaces.Box(
+            low=vectorize(
+                Observation(
+                    observation=env.observation_space.low,
+                    desired_goal=Goal(self.goal_space.low, self.goal_space.low),
+                    achieved_goal=None)),
+            high=vectorize(
+                Observation(
+                    observation=env.observation_space.high,
+                    desired_goal=Goal(self.goal_space.high, self.goal_space.high),
+                    achieved_goal=None)))
+
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)
-        geofence = self.env.unwrapped.geofence
         block_distance = distance_between(achieved_goal.block, desired_goal.block)
         goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
-        return np.logical_and(block_distance < geofence, goal_distance < geofence)
+        return np.logical_and(block_distance < self._geofence,
+                              goal_distance < self._geofence)
 
     def _achieved_goal(self):
-        return Goal(
-            gripper=self.env.unwrapped.gripper_pos(),
-            block=self.env.unwrapped.block_pos())
+        return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
 
     def _desired_goal(self):
-        return Goal(gripper=self.env.unwrapped.goal,
-                    block=self.env.unwrapped.goal)
+        assert isinstance(self.pap_env, PickAndPlaceEnv)
+        goal = self.pap_env.initial_block_pos.copy()
+        goal[2] += self.pap_env.min_lift_height
+        return Goal(gripper=goal, block=goal)
 
-    @staticmethod
-    def vectorize_state(state, shape=None):
-        state = Observation(*state)
-        return HindsightWrapper.vectorize_state(
-            [state.observation, state.desired_goal], shape=shape)
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        obs = Observation(*obs)
+        obs = [obs.observation, obs.desired_goal]
+        return vectorize(obs, shape=shape)

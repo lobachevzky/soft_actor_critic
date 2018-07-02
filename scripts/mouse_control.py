@@ -5,13 +5,10 @@ from pathlib import Path
 
 import numpy as np
 from click._unicodefun import click
-from mujoco import ObjType
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
-from sac.utils import Step
+from mujoco import ObjType
 
 saved_pos = None
 
@@ -27,10 +24,11 @@ def cli(discrete, xml_file):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
     env = PickAndPlaceEnv(
-            xml_filepath=xml_filepath,
-            steps_per_action=200,
-            block_xrange=(0, 0),
-            block_yrange=(0, 0), )
+        xml_filepath=xml_filepath,
+        steps_per_action=200,
+        block_xrange=(0, 0),
+        block_yrange=(0, 0),
+    )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 

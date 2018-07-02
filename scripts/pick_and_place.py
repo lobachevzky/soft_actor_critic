@@ -38,8 +38,10 @@ def env_wrapper(func):
     def _wrapper(render, render_freq, set_xml, use_dof, xml_file, **kwargs):
         if render and not render_freq:
             render_freq = 20
-        xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
-        with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+        xml_filepath = Path(
+            Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
+        with mutate_xml(
+                changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
             return func(temp_path=temp_path, render_freq=render_freq, **kwargs)
 
     return _wrapper
@@ -63,7 +65,7 @@ def env_wrapper(func):
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.4, type=float)
+@click.option('--geofence', default=.1, type=float)
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
@@ -83,37 +85,36 @@ def env_wrapper(func):
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True, default=['slide_x',
-                                                   'slide_y',
-                                                   'arm_lift_joint',
-                                                   'arm_flex_joint',
-                                                   'wrist_roll_joint',
-                                                   'hand_l_proximal_joint',
-                                                   'hand_r_proximal_joint'])
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+    ])
 @env_wrapper
-def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
-        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
-        n_goals, obs_type, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
+def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
+        activation, n_layers, layer_size, learning_rate, reward_scale, cheat_prob,
+        grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
+        load_path, render_freq, record_freq, record_path, image_dims, record, n_goals,
+        obs_type, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
     env = TimeLimit(
-            max_episode_steps=max_steps,
-            env=PickAndPlaceEnv(
-                cheat_prob=cheat_prob,
-                steps_per_action=steps_per_action,
-                fixed_block=fixed_block,
-                min_lift_height=min_lift_height,
-                geofence=geofence,
-                xml_filepath=temp_path,
-                obs_type=obs_type,
-                block_xrange=block_xrange,
-                block_yrange=block_yrange,
-                render_freq=render_freq,
-                record=record,
-                record_path=record_path,
-                record_freq=record_freq,
-                image_dimensions=image_dims,
-            ))
+        max_episode_steps=max_steps,
+        env=PickAndPlaceEnv(
+            cheat_prob=cheat_prob,
+            steps_per_action=steps_per_action,
+            fixed_block=fixed_block,
+            min_lift_height=min_lift_height,
+            xml_filepath=temp_path,
+            obs_type=obs_type,
+            block_xrange=block_xrange,
+            block_yrange=block_yrange,
+            render_freq=render_freq,
+            record=record,
+            record_path=record_path,
+            record_freq=record_freq,
+            image_dimensions=image_dims,
+        ))
     kwargs = dict(
         seq_len=seq_len,
         base_agent=agent,
@@ -133,8 +134,8 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
         load_path=load_path,
         render=False)  # because render is handled inside env
     if hindsight:
-        HindsightTrainer(env=PickAndPlaceHindsightWrapper(env),
-                         n_goals=n_goals, **kwargs)
+        env = PickAndPlaceHindsightWrapper(env=env, geofence=geofence)
+        HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
         Trainer(env=env, **kwargs)
 
@@ -180,12 +181,12 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
     included_files = [
         rel_to_abs(e.get('file')) for e in ET.parse(xml_filepath).findall('*/include')
-        ]
+    ]
 
     temp = {
         path: tempfile.NamedTemporaryFile()
         for path in (included_files + [xml_filepath])
-        }
+    }
     try:
         for path, f in temp.items():
             tree = ET.parse(path)

@@ -47,3 +47,7 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
         save_path=save_path,
         load_path=load_path,
         render=render)
+
+
+if __name__ == '__main__':
+    cli()

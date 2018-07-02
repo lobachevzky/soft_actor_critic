@@ -2,9 +2,9 @@ import random
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environments.mujoco import MujocoEnv
+from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -44,7 +44,6 @@ class PickAndPlaceEnv(MujocoEnv):
                  block_yrange=None,
                  fixed_block=False,
                  min_lift_height=.02,
-                 geofence=.04,
                  cheat_prob=0,
                  obs_type=None,
                  **kwargs):
@@ -54,24 +53,23 @@ class PickAndPlaceEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
+        self.grip = 0
+        self.min_lift_height = min_lift_height
+
         self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
-        self.grip = 0
         self._fixed_block = fixed_block
         self._block_name = 'block1'
-        self._min_lift_height = min_lift_height
-        self.geofence = geofence
 
         super().__init__(**kwargs)
 
         self.reward_range = 0, 1
         self.initial_qpos = np.copy(self.init_qpos)
-        self._initial_block_pos = np.copy(self.block_pos())
+        self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-
-        self.observation_space = spaces.Box(*self._obs_limits(), dtype=np.float32)
+        self.observation_space = self._get_obs_space()
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -96,14 +94,14 @@ class PickAndPlaceEnv(MujocoEnv):
 
         return self.init_qpos
 
-    def _obs_limits(self):
+    def _get_obs_space(self):
         qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
         qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]
         for joint_id in range(self.sim.njnt):
             if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
                 qposadr = self.sim.get_jnt_qposadr(joint_id)
                 qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
-        return tuple(map(np.array, zip(*qpos_limits + qvel_limits)))
+        return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
 
     def _qvel_obs(self):
         def get_qvels(joints):
@@ -139,7 +137,7 @@ class PickAndPlaceEnv(MujocoEnv):
         return (finger1 + finger2) / 2.
 
     def _is_successful(self):
-        return self.block_pos()[2] > self._initial_block_pos[2] + self._min_lift_height
+        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
         EPSILON = .01
@@ -153,7 +151,6 @@ class PickAndPlaceEnv(MujocoEnv):
             return 0
 
     def step(self, action):
-        # action = np.array([1, 1, 0, 0, 0, 0])
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'
@@ -162,7 +159,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-            ]
+        ]
         # necessary because np.insert can't append multiple values to end:
         mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
         action = np.insert(action, mirroring_index, action[mirrored_index])

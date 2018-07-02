@@ -2,13 +2,15 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
-import mujoco
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
+import mujoco
+
 
 class MujocoEnv:
-    def __init__(self, xml_filepath: Path,
+    def __init__(self,
+                 xml_filepath: Path,
                  steps_per_action: int,
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
@@ -90,7 +92,7 @@ class MujocoEnv:
     def reset(self):
         self.sim.reset()
         qpos = self._reset_qpos()
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
@@ -105,7 +107,6 @@ class MujocoEnv:
 
     def __exit__(self, *args):
         self.sim.__exit__()
-
 
     @abstractmethod
     def _get_obs(self):

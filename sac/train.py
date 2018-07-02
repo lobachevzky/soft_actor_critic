@@ -13,7 +13,7 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step
+from sac.utils import Obs, Step, normalize, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -66,6 +66,19 @@ class Trainer:
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
+        obs = env.reset()
+        self.preprocess_func = None
+        if not isinstance(obs, np.ndarray):
+            env = self.env
+            while self.preprocess_func is None:
+                try:
+                    self.preprocess_func = env.preprocess_obs
+                except AttributeError:
+                    try:
+                        env = env.env
+                    except AttributeError:
+                        self.preprocess_func = vectorize
+
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
                 print("model saved in path:", saver.save(sess, save_path=save_path))
@@ -113,7 +126,7 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.agents.act.get_actions(
-                self.vectorize_state(o1), state=s, sample=(not self.is_eval_period()))
+                self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             o2, r, t, info = self.step(a)
@@ -131,17 +144,17 @@ class Trainer:
                     step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
-                                    k: getattr(step, k.replace(' ', '_'))
-                                    for k in [
-                                        'entropy',
-                                        'V loss',
-                                        'Q loss',
-                                        'pi loss',
-                                        'V grad',
-                                        'Q grad',
-                                        'pi grad',
-                                    ]
-                                    }))
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in [
+                                'entropy',
+                                'V loss',
+                                'Q loss',
+                                'pi loss',
+                                'V grad',
+                                'Q grad',
+                                'pi grad',
+                            ]
+                        }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -170,10 +183,10 @@ class Trainer:
 
         return Agent(batch_size=batch_size, reuse=reuse)
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+    def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
@@ -184,12 +197,10 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
-        """ Preprocess state before feeding to network """
-        try:
-            return self.env.vectorize_state(state, shape)
-        except AttributeError:
-            return state
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        if self.preprocess_func is None:
+            return obs
+        return self.preprocess_func(obs, shape)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -204,8 +215,8 @@ class Trainer:
             # leave state as dummy value for non-recurrent
             shape = [self.batch_size, -1]
             return Step(
-                o1=self.vectorize_state(sample.o1, shape=shape),
-                o2=self.vectorize_state(sample.o2, shape=shape),
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
                 s=sample.s,
                 a=sample.a,
                 r=sample.r,
@@ -214,8 +225,8 @@ class Trainer:
             # adjust state for recurrent networks
             shape = [self.batch_size, self.seq_len, -1]
             return Step(
-                o1=self.vectorize_state(sample.o1, shape=shape),
-                o2=self.vectorize_state(sample.o2, shape=shape),
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
                 s=np.swapaxes(sample.s[:, -1], 0, 1),
                 a=sample.a[:, -1],
                 r=sample.r[:, -1],
@@ -225,12 +236,7 @@ class Trainer:
 class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
-        self.hindsight_env = env
-        while not isinstance(self.hindsight_env, HindsightWrapper):
-            try:
-                self.hindsight_env = self.hindsight_env.env
-            except AttributeError:
-                raise RuntimeError(f"env {env} must include HindsightWrapper.")
+        self.hindsight_env = unwrap_env(env, HindsightWrapper)
         assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
@@ -249,12 +255,12 @@ class HindsightTrainer(Trainer):
                     self.hindsight_env.recompute_trajectory(
                         self.trajectory()[:final_index]))
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         self.add_hindsight_trajectories()
         return super().reset()
 
 
-class MultiTaskHindsightTrainer(HindsightTrainer):
+class MultiTaskTrainer(Trainer):
     def __init__(self, evaluation, **kwargs):
         self.eval = evaluation
         super().__init__(**kwargs)
@@ -264,11 +270,10 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
             return super().run_episode(
                 o1=o1, perform_updates=perform_updates, render=render)
         env = self.env.unwrapped
-        assert isinstance(env, MultiTaskEnv), type(env)
-        all_goals = itertools.product(*env.goals)
-        for goal in all_goals:
+        assert isinstance(env, MultiTaskEnv)
+        for goal_corner in env.goal_corners:
             o1 = self.reset()
-            env.set_goal(goal)
+            env.goal = goal_corner + env.goal_size / 2
             count = super().run_episode(
                 o1=o1, perform_updates=perform_updates, render=render)
             for k in count:
@@ -278,3 +283,7 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
 
     def is_eval_period(self):
         return self.eval
+
+
+class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
+    pass

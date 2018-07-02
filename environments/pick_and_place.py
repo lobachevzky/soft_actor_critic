@@ -170,7 +170,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-            ]
+        ]
         # necessary because np.insert can't append multiple values to end:
         mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
         action = np.insert(action, mirroring_index, action[mirrored_index])

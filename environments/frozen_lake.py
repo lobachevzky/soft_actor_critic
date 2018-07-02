@@ -19,7 +19,7 @@ MAPS["3x4"] = [
 class FrozenLakeEnv(gym_env):
     def __init__(self, *args, **kwargs):
         self.n_states = None
-        super().__init__(map_name="3x4", *args, **kwargs)
+        super().__init__(map_name="4x4", *args, **kwargs)
         self.observation_space = spaces.Box(
             low=np.zeros(self.n_states),
             high=np.ones(self.n_states)

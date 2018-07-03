@@ -26,11 +26,12 @@ def check_probability(ctx, param, value):
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
+@click.option('--map-name', default="4x4", type=str)
 @click.option('--render', is_flag=True)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
         batch_size, num_train_steps, logdir, save_path, load_path, render,
-        grad_clip):
-    env = FrozenLakeEnv(is_slippery=False)
+        grad_clip, map_name):
+    env = FrozenLakeEnv(map_name=map_name, is_slippery=False)
     Trainer(
         env=env,
         base_agent=MlpAgent,

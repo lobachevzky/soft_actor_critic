@@ -1,6 +1,7 @@
 import click
 import gym
 import tensorflow as tf
+from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
 from sac.networks import MlpAgent
@@ -27,11 +28,15 @@ def check_probability(ctx, param, value):
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--map-name', default="4x4", type=str)
+@click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
         batch_size, num_train_steps, logdir, save_path, load_path, render,
-        grad_clip, map_name):
-    env = FrozenLakeEnv(map_name=map_name, is_slippery=False)
+        grad_clip, map_name, max_steps):
+    env = TimeLimit(
+        env=FrozenLakeEnv(map_name=map_name, is_slippery=False),
+        max_episode_steps=max_steps
+    )
     Trainer(
         env=env,
         base_agent=MlpAgent,

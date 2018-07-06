@@ -4,7 +4,7 @@ import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
-from sac.networks import MlpAgent
+from sac.networks import MlpAgent, MoEAgent
 from sac.train import Trainer
 
 
@@ -30,16 +30,16 @@ def check_probability(ctx, param, value):
 @click.option('--map-name', default="4x4", type=str)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
+@click.option('--n-networks', default=None, type=int)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
         batch_size, num_train_steps, logdir, save_path, load_path, render,
-        grad_clip, map_name, max_steps):
+        grad_clip, map_name, max_steps, n_networks):
     env = TimeLimit(
         env=FrozenLakeEnv(map_name=map_name, is_slippery=False),
         max_episode_steps=max_steps
     )
-    Trainer(
+    kwargs = dict(
         env=env,
-        base_agent=MlpAgent,
         seq_len=0,
         device_num=1,
         seed=seed,
@@ -56,6 +56,11 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
         save_path=save_path,
         load_path=load_path,
         render=render)
+    if n_networks:
+        Trainer(base_agent=MoEAgent, n_networks=n_networks, **kwargs)
+    else:
+        Trainer(base_agent=MlpAgent, **kwargs)
+
 
 
 if __name__ == '__main__':

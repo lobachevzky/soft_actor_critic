@@ -7,7 +7,6 @@ from tensorflow.contrib.rnn import BasicLSTMCell, LSTMStateTuple
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.utils import ArrayLike, Step, TrainStep
 
-
 def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
         inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))

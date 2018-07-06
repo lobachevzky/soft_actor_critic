@@ -45,13 +45,20 @@ def xnor(check: Callable, *vals: X):
     return all(map(check, vals)) or not any(map(check, vals))
 
 
-def zip_op(op: Callable[[X, X], list], x: X, y: X):
+def zip_op(op: Callable[[X, X], list], x: X, y: X,
+           reduce_op: Callable[[Iterable[X]], X] = None):
     assert xnor(np.isscalar, [x, y])
     assert xnor(lambda z: isinstance(z, np.ndarray), [x, y])
     if isinstance(x, np.ndarray) or np.isscalar(x):
-        return op(x, y)
+        z = op(x, y)
+        if reduce_op:
+            return reduce_op(z)
+        return z
     assert len(x) == len(y)
-    return [op(_x, _y) for _x, _y in zip(x, y)]
+    zipped = [zip_op(op, _x, _y, reduce_op) for _x, _y in zip(x, y)]
+    if reduce_op:
+        return reduce_op(zipped)
+    return zipped
 
 
 class ArrayGroup:
@@ -77,12 +84,12 @@ class ArrayGroup:
         return self.zip_op(operator.or_, other)
 
     def __eq__(self, other):
-        return self.zip_op(operator.eq, other)
+        return self.zip_op(operator.eq, other, np.all)
 
-    def zip_op(self, op, other):
+    def zip_op(self, op, other, reduce_op=None):
         assert callable(op)
         assert isinstance(other, ArrayGroup)
-        return ArrayGroup(zip_op(op, self.values, other.arrays))
+        return ArrayGroup(zip_op(op, self.values, other.values, reduce_op))
 
     @property
     def shape(self):

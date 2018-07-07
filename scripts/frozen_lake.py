@@ -1,5 +1,4 @@
 import click
-import gym
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
@@ -31,13 +30,12 @@ def check_probability(ctx, param, value):
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--n-networks', default=None, type=int)
-def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
-        batch_size, num_train_steps, logdir, save_path, load_path, render,
-        grad_clip, map_name, max_steps, n_networks):
+def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale, batch_size,
+        num_train_steps, logdir, save_path, load_path, render, grad_clip, map_name,
+        max_steps, n_networks):
     env = TimeLimit(
         env=FrozenLakeEnv(map_name=map_name, is_slippery=False),
-        max_episode_steps=max_steps
-    )
+        max_episode_steps=max_steps)
     kwargs = dict(
         env=env,
         seq_len=0,
@@ -60,7 +58,6 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
         Trainer(base_agent=MoEAgent, n_networks=n_networks, **kwargs)
     else:
         Trainer(base_agent=MlpAgent, **kwargs)
-
 
 
 if __name__ == '__main__':

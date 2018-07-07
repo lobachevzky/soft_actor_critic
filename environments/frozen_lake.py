@@ -9,11 +9,7 @@ MAPS["3x3"] = [
     "FFG",
 ]
 
-MAPS["3x4"] = [
-    "SFFF",
-    "FHFH",
-    "HFFG"
-]
+MAPS["3x4"] = ["SFFF", "FHFH", "HFFG"]
 
 
 class FrozenLakeEnv(gym_env):
@@ -21,9 +17,7 @@ class FrozenLakeEnv(gym_env):
         self.n_states = None
         super().__init__(*args, **kwargs)
         self.observation_space = spaces.Box(
-            low=np.zeros(self.n_states),
-            high=np.ones(self.n_states)
-        )
+            low=np.zeros(self.n_states), high=np.ones(self.n_states))
 
     def reset(self):
         return self.one_hotify(super().reset())

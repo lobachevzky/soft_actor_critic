@@ -70,13 +70,13 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
+
     def __init__(self, env):
         super().__init__(env)
         o_space = env.observation_space
         self.observation_space = spaces.Box(
             low=vectorize([o_space.low, o_space.low]),
-            high=vectorize([o_space.high, o_space.high])
-        )
+            high=vectorize([o_space.high, o_space.high]))
 
     def step(self, action):
         s2, r, t, info = super().step(action)

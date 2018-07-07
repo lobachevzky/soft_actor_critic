@@ -1,5 +1,4 @@
 import click
-import gym
 import tensorflow as tf
 from gym.envs.classic_control import MountainCarEnv
 from gym.wrappers import TimeLimit
@@ -57,8 +56,7 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         render=render)  # because render is handled inside env
     hindsight = not no_hindsight
     if hindsight:
-        HindsightTrainer(env=MountaincarHindsightWrapper(env),
-                         n_goals=n_goals, **kwargs)
+        HindsightTrainer(env=MountaincarHindsightWrapper(env), n_goals=n_goals, **kwargs)
     else:
         Trainer(env=env, **kwargs)
 

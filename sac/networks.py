@@ -7,6 +7,7 @@ from tensorflow.contrib.rnn import BasicLSTMCell, LSTMStateTuple
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.utils import ArrayLike, Step, TrainStep
 
+
 def mlp(inputs, layer_size, n_layers, activation):
     for i in range(n_layers):
         inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
@@ -103,19 +104,18 @@ class MoEAgent(AbstractAgent):
 
     def network(self, inputs: tf.Tensor):
         weights = tf.nn.softmax(
-            logits=tf.layers.dense(inputs,
-                                   units=self.n_networks,
-                                   name='weights'),
+            logits=tf.layers.dense(inputs=inputs, units=self.n_networks, name='weights'),
             axis=-1)
         weights = tf.expand_dims(weights, axis=1)  # [batch, hidden, networks]
-        h = tf.stack(values=[
-            tf.layers.dense(inputs,
-                            units=self.layer_size,
-                            name='vote' + str(i))
-            for i in range(self.n_networks)],
-                     axis=-1)  # [batch, hidden, networks]
+
+        def vote(i):
+            return self.activation(
+                tf.layers.dense(
+                    inputs=inputs, units=self.layer_size, name='vote' + str(i)))
+
+        h = tf.stack(
+            values=list(map(vote, range(self.n_networks))),
+            axis=-1)  # [batch, hidden, networks]
         h = tf.reduce_sum(h * weights, axis=2)
         output = tf.layers.dense(h, units=self.layer_size, name='output')
-        return NetworkOutput(
-            output=output,
-            state=None)
+        return NetworkOutput(output=output, state=None)

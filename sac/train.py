@@ -12,7 +12,6 @@ from collections import Counter
 from gym import spaces
 
 from environments.old_hindsight_wrapper import HindsightWrapper
-from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -43,9 +42,6 @@ class Trainer:
 
         self.agent = agent = self.build_agent(**kwargs)
 
-        if isinstance(env.unwrapped, UnsupervisedEnv):
-            # noinspection PyUnresolvedReferences
-            env.unwrapped.initialize(agent.sess, self.buffer)
 
         saver = tf.train.Saver()
         tb_writer = None

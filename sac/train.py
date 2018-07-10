@@ -82,7 +82,7 @@ class Trainer:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
                     # noinspection PyProtectedMember
-                    if not evaluation_period:
+                    if not is_eval_period:
                         step = self.agent.train_step(
                             sample_steps._replace(
                                 s1=list(map(self.vectorize_state, sample_steps.s1)),
@@ -207,7 +207,7 @@ class TrajectoryTrainer(Trainer):
                 pickle.dump(self.trajectory, f)
             self.mimic_num += 1
         self.trajectory = []
-        return = super().reset()
+        return super().reset()
 
     def timesteps(self):
         return self.episode_count['timesteps']
@@ -219,6 +219,7 @@ class TrajectoryTrainer(Trainer):
 
 
 def steps_are_same(step1, step2):
+    return True
     if step1 is None or step2 is None:
         return False
     return all([
@@ -260,15 +261,13 @@ class HindsightTrainer(TrajectoryTrainer):
         assert isinstance(self.env, HindsightWrapper)
         if self.trajectory:
             assert steps_are_same(self.buffer[-1], self.trajectory[-1])
-        self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
-                                                         final_step=self.buffer[-1]))
+        self.buffer.extend(self.env.recompute_trajectory(self._trajectory()))
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:
-                self.buffer.extend(self.env.recompute_trajectory(self._trajectory(),
-                                                                 final_step=final_state))
+                self.buffer.extend(self.env.recompute_trajectory(self._trajectory()))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

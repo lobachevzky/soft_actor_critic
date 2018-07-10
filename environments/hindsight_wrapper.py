@@ -57,6 +57,7 @@ class HindsightWrapper(gym.Wrapper):
                      achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory, final_state=-1):
+        trajectory = list(trajectory)
         if not trajectory:
             return ()
         achieved_goal = trajectory[final_state].s2.achieved_goal
@@ -87,6 +88,12 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return 0.45
 
+    def _is_success(self, achieved_goal, desired_goal):
+        return achieved_goal >= desired_goal
+
+    @staticmethod
+    def vectorize_state(state):
+        return np.append(state.observation, state.desired_goal)
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):

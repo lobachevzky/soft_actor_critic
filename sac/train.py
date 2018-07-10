@@ -44,8 +44,6 @@ class Trainer:
 
         self.agent = agent = self.build_agent(
                 sess=sess,
-                seq_len=1,
-                base_agent=MlpAgent,
                 batch_size=None,
                 reuse=False,
                 **kwargs)
@@ -80,7 +78,7 @@ class Trainer:
 
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            self.add_to_buffer(Step(s=None, o1=s1, a=a, r=r, o2=s2, t=t))
+            self.add_to_buffer(Step(s=0, o1=s1, a=a, r=r, o2=s2, t=t))
             if self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()

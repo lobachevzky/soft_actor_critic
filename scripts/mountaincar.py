@@ -2,7 +2,8 @@ import click
 import gym
 
 from environments.old_hindsight_wrapper import MountaincarHindsightWrapper
-from sac.train import HindsightTrainer
+from sac.networks import MlpAgent
+from sac.train import HindsightTrainer, Trainer
 import tensorflow as tf
 
 
@@ -19,21 +20,20 @@ import tensorflow as tf
 @click.option('--reward-scale', default=1e4, type=float)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--grad-clip', default=2e4, type=float)
-@click.option('--mimic-dir', default=None, type=str)
-@click.option('--mimic-save-dir', default=None, type=str)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
+@click.option('--no-hindsight', is_flag=True)
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, grad_clip, batch_size, num_train_steps, mimic_dir, mimic_save_dir,
-        logdir, save_path, load_path, render, n_goals):
-
-    HindsightTrainer(
-        env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
+        reward_scale, grad_clip, batch_size, num_train_steps, logdir, save_path,
+        load_path, render, n_goals, no_hindsight):
+    env = gym.make('MountainCarContinuous-v0')
+    kwargs = dict(
+        seq_len=None,
+        base_agent=MlpAgent,
         seed=seed,
         device_num=device_num,
-        n_goals=n_goals,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,
@@ -46,7 +46,12 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=render)
+        render=render)  # because render is handled inside env
+    hindsight = not no_hindsight
+    if hindsight:
+        HindsightTrainer(env=MountaincarHindsightWrapper(env), n_goals=n_goals, **kwargs)
+    else:
+        Trainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

@@ -11,7 +11,7 @@ import tensorflow as tf
 from collections import Counter
 from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.old_hindsight_wrapper import HindsightWrapper
 from environments.unsupervised import UnsupervisedEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy

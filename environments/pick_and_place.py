@@ -1,11 +1,8 @@
 import random
-from collections import namedtuple
-from os.path import join
 
 import numpy as np
 from gym import spaces
 
-from environments.base import at_goal, print1, distance_between
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 
@@ -41,150 +38,130 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-Goal = namedtuple('Goal', 'gripper block')
-
-
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
-                 fixed_block,
+                 block_xrange=None,
+                 block_yrange=None,
+                 fixed_block=False,
                  min_lift_height=.02,
-                 geofence=.04,
-                 neg_reward=False,
-                 discrete=False,
-                 cheat_prob=0):
+                 cheat_prob=0,
+                 obs_type=None,
+                 **kwargs):
+        if block_xrange is None:
+            block_xrange = (0, 0)
+        if block_yrange is None:
+            block_yrange = (0, 0)
+        self.block_xrange = block_xrange
+        self.block_yrange = block_yrange
+        self.grip = 0
+        self.min_lift_height = min_lift_height
+
+        self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
-        self.grip = 0
-        self.geofence = geofence
         self._fixed_block = fixed_block
-        self._goal_block_name = 'block1'
-        self._min_lift_height = min_lift_height + geofence
-        self._discrete = discrete
+        self._block_name = 'block1'
 
-        super().__init__(
-            xml_filepath=join('models', 'pick-and-place', 'discrete.xml'
-                              if discrete else 'world.xml'),
-            neg_reward=neg_reward,
-            steps_per_action=20,
-            image_dimensions=None)
+        super().__init__(**kwargs)
 
+        self.reward_range = 0, 1
         self.initial_qpos = np.copy(self.init_qpos)
-        self._initial_block_pos = np.copy(self.block_pos())
+        self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._get_obs()))
-        assert obs_size != 0
-        self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
-        if discrete:
-            self.action_space = spaces.Discrete(7)
-        else:
-            self.action_space = spaces.Box(
-                low=np.array([-15, -20, -20]),
-                high=np.array([35, 20, 20]),
-                dtype=np.float32)
+        self.observation_space = self._get_obs_space()
+        self.action_space = spaces.Box(
+            low=self.sim.actuator_ctrlrange[:-1, 0],
+            high=self.sim.actuator_ctrlrange[:-1, 1],
+            dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
+        self.unwrapped = self
 
-        # self._n_block_orientations = n_orientations = 8
-        # self._block_orientations = np.random.uniform(0, 2 * np.pi,
-        # size=(n_orientations, 4))
-        # self._rewards = np.ones(n_orientations) * -np.inf
-        # self._usage = np.zeros(n_orientations)
-        # self._current_orienation = None
-
-    def reset_qpos(self):
-        if not self._fixed_block:
-            block_joint = self.sim.jnt_qposadr('block1joint')
-
-            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
-            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
+    def _reset_qpos(self):
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
             self.init_qpos = self.initial_qpos
+        if not self._fixed_block:
+            block_joint = self.sim.get_jnt_qposadr('block1joint')
+            self.init_qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
+            self.init_qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
+            self.init_qpos[block_joint + 3] = np.random.uniform(0, 1)
+            self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
-        # self.init_qpos[block_joint + 3:block_joint + 7] = np.random.random(
-        #     4) * 2 * np.pi
-        # rotate_around_x = [np.random.uniform(0, 1), np.random.uniform(-1, 1), 0, 0]
-        # rotate_around_z = [np.random.uniform(0, 1), 0, 0, np.random.uniform(-1, 1)]
-        # w, x, y, z = quaternion_multiply(rotate_around_z, rotate_around_x)
-        # self.init_qpos[block_joint + 3] = w
-        # self.init_qpos[block_joint + 4] = x
-        # self.init_qpos[block_joint + 5] = y
-        # self.init_qpos[block_joint + 6] = z
-        # mean_rewards = self._rewards / np.maximum(self._usage, 1)
-        # self._current_orienation = i = np.argmin(mean_rewards)
-        # print('rewards:', mean_rewards, 'argmin:', i)
-        # self._usage[i] += 1
-        # self.init_qpos[block_joint + 3:block_joint + 7] = self._block_orientations[i]
-        # self.init_qpos[self.sim.jnt_qposadr(
-        #     'wrist_roll_joint')] = np.random.random() * 2 * np.pi
         return self.init_qpos
 
-    def _set_new_goal(self):
-        pass
+    def _get_obs_space(self):
+        qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
+        qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]
+        for joint_id in range(self.sim.njnt):
+            if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
+                qposadr = self.sim.get_jnt_qposadr(joint_id)
+                qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
+        if not self._fixed_block:
+            block_joint = self.sim.get_jnt_qposadr('block1joint')
+            qpos_limits[block_joint:block_joint + 7] = [
+                self.block_xrange,  # x
+                self.block_yrange,  # y
+                (.4, .921),  # z
+                (0, 1),  # quat 0
+                (0, 0),  # quat 1
+                (0, 0),  # quat 2
+                (-1, 1),  # quat 3
+            ]
+        return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
+
+    def _qvel_obs(self):
+        def get_qvels(joints):
+            base_qvel = []
+            for joint in joints:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except RuntimeError:
+                    pass
+            return np.array(base_qvel)
+
+        if self._obs_type == 'qvel':
+            return self.sim.qvel
+
+        elif self._obs_type == 'robot-qvel':
+            return get_qvels([
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
+            ])
+        elif self._obs_type == 'base-qvel':
+            return get_qvels(['slide_x', 'slide_x'])
+        else:
+            return []
 
     def _get_obs(self):
-        return np.copy(self.sim.qpos)
+        return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
-    def block_pos(self, qpos=None):
-        return self.sim.get_body_xpos(self._goal_block_name, qpos)
+    def block_pos(self):
+        return self.sim.get_body_xpos(self._block_name)
 
-    def gripper_pos(self, qpos=None):
-        finger1, finger2 = [
-            self.sim.get_body_xpos(name, qpos) for name in self._finger_names
-        ]
+    def gripper_pos(self):
+        finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
 
-    def goal(self):
-        goal_pos = self._initial_block_pos + \
-            np.array([0, 0, self._min_lift_height])
-        return Goal(gripper=goal_pos, block=goal_pos)
-
-    def goal_3d(self):
-        return self.goal()[0]
-
-    def achieved_goal(self):
-        return Goal(gripper=self.gripper_pos(),
-                    block=self.block_pos())
-
-    def is_success(self, achieved_goal, desired_goal):
-        return distance_between(achieved_goal.block, desired_goal.block) < self.geofence and \
-               distance_between(achieved_goal.gripper, desired_goal.gripper) < self.geofence
-
-    def at_goal(self, goal, qpos):
-        gripper_at_goal = at_goal(self.gripper_pos(qpos), goal.gripper, self.geofence)
-        block_at_goal = at_goal(self.block_pos(qpos), goal.block, self.geofence)
-        return gripper_at_goal and block_at_goal
+    def _is_successful(self):
+        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
-        # return False
-        return self.is_success(self.achieved_goal(), self.goal())
+        EPSILON = .01
+        below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
+        return below_table or self._is_successful()
 
     def compute_reward(self):
-        if self.is_success(self.achieved_goal(), self.goal()):
+        if self._is_successful():
             return 1
-        elif self._neg_reward:
-            return -.0001
         else:
             return 0
 
     def step(self, action):
-        if self._discrete:
-            a = np.zeros(4)
-            if action > 0:
-                action -= 1
-                joint = action // 2
-                assert 0 <= joint <= 2
-                direction = (-1)**(action % 2)
-                joint_scale = [.2, .05, .5]
-                a[2] = self.grip
-                a[joint] = direction * joint_scale[joint]
-                self.grip = a[2]
-            action = a
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'
@@ -195,11 +172,9 @@ class PickAndPlaceEnv(MujocoEnv):
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
         ]
         # necessary because np.insert can't append multiple values to end:
-        if self._discrete:
-            action[mirroring_index] = action[mirrored_index]
-        else:
-            mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
-            action = np.insert(action, mirroring_index, action[mirrored_index])
+        mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
+        action = np.insert(action, mirroring_index, action[mirrored_index])
+
         s, r, t, i = super().step(action)
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}

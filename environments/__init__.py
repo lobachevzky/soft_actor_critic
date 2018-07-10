@@ -1,5 +1,3 @@
-from os import path
-
 from gym.envs.registration import register
 from os.path import join
 

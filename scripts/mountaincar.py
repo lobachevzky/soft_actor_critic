@@ -1,7 +1,7 @@
 import click
 import gym
 
-from environments.hindsight_wrapper import MountaincarHindsightWrapper
+from environments.old_hindsight_wrapper import MountaincarHindsightWrapper
 from sac.train import HindsightTrainer
 from scripts.gym_env import str_to_activation
 

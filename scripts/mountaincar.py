@@ -31,8 +31,6 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
 
     HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
-        mimic_dir=None,
-        mimic_save_dir=None,
         seed=seed,
         device_num=device_num,
         n_goals=n_goals,

@@ -15,15 +15,15 @@ from environments.old_hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.old_replay_buffer import ReplayBuffer
+import sac.old_replay_buffer
+import sac.replay_buffer
 from sac.utils import Step
 State = Any
 
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, mimic_dir: Optional[str],
-                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
+                 batch_size: int, num_train_steps: int, logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -33,7 +33,8 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = ReplayBuffer(buffer_size)
+        self.old_buffer = sac.old_replay_buffer.ReplayBuffer(buffer_size)
+        self.buffer = sac.replay_buffer.ReplayBuffer(buffer_size)
         self.save_path = save_path
 
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -43,9 +44,9 @@ class Trainer:
 
         self.agent = agent = self.build_agent(
                 sess=sess,
+                seq_len=1,
                 base_agent=MlpAgent,
                 batch_size=None,
-                seq_len=1,
                 reuse=False,
                 **kwargs)
         self.seq_len = self.agent.seq_len
@@ -173,22 +174,17 @@ class Trainer:
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
-        self.buffer.append(step)
+        self.old_buffer.append(step)
 
     def buffer_full(self):
-        return len(self.buffer) >= self.batch_size
+        return len(self.old_buffer) >= self.batch_size
 
     def sample_buffer(self):
-        return Step(*self.buffer.sample(self.batch_size))
+        return Step(*self.old_buffer.sample(self.batch_size))
 
 
 class TrajectoryTrainer(Trainer):
-    def __init__(self, mimic_save_dir: Optional[str], **kwargs):
-        self.mimic_save_dir = mimic_save_dir
-        if mimic_save_dir is not None:
-            path = Path(mimic_save_dir)
-            print('Using model dir', path.absolute())
-            path.mkdir(parents=True, exist_ok=True)
+    def __init__(self, **kwargs):
         self.mimic_num = 0
         self.trajectory = []
         self.stem_num = 0
@@ -200,14 +196,9 @@ class TrajectoryTrainer(Trainer):
 
     def trajectory(self) -> Iterable:
         assert len(self.trajectory) == self.episode_count['timesteps']
-        return self.buffer[-self.episode_count['timesteps']:]
+        return self.old_buffer[-self.episode_count['timesteps']:]
 
     def reset(self) -> State:
-        if self.mimic_save_dir is not None:
-            path = Path(self.mimic_save_dir, str(self.mimic_num) + '.pkl')
-            with path.open(mode='wb') as f:
-                pickle.dump(self.trajectory, f)
-            self.mimic_num += 1
         self.trajectory = []
         return super().reset()
 
@@ -216,7 +207,7 @@ class TrajectoryTrainer(Trainer):
 
     def _trajectory(self) -> Iterable:
         if self.timesteps():
-            return self.buffer[-self.timesteps():]
+            return self.old_buffer[-self.timesteps():]
         return ()
 
 
@@ -241,12 +232,12 @@ class HindsightTrainer(TrajectoryTrainer):
                 print('step', i, 'in self.trajectory is None')
             if step2 is None:
                 print('step', i, 'in buffer slice is None')
-            if not steps_are_same(step2, self.buffer[-self.timesteps() + i]):
+            if not steps_are_same(step2, self.old_buffer[-self.timesteps() + i]):
                 print('issue with indexing')
                 print('step in buffer slice:')
                 pprint(step2)
                 print('step in buffer index (self.buffer[{}])'.format(i))
-                pprint(self.buffer[i])
+                pprint(self.old_buffer[i])
                 exit()
 
             if not steps_are_same(step1, step2):
@@ -255,21 +246,21 @@ class HindsightTrainer(TrajectoryTrainer):
                 pprint(step1)
                 print('step in buffer slice:')
                 pprint(step2)
-                print('same as i - 1', steps_are_same(self.buffer[i - 1], step1))
-                print('same as i', steps_are_same(self.buffer[i], step1))
-                print('same as i + 1', steps_are_same(self.buffer[i + 1], step1))
+                print('same as i - 1', steps_are_same(self.old_buffer[i - 1], step1))
+                print('same as i', steps_are_same(self.old_buffer[i], step1))
+                print('same as i + 1', steps_are_same(self.old_buffer[i + 1], step1))
                 exit()
 
         assert isinstance(self.env, HindsightWrapper)
         if self.trajectory:
-            assert steps_are_same(self.buffer[-1], self.trajectory[-1])
-        self.buffer.extend(self.env.recompute_trajectory(self._trajectory()))
+            assert steps_are_same(self.old_buffer[-1], self.trajectory[-1])
+        self.old_buffer.extend(self.env.recompute_trajectory(self._trajectory()))
         if self.n_goals - 1 and self.timesteps() > 0:
             final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
-            for final_state in self.buffer[final_indexes]:
-                self.buffer.extend(self.env.recompute_trajectory(self._trajectory()))
+            for final_state in self.old_buffer[final_indexes]:
+                self.old_buffer.extend(self.env.recompute_trajectory(self._trajectory()))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

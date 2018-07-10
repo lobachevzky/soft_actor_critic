@@ -1,21 +1,23 @@
 import itertools
 import pickle
 import time
+from collections import Counter
 from pathlib import Path
 from pprint import pprint
-from typing import Optional, Tuple, Generator, Iterable
+from typing import Optional, Tuple, Iterable, Any
 
 import gym
 import numpy as np
 import tensorflow as tf
-from collections import Counter
 from gym import spaces
 
 from environments.old_hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
+from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step
+from sac.utils import Step
+State = Any
 
 
 class Trainer:
@@ -32,24 +34,28 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
+        self.save_path = save_path
 
-        if mimic_dir:
-            for path in Path(mimic_dir).iterdir():
-                if path.suffix == '.pkl':
-                    with Path(path).open('rb') as f:
-                        self.buffer.extend(pickle.load(f))
-                print('Loaded mimic file {} into buffer.'.format(path))
+        config = tf.ConfigProto(allow_soft_placement=True)
+        config.gpu_options.allow_growth = True
+        config.inter_op_parallelism_threads = 1
+        sess = tf.Session(config=config)
 
-        self.agent = agent = self.build_agent(**kwargs)
-
-
+        self.agent = agent = self.build_agent(
+                sess=sess,
+                base_agent=MlpAgent,
+                batch_size=None,
+                seq_len=1,
+                reuse=False,
+                **kwargs)
+        self.seq_len = self.agent.seq_len
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
-            saver.restore(agent.sess, load_path)
+            saver.restore(sess, load_path)
             print("Model restored from", load_path)
         if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
 
         count = Counter(reward=0, episode=0)
         self.episode_count = episode_count = Counter()
@@ -60,7 +66,7 @@ class Trainer:
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period))
+            a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period)).output
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -73,7 +79,7 @@ class Trainer:
 
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            self.add_to_buffer(Step(s1=s1, a=a, r=r, s2=s2, t=t))
+            self.add_to_buffer(Step(s=None, o1=s1, a=a, r=r, o2=s2, t=t))
             if self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
@@ -81,8 +87,8 @@ class Trainer:
                     if not is_eval_period:
                         step = self.agent.train_step(
                             sample_steps._replace(
-                                s1=list(map(self.vectorize_state, sample_steps.s1)),
-                                s2=list(map(self.vectorize_state, sample_steps.s2)),
+                                o1=list(map(self.vectorize_state, sample_steps.o1)),
+                                o2=list(map(self.vectorize_state, sample_steps.o2)),
                             ))
                         episode_mean.update(
                             Counter({
@@ -141,7 +147,7 @@ class Trainer:
         class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):
                 super(Agent, self).__init__(
-                    s_shape=s_shape,
+                    o_shape=s_shape,
                     a_shape=a_shape,
                     **kwargs)
 
@@ -219,8 +225,8 @@ def steps_are_same(step1, step2):
     if step1 is None or step2 is None:
         return False
     return all([
-        np.allclose(step1.s1.obs, step2.s1.obs),
-        np.allclose(step1.s2.obs, step2.s2.obs)])
+        np.allclose(step1.o1.obs, step2.o1.obs),
+        np.allclose(step1.o2.obs, step2.o2.obs)])
 
 
 class HindsightTrainer(TrajectoryTrainer):

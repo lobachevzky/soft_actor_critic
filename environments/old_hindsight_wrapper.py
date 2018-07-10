@@ -58,15 +58,16 @@ class HindsightWrapper(gym.Wrapper):
         trajectory = list(trajectory)
         if not trajectory:
             return ()
-        achieved_goal = trajectory[final_state].s2.achieved_goal
+        achieved_goal = trajectory[final_state].o2.achieved_goal
         for step in trajectory[:final_state]:
-            new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
+            new_t = self._is_success(step.o2.achieved_goal, achieved_goal)
             r = float(new_t)
             yield Step(
-                s1=step.s1._replace(desired_goal=achieved_goal),
+                s=None,
+                o1=step.o1._replace(desired_goal=achieved_goal),
                 a=step.a,
                 r=r,
-                s2=step.s2._replace(desired_goal=achieved_goal),
+                o2=step.o2._replace(desired_goal=achieved_goal),
                 t=new_t)
             if new_t:
                 break

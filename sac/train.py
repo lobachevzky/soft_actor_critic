@@ -173,6 +173,7 @@ class Trainer:
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
         self.old_buffer.append(step)
+        self.buffer.append(step)
 
     def buffer_full(self):
         return len(self.old_buffer) >= self.batch_size

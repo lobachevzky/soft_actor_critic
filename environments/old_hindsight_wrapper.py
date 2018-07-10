@@ -81,9 +81,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]
 
-    def _is_success(self):
-        return self.env.unwrapped.state[0] >= self._desired_goal()
-
     def _desired_goal(self):
         return 0.45
 
@@ -92,6 +89,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     @staticmethod
     def vectorize_state(state):
+        state = State(*state)
         return np.append(state.observation, state.desired_goal)
 
 

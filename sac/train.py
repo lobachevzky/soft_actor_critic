@@ -15,7 +15,7 @@ from environments.old_hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
-from sac.replay_buffer import ReplayBuffer
+from sac.old_replay_buffer import ReplayBuffer
 from sac.utils import Step
 State = Any
 

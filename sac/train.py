@@ -179,7 +179,15 @@ class Trainer:
         return len(self.old_buffer) >= self.batch_size
 
     def sample_buffer(self):
-        return Step(*self.old_buffer.sample(self.batch_size))
+        top_pos = self.old_buffer.maxlen if self.old_buffer.full else self.old_buffer.pos
+        assert top_pos == len(self.old_buffer)
+        indices = np.random.randint(0, top_pos, size=self.batch_size)
+        samples = []
+        for idx in indices:
+            sample = self.buffer[idx]
+            samples.append(sample)
+        sample = tuple(map(list, zip(*samples)))
+        return Step(*sample)
 
 
 class TrajectoryTrainer(Trainer):
@@ -211,12 +219,19 @@ class TrajectoryTrainer(Trainer):
 
 
 def steps_are_same(step1, step2):
-    return True
     if step1 is None or step2 is None:
         return False
     return all([
-        np.allclose(step1.o1.obs, step2.o1.obs),
-        np.allclose(step1.o2.obs, step2.o2.obs)])
+        np.allclose(step1.o1.observation, step2.o1.observation),
+        np.allclose(step1.o1.achieved_goal, step2.o1.achieved_goal),
+        np.allclose(step1.o1.desired_goal, step2.o1.desired_goal),
+        np.allclose(step1.o2.observation,   step2.o2.observation),
+        np.allclose(step1.o2.achieved_goal, step2.o2.achieved_goal),
+        np.allclose(step1.o2.desired_goal,  step2.o2.desired_goal),
+        np.allclose(step1.a,  step2.a),
+        np.allclose(step1.r,  step2.r),
+        np.allclose(step1.t,  step2.t),
+    ])
 
 
 class HindsightTrainer(TrajectoryTrainer):

@@ -191,7 +191,7 @@ class Trainer:
         # for i in range(3):
         #     assert np.allclose(np.stack([x[i] for x in old_sample.o1]), sample.o1[i])
         #     assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
-        # assert np.allclose(np.concatenate(old_sample.a), sample.a)
+        # assert np.allclose(np.stack(old_sample.a), sample.a)
         # assert np.allclose(old_sample.r, sample.r)
         # assert np.allclose(old_sample.t, sample.t)
         return old_sample
@@ -248,29 +248,7 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         for i, (step1, step2) in enumerate(zip(self.trajectory, self._trajectory())):
-            if step1 is None:
-                print('step', i, 'in self.trajectory is None')
-            if step2 is None:
-                print('step', i, 'in buffer slice is None')
-            if not steps_are_same(step2, self.old_buffer[-self.timesteps() + i]):
-                print('issue with indexing')
-                print('step in buffer slice:')
-                pprint(step2)
-                print('step in buffer index (self.buffer[{}])'.format(i))
-                pprint(self.old_buffer[i])
-                exit()
-
-            if not steps_are_same(step1, step2):
-                print('encountered difference at step', i)
-                print('step in self.trajectory:')
-                pprint(step1)
-                print('step in buffer slice:')
-                pprint(step2)
-                print('same as i - 1', steps_are_same(self.old_buffer[i - 1], step1))
-                print('same as i', steps_are_same(self.old_buffer[i], step1))
-                print('same as i + 1', steps_are_same(self.old_buffer[i + 1], step1))
-                exit()
-
+            assert steps_are_same(step2, self.old_buffer[-self.timesteps() + i])
         assert isinstance(self.env, HindsightWrapper)
         if self.trajectory:
             assert steps_are_same(self.old_buffer[-1], self.trajectory[-1])

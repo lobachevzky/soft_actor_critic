@@ -12,7 +12,7 @@ from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Step, Obs
+from sac.utils import Step, Obs, normalize, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -54,12 +54,25 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
 
-        s1 = self.reset()
+        obs = self.reset()
+        self.preprocess_func = None
+
+        if not isinstance(obs, np.ndarray):
+            env = self.env
+
+        while self.preprocess_func is None:
+            try:
+                self.preprocess_func = env.preprocess_obs
+            except AttributeError:
+                try:
+                    env = env.env
+                except AttributeError:
+                    self.preprocess_func = vectorize
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
             a = agent.get_actions(
-                [self.vectorize_state(s1)], sample=(not is_eval_period)).output
+                [self.preprocess_obs(obs)], sample=(not is_eval_period)).output
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -72,7 +85,7 @@ class Trainer:
 
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            self.add_to_buffer(Step(s=0, o1=s1, a=a, r=r, o2=s2, t=t))
+            self.add_to_buffer(Step(s=0, o1=obs, a=a, r=r, o2=s2, t=t))
             if self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
@@ -100,12 +113,12 @@ class Trainer:
                                             'pi grad',
                                         ]
                                         }))
-            s1 = s2
+            obs = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
             self.episode_count.update(Counter(reward=r, time_steps=1))
             if t:
-                s1 = self.reset()
+                obs = self.reset()
                 episode_reward = self.episode_count['reward']
                 episode_time_steps = self.episode_count['time_steps']
                 count.update(Counter(reward=episode_reward, episode=1))
@@ -143,9 +156,10 @@ class Trainer:
 
         class Agent(policy_type, base_agent):
             def __init__(self):
-                super(Agent, self).__init__(o_shape=state_shape,
-                                            a_shape=action_shape,
-                                            **kwargs)
+                super(Agent, self).__init__(
+                    o_shape=state_shape,
+                    a_shape=action_shape,
+                    **kwargs)
 
         return Agent()
 
@@ -163,9 +177,13 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: Obs) -> np.ndarray:
-        """ Preprocess state before feeding to network """
-        return state
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        if self.preprocess_func is not None:
+            obs = self.preprocess_func(obs, shape)
+        return normalize(
+            vector=obs,
+            low=self.env.observation_space.low,
+            high=self.env.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -225,6 +243,6 @@ class HindsightTrainer(Trainer):
         self.add_hindsight_trajectories()
         return super().reset()
 
-    def vectorize_state(self, state: Obs) -> np.ndarray:
+    def preprocess_obs(self, state: Obs) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.preprocess_obs(state)

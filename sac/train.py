@@ -208,20 +208,6 @@ class TrajectoryTrainer(Trainer):
         return ()
 
 
-def steps_are_same(step1, step2):
-    if step1 is None or step2 is None:
-        return
-    assert np.allclose(step1.o1.observation, Observation(*step2.o1).observation)
-    assert np.allclose(step1.o1.achieved_goal, Observation(*step2.o1).achieved_goal)
-    assert np.allclose(step1.o1.desired_goal, Observation(*step2.o1).desired_goal)
-    assert np.allclose(step1.o2.observation, Observation(*step2.o2).observation)
-    assert np.allclose(step1.o2.achieved_goal, Observation(*step2.o2).achieved_goal)
-    assert np.allclose(step1.o2.desired_goal, Observation(*step2.o2).desired_goal)
-    assert np.allclose(step1.a, step2.a)
-    assert np.allclose(step1.r, step2.r)
-    assert np.allclose(step1.t, step2.t)
-
-
 class HindsightTrainer(TrajectoryTrainer):
     def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
@@ -232,27 +218,11 @@ class HindsightTrainer(TrajectoryTrainer):
         if self.trajectory():
             new_trajectory = self.trajectory()
             old_trajectory = list(self._trajectory())
-            try:
-                new_trajectory[len(old_trajectory)]
-                raise RuntimeError('new_trajectory is too long')
-            except IndexError:
-                new_trajectory[len(old_trajectory) - 1]
-            for i, step in enumerate(old_trajectory):
-                steps_are_same(step, Step(*new_trajectory[i]))
 
             if self.timesteps() > 0:
                 new_recomputed_trajectory = self.env.recompute_trajectory(new_trajectory)
                 old_recomputed_trajectory = list(self.env.old_recompute_trajectory(old_trajectory))
-                try:
-                    new_recomputed_trajectory[len(old_recomputed_trajectory)]
-                    raise RuntimeError('new_recomputed_trajectory is too long')
-                except IndexError:
-                    new_recomputed_trajectory[len(old_recomputed_trajectory) - 1]
-                for i, step in enumerate(old_recomputed_trajectory):
-                    steps_are_same(step, Step(*new_recomputed_trajectory[i]))
                 assert Step(*new_recomputed_trajectory[-1]).t == True
-                if old_recomputed_trajectory[-1].t == False:
-                    self.env.old_recompute_trajectory(old_trajectory, debug=True)
                 self.buffer.append(self.env.recompute_trajectory(new_trajectory))
                 assert Step(*self.buffer[-1]).t == True
                 self.old_buffer.extend(old_recomputed_trajectory)

@@ -91,8 +91,8 @@ class Trainer:
                         assert np.allclose(o2, new_o2)
                         step = self.agent.train_step(
                             sample_steps._replace(
-                                o1=o1,
-                                o2=o2,
+                                o1=new_o1,
+                                o2=new_o2,
                             ))
                         episode_mean.update(
                             Counter({

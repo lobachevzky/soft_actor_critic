@@ -11,7 +11,7 @@ from gym import spaces
 import sac.old_replay_buffer
 import sac.replay_buffer
 from environments.hindsight_wrapper import Observation
-from environments.old_hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.utils import Step

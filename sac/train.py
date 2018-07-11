@@ -50,8 +50,8 @@ class Trainer:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
 
         count = Counter(reward=0, episode=0)
-        self.episode_count = episode_count = Counter()
-        self.episode_mean = episode_mean = Counter()
+        self.episode_count = Counter()
+        episode_mean = Counter()
         tick = time.time()
 
         s1 = self.reset()
@@ -66,7 +66,7 @@ class Trainer:
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                episode_count.update(Counter(info['log count']))
+                self.episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
 
@@ -103,11 +103,11 @@ class Trainer:
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, time_steps=1))
+            self.episode_count.update(Counter(reward=r, time_steps=1))
             if t:
                 s1 = self.reset()
-                episode_reward = episode_count['reward']
-                episode_time_steps = episode_count['time_steps']
+                episode_reward = self.episode_count['reward']
+                episode_time_steps = self.episode_count['time_steps']
                 count.update(Counter(reward=episode_reward, episode=1))
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
@@ -119,8 +119,8 @@ class Trainer:
                     summary.value.add(
                         tag='average reward',
                         simple_value=(count['reward'] / float(count['episode'])))
-                    for k in episode_count:
-                        summary.value.add(tag=k, simple_value=episode_count[k])
+                    for k in self.episode_count:
+                        summary.value.add(tag=k, simple_value=self.episode_count[k])
                     for k in episode_mean:
                         summary.value.add(
                             tag=k,
@@ -129,7 +129,7 @@ class Trainer:
                     tb_writer.flush()
 
                 # zero out counters
-                self.episode_count = episode_count = Counter()
+                self.episode_count = Counter()
                 episode_mean = Counter()
 
     def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):

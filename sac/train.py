@@ -215,19 +215,17 @@ class HindsightTrainer(TrajectoryTrainer):
     def add_hindsight_trajectories(self) -> None:
         if self.trajectory():
             new_trajectory = self.trajectory()
-            old_trajectory = list(self._trajectory())
-
             if self.timesteps() > 0:
                 new_recomputed_trajectory = self.env.recompute_trajectory(new_trajectory)
-                assert Step(*new_recomputed_trajectory[-1]).t == True
+                assert bool(Step(*new_recomputed_trajectory[-1]).t) is True
                 self.buffer.append(self.env.recompute_trajectory(new_trajectory))
-                assert Step(*self.buffer[-1]).t == True
-        # if self.n_goals - 1 and self.timesteps() > 0:
-        #     final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
-        #     assert isinstance(final_indexes, np.ndarray)
-        #
-        #     for final_state in self.old_buffer[final_indexes]:
-        #         self.old_buffer.extend(self.env.old_recompute_trajectory(self._trajectory()))
+                assert bool(Step(*self.buffer[-1]).t) is True
+                if self.n_goals - 1 and self.timesteps() > 0:
+                    final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
+                    assert isinstance(final_indexes, np.ndarray)
+
+                    for final_index in final_indexes:
+                        self.buffer.append(self.env.recompute_trajectory(self.trajectory()[:final_index]))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

@@ -179,13 +179,12 @@ class Trainer:
         return len(self.old_buffer) >= self.batch_size
 
     def sample_buffer(self):
-        top_pos = len(self.old_buffer)
-        indices = np.random.randint(0, top_pos, size=self.batch_size)
+        indices = np.random.randint(-len(self.old_buffer), 0, size=self.batch_size)  # type: np.ndarray
 
         # old sample
         samples = []
         for idx in indices:
-            sample = self.old_buffer.buffer[idx]
+            sample = self.old_buffer[idx]
             samples.append(sample)
         old_sample = Step(*map(list, zip(*samples)))
         sample = Step(*self.buffer[indices])

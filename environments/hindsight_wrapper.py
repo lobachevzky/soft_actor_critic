@@ -5,7 +5,7 @@ from typing import Optional
 
 import gym
 import numpy as np
-from gym import spaces
+from gym.spaces import Box
 
 from environments.mujoco import distance_between
 from environments.multi_task import MultiTaskEnv
@@ -49,7 +49,7 @@ class HindsightWrapper(gym.Wrapper):
             achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
-        trajectory = deepcopy(trajectory)
+        trajectory = Step(*deepcopy(trajectory))
 
         # get values
         o1 = Observation(*trajectory.o1)
@@ -65,6 +65,11 @@ class HindsightWrapper(gym.Wrapper):
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        obs = Observation(*obs)
+        obs = [obs.observation, obs.desired_goal]
+        return vectorize(obs, shape=shape)
+
 
 class MountaincarHindsightWrapper(HindsightWrapper):
     """
@@ -73,23 +78,22 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        o_space = env.observation_space
-        self.observation_space = spaces.Box(
-            low=vectorize([o_space.low, o_space.low]),
-            high=vectorize([o_space.high, o_space.high]))
+        self.observation_space = Box(
+            low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
+            high=vectorize([self.observation_space.high, env.unwrapped.max_position]))
 
     def step(self, action):
-        s2, r, t, info = super().step(action)
-        return s2, max([0, r]), t, info
+        o2, r, t, info = super().step(action)
+        return o2, max([0, r]), t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]
 
-    def _is_success(self, achieved_goal, desired_goal):
-        return self.env.unwrapped.state[0] >= self._desired_goal()
-
     def _desired_goal(self):
         return 0.45
+
+    def _is_success(self, achieved_goal, desired_goal):
+        return achieved_goal >= desired_goal
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
@@ -97,7 +101,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.pap_env = unwrap_env(env, PickAndPlaceEnv)
         self._geofence = geofence
-        self.observation_space = spaces.Box(
+        self.observation_space = Box(
             low=vectorize(
                 Observation(
                     observation=env.observation_space.low,
@@ -111,8 +115,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     @property
     def goal_space(self):
-        return spaces.Box(
-            low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
@@ -144,7 +147,7 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
 
     @property
     def goal_space(self):
-        return spaces.Box(low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
+        return Box(low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
 
     def _desired_goal(self):
         assert isinstance(self.multi_task_env, MultiTaskEnv)

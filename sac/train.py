@@ -104,11 +104,11 @@ class Trainer:
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, timesteps=1))
+            episode_count.update(Counter(reward=r, time_steps=1))
             if t:
                 s1 = self.reset()
                 episode_reward = episode_count['reward']
-                episode_timesteps = episode_count['timesteps']
+                episode_time_steps = episode_count['time_steps']
                 count.update(Counter(reward=episode_reward, episode=1))
                 print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                     'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
@@ -125,7 +125,7 @@ class Trainer:
                     for k in episode_mean:
                         summary.value.add(
                             tag=k,
-                            simple_value=episode_mean[k] / float(episode_timesteps))
+                            simple_value=episode_mean[k] / float(episode_time_steps))
                     tb_writer.add_summary(summary, time_steps)
                     tb_writer.flush()
 
@@ -189,17 +189,17 @@ class TrajectoryTrainer(Trainer):
         if final_index is None:
             final_index = 0  # points to current time step
         else:
-            final_index -= self.timesteps()
+            final_index -= self.time_steps()
         if self.buffer.empty:
             return None
-        return self.buffer[-self.timesteps():final_index]
+        return self.buffer[-self.time_steps():final_index]
 
-    def timesteps(self):
-        return self.episode_count['timesteps']
+    def time_steps(self):
+        return self.episode_count['time_steps']
 
     def _trajectory(self) -> Iterable:
-        if self.timesteps():
-            return self.buffer[-self.timesteps():]
+        if self.time_steps():
+            return self.buffer[-self.time_steps():]
         return ()
 
 
@@ -212,14 +212,14 @@ class HindsightTrainer(TrajectoryTrainer):
     def add_hindsight_trajectories(self) -> None:
         if self.trajectory():
             new_trajectory = self.trajectory()
-            if self.timesteps() > 0:
+            if self.time_steps() > 0:
                 new_recomputed_trajectory = self.env.recompute_trajectory(new_trajectory)
                 assert bool(Step(*new_recomputed_trajectory[-1]).t) is True
                 self.buffer.append(self.env.recompute_trajectory(new_trajectory))
                 assert bool(Step(*self.buffer[-1]).t) is True
-                if self.n_goals - 1 and self.timesteps() > 0:
+                if self.n_goals - 1 and self.time_steps() > 0:
                     final_indexes = np.random.randint(
-                        1, self.timesteps(), size=self.n_goals - 1)
+                        1, self.time_steps(), size=self.n_goals - 1)
                     assert isinstance(final_indexes, np.ndarray)
 
                     for final_index in final_indexes:

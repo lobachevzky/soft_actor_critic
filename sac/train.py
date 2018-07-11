@@ -178,14 +178,7 @@ class Trainer:
             -len(self.buffer), 0, size=self.batch_size)  # type: np.ndarray
         return Step(*self.buffer[indices])
 
-
-class TrajectoryTrainer(Trainer):
-    def __init__(self, **kwargs):
-        self.mimic_num = 0
-        self.stem_num = 0
-        super().__init__(**kwargs)
-
-    def trajectory(self, final_index=None) -> Optional[Step]:
+    def trajectory(self, final_index: int = None) -> Optional[Step]:
         if final_index is None:
             final_index = 0  # points to current time step
         else:
@@ -203,7 +196,7 @@ class TrajectoryTrainer(Trainer):
         return ()
 
 
-class HindsightTrainer(TrajectoryTrainer):
+class HindsightTrainer(Trainer):
     def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
         assert isinstance(env, HindsightWrapper)

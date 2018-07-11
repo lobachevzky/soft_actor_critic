@@ -61,11 +61,17 @@ class HindsightWrapper(gym.Wrapper):
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        obs = Observation(*obs)
+        obs = [obs.observation, obs.desired_goal]
+        return vectorize(obs, shape=shape)
+
 
 class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
+
     def __init__(self, env):
         super().__init__(env)
         self.observation_space = Box(
@@ -86,11 +92,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         return achieved_goal >= desired_goal
 
-    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
-        obs = Observation(*obs)
-        obs = [obs.observation, obs.desired_goal]
-        return vectorize(obs, shape=shape)
-
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
@@ -104,7 +105,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
-
-    @staticmethod
-    def old_vectorize_state(state):
-        return np.concatenate([state.observation, np.concatenate(state.desired_goal)])

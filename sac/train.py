@@ -186,8 +186,14 @@ class Trainer:
         for idx in indices:
             sample = self.buffer[idx]
             samples.append(sample)
-        sample = tuple(map(list, zip(*samples)))
-        return Step(*sample)
+        old_sample = Step(*(tuple(map(list, zip(*samples)))))
+        # for i in range(3):
+        #     assert np.allclose(np.stack([x[i] for x in old_sample.o1]), sample.o1[i])
+        # assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
+        # assert np.allclose(np.concatenate(old_sample.a), sample.a)
+        # assert np.allclose(old_sample.r, sample.r)
+        # assert np.allclose(old_sample.t, sample.t)
+        return old_sample
 
 
 class TrajectoryTrainer(Trainer):

@@ -1,7 +1,7 @@
 import itertools
 import time
 from collections import Counter
-from typing import Optional, Tuple, Iterable, Any
+from typing import Any, Iterable, Optional, Tuple
 
 import gym
 import numpy as np
@@ -10,7 +10,6 @@ from gym import spaces
 
 import sac.old_replay_buffer
 import sac.replay_buffer
-from environments.hindsight_wrapper import Observation
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -21,8 +20,8 @@ State = Any
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, logdir: str, save_path: str, load_path: str, render: bool,
-                 **kwargs):
+                 batch_size: int, num_train_steps: int, logdir: str, save_path: str,
+                 load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -41,10 +40,7 @@ class Trainer:
         sess = tf.Session(config=config)
 
         self.agent = agent = self.build_agent(
-            sess=sess,
-            batch_size=None,
-            reuse=False,
-            **kwargs)
+            sess=sess, batch_size=None, reuse=False, **kwargs)
         self.seq_len = self.agent.seq_len
         saver = tf.train.Saver()
         tb_writer = None
@@ -63,7 +59,8 @@ class Trainer:
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions([self.vectorize_state(s1)], sample=(not is_eval_period)).output
+            a = agent.get_actions(
+                [self.vectorize_state(s1)], sample=(not is_eval_period)).output
             if render:
                 env.render()
             s2, r, t, info = self.step(a)
@@ -82,8 +79,10 @@ class Trainer:
                     sample_steps = self.sample_buffer()
                     # noinspection PyProtectedMember
                     if not is_eval_period:
-                        new_o1 = self.env.preprocess_obs(sample_steps.o1, shape=[self.batch_size, -1])
-                        new_o2 = self.env.preprocess_obs(sample_steps.o2, shape=[self.batch_size, -1])
+                        new_o1 = self.env.preprocess_obs(
+                            sample_steps.o1, shape=[self.batch_size, -1])
+                        new_o2 = self.env.preprocess_obs(
+                            sample_steps.o2, shape=[self.batch_size, -1])
                         step = self.agent.train_step(
                             sample_steps._replace(
                                 o1=new_o1,
@@ -91,17 +90,17 @@ class Trainer:
                             ))
                         episode_mean.update(
                             Counter({
-                                        k: getattr(step, k.replace(' ', '_'))
-                                        for k in [
-                                            'entropy',
-                                            'V loss',
-                                            'Q loss',
-                                            'pi loss',
-                                            'V grad',
-                                            'Q grad',
-                                            'pi grad',
-                                        ]
-                                        }))
+                                k: getattr(step, k.replace(' ', '_'))
+                                for k in [
+                                    'entropy',
+                                    'V loss',
+                                    'Q loss',
+                                    'pi loss',
+                                    'V grad',
+                                    'Q grad',
+                                    'pi grad',
+                                ]
+                            }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -145,10 +144,7 @@ class Trainer:
 
         class Agent(policy_type, base_agent):
             def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(
-                    o_shape=s_shape,
-                    a_shape=a_shape,
-                    **kwargs)
+                super(Agent, self).__init__(o_shape=s_shape, a_shape=a_shape, **kwargs)
 
         return Agent(state_shape, action_shape)
 
@@ -178,7 +174,8 @@ class Trainer:
         return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self):
-        indices = np.random.randint(-len(self.buffer), 0, size=self.batch_size)  # type: np.ndarray
+        indices = np.random.randint(
+            -len(self.buffer), 0, size=self.batch_size)  # type: np.ndarray
         return Step(*self.buffer[indices])
 
 
@@ -221,11 +218,14 @@ class HindsightTrainer(TrajectoryTrainer):
                 self.buffer.append(self.env.recompute_trajectory(new_trajectory))
                 assert bool(Step(*self.buffer[-1]).t) is True
                 if self.n_goals - 1 and self.timesteps() > 0:
-                    final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
+                    final_indexes = np.random.randint(
+                        1, self.timesteps(), size=self.n_goals - 1)
                     assert isinstance(final_indexes, np.ndarray)
 
                     for final_index in final_indexes:
-                        self.buffer.append(self.env.recompute_trajectory(self.trajectory()[:final_index]))
+                        self.buffer.append(
+                            self.env.recompute_trajectory(
+                                self.trajectory()[:final_index]))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

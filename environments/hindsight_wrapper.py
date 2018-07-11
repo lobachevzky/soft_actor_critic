@@ -11,7 +11,7 @@ from environments.mujoco import distance_between
 from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.array_group import ArrayGroup
-from sac.utils import Step, vectorize, unwrap_env
+from sac.utils import Step, unwrap_env, vectorize
 
 Goal = namedtuple('Goal', 'gripper block')
 
@@ -36,15 +36,17 @@ class HindsightWrapper(gym.Wrapper):
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = Observation(observation=s2,
-                             desired_goal=self._desired_goal(),
-                             achieved_goal=self._achieved_goal())
+        new_s2 = Observation(
+            observation=s2,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
         return new_s2, r, t, info
 
     def reset(self):
-        return Observation(observation=self.env.reset(),
-                           desired_goal=self._desired_goal(),
-                           achieved_goal=self._achieved_goal())
+        return Observation(
+            observation=self.env.reset(),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
         trajectory = Step(*deepcopy(trajectory))
@@ -78,8 +80,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.observation_space = Box(
             low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
-            high=vectorize([self.observation_space.high, env.unwrapped.max_position])
-        )
+            high=vectorize([self.observation_space.high, env.unwrapped.max_position]))
 
     def step(self, action):
         s2, r, t, info = super().step(action)
@@ -114,8 +115,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     @property
     def goal_space(self):
-        return Box(
-            low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
@@ -167,4 +167,3 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
             observation=self.env.reset().observation,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-

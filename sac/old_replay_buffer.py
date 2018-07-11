@@ -1,5 +1,3 @@
-from collections import deque
-
 import numpy as np
 
 
@@ -40,10 +38,10 @@ class ReplayBuffer:
             return self.buffer[(self.pos + index) % self.maxlen]
 
         if isinstance(item, slice):
-            return map(get_item,
-                       range(item.start or 0,
-                             item.stop or (0 if item.start < 0 else self.maxlen),
-                             item.step or 1))
+            return map(
+                get_item,
+                range(item.start or 0, item.stop
+                      or (0 if item.start < 0 else self.maxlen), item.step or 1))
         else:
             try:
                 return map(get_item, item)

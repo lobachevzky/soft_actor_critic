@@ -1,10 +1,10 @@
 import click
 import gym
+import tensorflow as tf
 
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
-import tensorflow as tf
 
 
 @click.command()

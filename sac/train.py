@@ -8,7 +8,6 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-import sac.old_replay_buffer
 import sac.replay_buffer
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent

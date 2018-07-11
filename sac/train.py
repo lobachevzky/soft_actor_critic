@@ -32,7 +32,6 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.old_buffer = sac.old_replay_buffer.ReplayBuffer(buffer_size)
         self.buffer = sac.replay_buffer.ReplayBuffer(buffer_size)
         self.save_path = save_path
 
@@ -173,14 +172,13 @@ class Trainer:
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
-        self.old_buffer.append(step)
         self.buffer.append(step)
 
     def buffer_full(self):
-        return len(self.old_buffer) >= self.batch_size
+        return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self):
-        indices = np.random.randint(-len(self.old_buffer), 0, size=self.batch_size)  # type: np.ndarray
+        indices = np.random.randint(-len(self.buffer), 0, size=self.batch_size)  # type: np.ndarray
         return Step(*self.buffer[indices])
 
 
@@ -204,7 +202,7 @@ class TrajectoryTrainer(Trainer):
 
     def _trajectory(self) -> Iterable:
         if self.timesteps():
-            return self.old_buffer[-self.timesteps():]
+            return self.buffer[-self.timesteps():]
         return ()
 
 
@@ -221,12 +219,9 @@ class HindsightTrainer(TrajectoryTrainer):
 
             if self.timesteps() > 0:
                 new_recomputed_trajectory = self.env.recompute_trajectory(new_trajectory)
-                old_recomputed_trajectory = list(self.env.old_recompute_trajectory(old_trajectory))
                 assert Step(*new_recomputed_trajectory[-1]).t == True
                 self.buffer.append(self.env.recompute_trajectory(new_trajectory))
                 assert Step(*self.buffer[-1]).t == True
-                self.old_buffer.extend(old_recomputed_trajectory)
-                assert self.old_buffer[-1].t == True
         # if self.n_goals - 1 and self.timesteps() > 0:
         #     final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
         #     assert isinstance(final_indexes, np.ndarray)

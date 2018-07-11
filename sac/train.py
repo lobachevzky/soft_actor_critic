@@ -179,22 +179,23 @@ class Trainer:
         return len(self.old_buffer) >= self.batch_size
 
     def sample_buffer(self):
-        top_pos = self.old_buffer.maxlen if self.old_buffer.full else self.old_buffer.pos
-        assert top_pos == len(self.old_buffer)
+        top_pos = len(self.old_buffer)
         indices = np.random.randint(0, top_pos, size=self.batch_size)
+
+        # old sample
         samples = []
         for idx in indices:
-            sample = self.buffer[idx]
+            sample = self.old_buffer.buffer[idx]
             samples.append(sample)
-        old_sample = Step(*(tuple(map(list, zip(*samples)))))
+        old_sample = Step(*map(list, zip(*samples)))
+        sample = Step(*self.buffer[indices])
         # for i in range(3):
         #     assert np.allclose(np.stack([x[i] for x in old_sample.o1]), sample.o1[i])
-        # assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
+        #     assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
         # assert np.allclose(np.concatenate(old_sample.a), sample.a)
         # assert np.allclose(old_sample.r, sample.r)
         # assert np.allclose(old_sample.t, sample.t)
         return old_sample
-
 
 class TrajectoryTrainer(Trainer):
     def __init__(self, **kwargs):

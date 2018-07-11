@@ -12,10 +12,9 @@ from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Step
+from sac.utils import Step, Obs
 
 Agents = namedtuple('Agents', 'train act')
-State = Any
 
 
 class Trainer:
@@ -143,15 +142,17 @@ class Trainer:
             policy_type = GaussianPolicy
 
         class Agent(policy_type, base_agent):
-            def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(o_shape=s_shape, a_shape=a_shape, **kwargs)
+            def __init__(self):
+                super(Agent, self).__init__(o_shape=state_shape,
+                                            a_shape=action_shape,
+                                            **kwargs)
 
-        return Agent(state_shape, action_shape)
+        return Agent()
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+    def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
@@ -162,7 +163,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: State) -> np.ndarray:
+    def vectorize_state(self, state: Obs) -> np.ndarray:
         """ Preprocess state before feeding to network """
         return state
 
@@ -220,10 +221,10 @@ class HindsightTrainer(Trainer):
                             self.env.recompute_trajectory(
                                 self.trajectory()[:final_index]))
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         self.add_hindsight_trajectories()
         return super().reset()
 
-    def vectorize_state(self, state: State) -> np.ndarray:
+    def vectorize_state(self, state: Obs) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
         return self.env.preprocess_obs(state)

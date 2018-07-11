@@ -248,13 +248,22 @@ class HindsightTrainer(TrajectoryTrainer):
         if self.trajectory():
             new_trajectory = self.trajectory()
             old_trajectory = list(self._trajectory())
-            print(len(old_trajectory))
+            try:
+                new_trajectory[len(old_trajectory)]
+                raise RuntimeError('new_trajectory is too long')
+            except IndexError:
+                new_trajectory[len(old_trajectory) - 1]
             for i, step in enumerate(old_trajectory):
                 steps_are_same(step, Step(*new_trajectory[i]))
 
             if self.timesteps() > 0:
                 new_recomputed_trajectory = self.env.recompute_trajectory(new_trajectory)
                 old_recomputed_trajectory = list(self.env.old_recompute_trajectory(old_trajectory))
+                try:
+                    new_recomputed_trajectory[len(old_recomputed_trajectory)]
+                    raise RuntimeError('new_recomputed_trajectory is too long')
+                except IndexError:
+                    new_recomputed_trajectory[len(old_recomputed_trajectory) - 1]
                 for i, step in enumerate(old_recomputed_trajectory):
                     steps_are_same(step, Step(*new_recomputed_trajectory[i]))
                 assert Step(*new_recomputed_trajectory[-1]).t == True

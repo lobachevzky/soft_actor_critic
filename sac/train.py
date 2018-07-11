@@ -1,6 +1,6 @@
 import itertools
 import time
-from collections import Counter
+from collections import Counter, namedtuple
 from typing import Any, Iterable, Optional, Tuple
 
 import gym
@@ -8,19 +8,20 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
-import sac.replay_buffer
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
+from sac.replay_buffer import ReplayBuffer
 from sac.utils import Step
 
+Agents = namedtuple('Agents', 'train act')
 State = Any
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, logdir: str, save_path: str,
-                 load_path: str, render: bool, **kwargs):
+    def __init__(self, env: gym.Env, seed: Optional[int],
+                 buffer_size: int, batch_size: int, num_train_steps: int,
+                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -30,7 +31,7 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = sac.replay_buffer.ReplayBuffer(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
 
         config = tf.ConfigProto(allow_soft_placement=True)
@@ -89,17 +90,17 @@ class Trainer:
                             ))
                         episode_mean.update(
                             Counter({
-                                k: getattr(step, k.replace(' ', '_'))
-                                for k in [
-                                    'entropy',
-                                    'V loss',
-                                    'Q loss',
-                                    'pi loss',
-                                    'V grad',
-                                    'Q grad',
-                                    'pi grad',
-                                ]
-                            }))
+                                        k: getattr(step, k.replace(' ', '_'))
+                                        for k in [
+                                            'entropy',
+                                            'V loss',
+                                            'Q loss',
+                                            'pi loss',
+                                            'V grad',
+                                            'Q grad',
+                                            'pi grad',
+                                        ]
+                                        }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()

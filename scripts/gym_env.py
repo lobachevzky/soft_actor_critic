@@ -31,7 +31,6 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
     Trainer(
         env=gym.make(env),
         base_agent=MlpAgent,
-        seq_len=0,
         device_num=1,
         seed=seed,
         buffer_size=buffer_size,

@@ -61,34 +61,6 @@ class HindsightWrapper(gym.Wrapper):
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
-    def old_recompute_trajectory(self, trajectory, final_state=-1, debug=False):
-        trajectory = list(trajectory)
-        if not trajectory:
-            return ()
-        achieved_goal = trajectory[final_state].o2.achieved_goal
-        for i in itertools.count():
-            try:
-                step = trajectory[i]
-            except IndexError:
-                if debug:
-                    import ipdb; ipdb.set_trace()
-                break
-            new_t = self._is_success(step.o2.achieved_goal, achieved_goal)
-            r = float(new_t)
-            if step.t:
-                assert new_t
-            yield Step(
-                s=None,
-                o1=step.o1._replace(desired_goal=achieved_goal),
-                a=step.a,
-                r=r,
-                o2=step.o2._replace(desired_goal=achieved_goal),
-                t=new_t)
-            if new_t:
-                if debug:
-                    import ipdb; ipdb.set_trace()
-                break
-
 
 class MountaincarHindsightWrapper(HindsightWrapper):
     """

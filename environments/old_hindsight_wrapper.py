@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
+from typing import Optional
 
 import gym
 import numpy as np
@@ -8,7 +9,7 @@ from gym.spaces import Box
 
 from environments.hindsight_wrapper import Observation
 from sac.array_group import ArrayGroup
-from sac.utils import Step
+from sac.utils import Step, vectorize
 import itertools
 
 State = namedtuple('State', 'observation achieved_goal desired_goal')
@@ -22,7 +23,7 @@ def goals_equal(goal1, goal2):
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        vector_state = self.vectorize_state(self.reset())
+        vector_state = self.old_vectorize_state(self.reset())
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
@@ -38,7 +39,7 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     @staticmethod
-    def vectorize_state(state):
+    def old_vectorize_state(state):
         return np.concatenate(state)
 
     def step(self, action):
@@ -119,9 +120,14 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return achieved_goal >= desired_goal
 
     @staticmethod
-    def vectorize_state(state):
+    def old_vectorize_state(state):
         state = State(*state)
         return np.append(state.observation, state.desired_goal)
+
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        obs = Observation(*obs)
+        obs = [obs.observation, obs.desired_goal]
+        return vectorize(obs, shape=shape)
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
@@ -138,5 +144,5 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return self.env.unwrapped.goal()
 
     @staticmethod
-    def vectorize_state(state):
+    def old_vectorize_state(state):
         return np.concatenate([state.observation, np.concatenate(state.desired_goal)])

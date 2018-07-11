@@ -1,9 +1,6 @@
 import itertools
-import pickle
 import time
 from collections import Counter
-from pathlib import Path
-from pprint import pprint
 from typing import Optional, Tuple, Iterable, Any
 
 import gym
@@ -11,13 +8,12 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
+import sac.old_replay_buffer
+import sac.replay_buffer
 from environments.hindsight_wrapper import Observation
 from environments.old_hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
-from sac.networks import MlpAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
-import sac.old_replay_buffer
-import sac.replay_buffer
 from sac.utils import Step
 
 State = Any
@@ -84,13 +80,19 @@ class Trainer:
             self.add_to_buffer(Step(s=0, o1=s1, a=a, r=r, o2=s2, t=t))
             if self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
-                    sample_steps = self.sample_buffer()
+                    old_sample_steps, sample_steps = self.sample_buffer()
                     # noinspection PyProtectedMember
                     if not is_eval_period:
+                        o1 = np.stack(list(map(self.vectorize_state, old_sample_steps.o1)))
+                        o2 = np.stack(list(map(self.vectorize_state, old_sample_steps.o2)))
+                        new_o1 = self.env.preprocess_obs(sample_steps.o1, shape=[self.batch_size, -1])
+                        new_o2 = self.env.preprocess_obs(sample_steps.o2, shape=[self.batch_size, -1])
+                        assert np.allclose(o1, new_o1)
+                        assert np.allclose(o2, new_o2)
                         step = self.agent.train_step(
                             sample_steps._replace(
-                                o1=list(map(self.vectorize_state, sample_steps.o1)),
-                                o2=list(map(self.vectorize_state, sample_steps.o2)),
+                                o1=o1,
+                                o2=o2,
                             ))
                         episode_mean.update(
                             Counter({
@@ -191,13 +193,13 @@ class Trainer:
             samples.append(sample)
         old_sample = Step(*map(list, zip(*samples)))
         sample = Step(*self.buffer[indices])
-        # for i in range(3):
-        #     assert np.allclose(np.stack([x[i] for x in old_sample.o1]), sample.o1[i])
-        #     assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
-        # assert np.allclose(np.stack(old_sample.a), sample.a)
-        # assert np.allclose(old_sample.r, sample.r)
-        # assert np.allclose(old_sample.t, sample.t)
-        return old_sample
+        for i in range(3):
+            assert np.allclose(np.stack([x[i] for x in old_sample.o1]), sample.o1[i])
+            assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
+        assert np.allclose(np.stack(old_sample.a), sample.a)
+        assert np.allclose(old_sample.r, sample.r)
+        assert np.allclose(old_sample.t, sample.t)
+        return old_sample, sample
 
 
 class TrajectoryTrainer(Trainer):
@@ -286,4 +288,4 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
-        return self.env.vectorize_state(state)
+        return self.env.old_vectorize_state(state)

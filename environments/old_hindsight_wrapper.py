@@ -12,12 +12,12 @@ from sac.array_group import ArrayGroup
 from sac.utils import Step, vectorize
 import itertools
 
-State = namedtuple('State', 'observation achieved_goal desired_goal')
+Goal = namedtuple('Goal', 'gripper block')
 
 
-def goals_equal(goal1, goal2):
-    return all([np.allclose(a, b) for a, b in [(goal1.block, goal2.block),
-                                               (goal1.gripper, goal2.gripper)]])
+class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
+    def replace(self, **kwargs):
+        return super()._replace(**kwargs)
 
 
 class HindsightWrapper(gym.Wrapper):
@@ -44,9 +44,9 @@ class HindsightWrapper(gym.Wrapper):
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(observation=s2,
-                       desired_goal=self._desired_goal(),
-                       achieved_goal=self._achieved_goal())
+        new_s2 = Observation(observation=s2,
+                             desired_goal=self._desired_goal(),
+                             achieved_goal=self._achieved_goal())
         is_success = self._is_success(new_s2.achieved_goal,
                                       new_s2.desired_goal)
         new_t = is_success or t
@@ -55,9 +55,9 @@ class HindsightWrapper(gym.Wrapper):
         return new_s2, new_r, new_t, info
 
     def reset(self):
-        return State(observation=self.env.reset(),
-                     desired_goal=self._desired_goal(),
-                     achieved_goal=self._achieved_goal())
+        return Observation(observation=self.env.reset(),
+                           desired_goal=self._desired_goal(),
+                           achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
         trajectory = Step(*deepcopy(trajectory))
@@ -121,7 +121,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     @staticmethod
     def old_vectorize_state(state):
-        state = State(*state)
+        state = Observation(*state)
         return np.append(state.observation, state.desired_goal)
 
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):

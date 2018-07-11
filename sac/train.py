@@ -80,15 +80,11 @@ class Trainer:
             self.add_to_buffer(Step(s=0, o1=s1, a=a, r=r, o2=s2, t=t))
             if self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
-                    old_sample_steps, sample_steps = self.sample_buffer()
+                    sample_steps = self.sample_buffer()
                     # noinspection PyProtectedMember
                     if not is_eval_period:
-                        o1 = np.stack(list(map(self.vectorize_state, old_sample_steps.o1)))
-                        o2 = np.stack(list(map(self.vectorize_state, old_sample_steps.o2)))
                         new_o1 = self.env.preprocess_obs(sample_steps.o1, shape=[self.batch_size, -1])
                         new_o2 = self.env.preprocess_obs(sample_steps.o2, shape=[self.batch_size, -1])
-                        assert np.allclose(o1, new_o1)
-                        assert np.allclose(o2, new_o2)
                         step = self.agent.train_step(
                             sample_steps._replace(
                                 o1=new_o1,
@@ -185,21 +181,7 @@ class Trainer:
 
     def sample_buffer(self):
         indices = np.random.randint(-len(self.old_buffer), 0, size=self.batch_size)  # type: np.ndarray
-
-        # old sample
-        samples = []
-        for idx in indices:
-            sample = self.old_buffer[idx]
-            samples.append(sample)
-        old_sample = Step(*map(list, zip(*samples)))
-        sample = Step(*self.buffer[indices])
-        for i in range(3):
-            assert np.allclose(np.stack([x[i] for x in old_sample.o1]), sample.o1[i])
-            assert np.allclose(np.stack([x[i] for x in old_sample.o2]), sample.o2[i])
-        assert np.allclose(np.stack(old_sample.a), sample.a)
-        assert np.allclose(old_sample.r, sample.r)
-        assert np.allclose(old_sample.t, sample.t)
-        return old_sample, sample
+        return Step(*self.buffer[indices])
 
 
 class TrajectoryTrainer(Trainer):

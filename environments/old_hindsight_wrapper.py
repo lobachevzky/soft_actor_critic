@@ -7,7 +7,6 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
-from environments.hindsight_wrapper import Observation
 from sac.array_group import ArrayGroup
 from sac.utils import Step, vectorize
 import itertools
@@ -21,11 +20,6 @@ class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        vector_state = self.old_vectorize_state(self.reset())
-        self.observation_space = Box(-1, 1, vector_state.shape)
-
     @abstractmethod
     def _achieved_goal(self):
         raise NotImplementedError
@@ -109,6 +103,12 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = Box(
+            low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
+            high=vectorize([self.observation_space.high, env.unwrapped.max_position])
+        )
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]

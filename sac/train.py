@@ -19,7 +19,7 @@ Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
-    def __init__(self, base_agent: AbstractAgent, env: gym.Env, seed: Optional[int],
+    def __init__(self, env: gym.Env, seed: Optional[int],
                  buffer_size: int, batch_size: int, seq_len: int, num_train_steps: int,
                  logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
@@ -42,14 +42,12 @@ class Trainer:
         self.agents = Agents(
             act=self.build_agent(
                 sess=sess,
-                base_agent=base_agent,
                 batch_size=None,
                 seq_len=1,
                 reuse=False,
                 **kwargs),
             train=self.build_agent(
                 sess=sess,
-                base_agent=base_agent,
                 batch_size=batch_size,
                 seq_len=seq_len,
                 reuse=True,
@@ -163,7 +161,7 @@ class Trainer:
                     self.episode_count[k] = episode_mean[k] / float(time_steps)
                 return self.episode_count
 
-    def build_agent(self, base_agent: AbstractAgent, batch_size, reuse, **kwargs):
+    def build_agent(self, base_agent: AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -173,15 +171,13 @@ class Trainer:
             policy_type = GaussianPolicy
 
         class Agent(policy_type, base_agent):
-            def __init__(self, batch_size, reuse):
+            def __init__(self):
                 super(Agent, self).__init__(
-                    batch_size=batch_size,
                     o_shape=state_shape,
                     a_shape=action_shape,
-                    reuse=reuse,
                     **kwargs)
 
-        return Agent(batch_size=batch_size, reuse=reuse)
+        return Agent()
 
     def reset(self) -> Obs:
         return self.env.reset()

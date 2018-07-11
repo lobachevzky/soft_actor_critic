@@ -37,12 +37,7 @@ class HindsightWrapper(gym.Wrapper):
         new_s2 = Observation(observation=s2,
                              desired_goal=self._desired_goal(),
                              achieved_goal=self._achieved_goal())
-        is_success = self._is_success(new_s2.achieved_goal,
-                                      new_s2.desired_goal)
-        new_t = is_success or t
-        new_r = float(is_success)
-        info['base_reward'] = r
-        return new_s2, new_r, new_t, info
+        return new_s2, r, t, info
 
     def reset(self):
         return Observation(observation=self.env.reset(),
@@ -105,6 +100,10 @@ class MountaincarHindsightWrapper(HindsightWrapper):
             low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
             high=vectorize([self.observation_space.high, env.unwrapped.max_position])
         )
+
+    def step(self, action):
+        s2, r, t, info = super().step(action)
+        return s2, max([0, r]), t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]

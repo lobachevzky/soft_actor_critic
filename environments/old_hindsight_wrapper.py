@@ -86,11 +86,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         return achieved_goal >= desired_goal
 
-    @staticmethod
-    def old_vectorize_state(state):
-        state = Observation(*state)
-        return np.append(state.observation, state.desired_goal)
-
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]

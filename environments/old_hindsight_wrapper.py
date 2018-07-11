@@ -32,10 +32,6 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
-    @staticmethod
-    def old_vectorize_state(state):
-        return np.concatenate(state)
-
     def step(self, action):
         s2, r, t, info = self.env.step(action)
         new_s2 = Observation(observation=s2,

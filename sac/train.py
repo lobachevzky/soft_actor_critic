@@ -233,4 +233,4 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def vectorize_state(self, state: State) -> np.ndarray:
         assert isinstance(self.env, HindsightWrapper)
-        return self.env.old_vectorize_state(state)
+        return self.env.preprocess_obs(state)

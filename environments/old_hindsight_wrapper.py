@@ -1,11 +1,15 @@
 from abc import abstractmethod
 from collections import namedtuple
+from copy import deepcopy
 
 import gym
 import numpy as np
 from gym.spaces import Box
 
+from environments.hindsight_wrapper import Observation
+from sac.array_group import ArrayGroup
 from sac.utils import Step
+import itertools
 
 State = namedtuple('State', 'observation achieved_goal desired_goal')
 
@@ -54,14 +58,39 @@ class HindsightWrapper(gym.Wrapper):
                      desired_goal=self._desired_goal(),
                      achieved_goal=self._achieved_goal())
 
-    def recompute_trajectory(self, trajectory, final_state=-1):
+    def recompute_trajectory(self, trajectory: Step):
+        trajectory = Step(*deepcopy(trajectory))
+
+        # get values
+        o1 = Observation(*trajectory.o1)
+        o2 = Observation(*trajectory.o2)
+        achieved_goal = ArrayGroup(o2.achieved_goal)[-1]
+
+        # perform assignment
+        ArrayGroup(o1.desired_goal)[:] = achieved_goal
+        ArrayGroup(o2.desired_goal)[:] = achieved_goal
+        trajectory.r[:] = self._is_success(o2.achieved_goal, o2.desired_goal)
+        trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
+
+        first_terminal = np.flatnonzero(trajectory.t)[0]
+        return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
+
+    def old_recompute_trajectory(self, trajectory, final_state=-1, debug=False):
         trajectory = list(trajectory)
         if not trajectory:
             return ()
         achieved_goal = trajectory[final_state].o2.achieved_goal
-        for step in trajectory[:final_state]:
+        for i in itertools.count():
+            try:
+                step = trajectory[i]
+            except IndexError:
+                if debug:
+                    import ipdb; ipdb.set_trace()
+                break
             new_t = self._is_success(step.o2.achieved_goal, achieved_goal)
             r = float(new_t)
+            if step.t:
+                assert new_t
             yield Step(
                 s=None,
                 o1=step.o1._replace(desired_goal=achieved_goal),
@@ -70,6 +99,8 @@ class HindsightWrapper(gym.Wrapper):
                 o2=step.o2._replace(desired_goal=achieved_goal),
                 t=new_t)
             if new_t:
+                if debug:
+                    import ipdb; ipdb.set_trace()
                 break
 
 

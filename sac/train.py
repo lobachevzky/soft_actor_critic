@@ -11,6 +11,7 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces
 
+from environments.hindsight_wrapper import Observation
 from environments.old_hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.networks import MlpAgent
@@ -18,12 +19,14 @@ from sac.policies import CategoricalPolicy, GaussianPolicy
 import sac.old_replay_buffer
 import sac.replay_buffer
 from sac.utils import Step
+
 State = Any
 
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
+                 batch_size: int, num_train_steps: int, logdir: str, save_path: str, load_path: str, render: bool,
+                 **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -43,10 +46,10 @@ class Trainer:
         sess = tf.Session(config=config)
 
         self.agent = agent = self.build_agent(
-                sess=sess,
-                batch_size=None,
-                reuse=False,
-                **kwargs)
+            sess=sess,
+            batch_size=None,
+            reuse=False,
+            **kwargs)
         self.seq_len = self.agent.seq_len
         saver = tf.train.Saver()
         tb_writer = None
@@ -196,24 +199,21 @@ class Trainer:
         # assert np.allclose(old_sample.t, sample.t)
         return old_sample
 
+
 class TrajectoryTrainer(Trainer):
     def __init__(self, **kwargs):
         self.mimic_num = 0
-        self.trajectory = []
         self.stem_num = 0
         super().__init__(**kwargs)
 
-    def add_to_buffer(self, step: Step):
-        super().add_to_buffer(step)
-        self.trajectory.append(step)
-
-    def trajectory(self) -> Iterable:
-        assert len(self.trajectory) == self.episode_count['timesteps']
-        return self.old_buffer[-self.episode_count['timesteps']:]
-
-    def reset(self) -> State:
-        self.trajectory = []
-        return super().reset()
+    def trajectory(self, final_index=None) -> Optional[Step]:
+        if final_index is None:
+            final_index = 0  # points to current time step
+        else:
+            final_index -= self.timesteps()
+        if self.buffer.empty:
+            return None
+        return self.buffer[-self.timesteps():final_index]
 
     def timesteps(self):
         return self.episode_count['timesteps']
@@ -226,18 +226,16 @@ class TrajectoryTrainer(Trainer):
 
 def steps_are_same(step1, step2):
     if step1 is None or step2 is None:
-        return False
-    return all([
-        np.allclose(step1.o1.observation, step2.o1.observation),
-        np.allclose(step1.o1.achieved_goal, step2.o1.achieved_goal),
-        np.allclose(step1.o1.desired_goal, step2.o1.desired_goal),
-        np.allclose(step1.o2.observation,   step2.o2.observation),
-        np.allclose(step1.o2.achieved_goal, step2.o2.achieved_goal),
-        np.allclose(step1.o2.desired_goal,  step2.o2.desired_goal),
-        np.allclose(step1.a,  step2.a),
-        np.allclose(step1.r,  step2.r),
-        np.allclose(step1.t,  step2.t),
-    ])
+        return
+    assert np.allclose(step1.o1.observation, Observation(*step2.o1).observation)
+    assert np.allclose(step1.o1.achieved_goal, Observation(*step2.o1).achieved_goal)
+    assert np.allclose(step1.o1.desired_goal, Observation(*step2.o1).desired_goal)
+    assert np.allclose(step1.o2.observation, Observation(*step2.o2).observation)
+    assert np.allclose(step1.o2.achieved_goal, Observation(*step2.o2).achieved_goal)
+    assert np.allclose(step1.o2.desired_goal, Observation(*step2.o2).desired_goal)
+    assert np.allclose(step1.a, step2.a)
+    assert np.allclose(step1.r, step2.r)
+    assert np.allclose(step1.t, step2.t)
 
 
 class HindsightTrainer(TrajectoryTrainer):
@@ -247,18 +245,31 @@ class HindsightTrainer(TrajectoryTrainer):
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
-        for i, (step1, step2) in enumerate(zip(self.trajectory, self._trajectory())):
-            assert steps_are_same(step2, self.old_buffer[-self.timesteps() + i])
-        assert isinstance(self.env, HindsightWrapper)
-        if self.trajectory:
-            assert steps_are_same(self.old_buffer[-1], self.trajectory[-1])
-        self.old_buffer.extend(self.env.recompute_trajectory(self._trajectory()))
-        if self.n_goals - 1 and self.timesteps() > 0:
-            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
-            assert isinstance(final_indexes, np.ndarray)
+        if self.trajectory():
+            new_trajectory = self.trajectory()
+            old_trajectory = list(self._trajectory())
+            print(len(old_trajectory))
+            for i, step in enumerate(old_trajectory):
+                steps_are_same(step, Step(*new_trajectory[i]))
 
-            for final_state in self.old_buffer[final_indexes]:
-                self.old_buffer.extend(self.env.recompute_trajectory(self._trajectory()))
+            if self.timesteps() > 0:
+                new_recomputed_trajectory = self.env.recompute_trajectory(new_trajectory)
+                old_recomputed_trajectory = list(self.env.old_recompute_trajectory(old_trajectory))
+                for i, step in enumerate(old_recomputed_trajectory):
+                    steps_are_same(step, Step(*new_recomputed_trajectory[i]))
+                assert Step(*new_recomputed_trajectory[-1]).t == True
+                if old_recomputed_trajectory[-1].t == False:
+                    self.env.old_recompute_trajectory(old_trajectory, debug=True)
+                self.buffer.append(self.env.recompute_trajectory(new_trajectory))
+                assert Step(*self.buffer[-1]).t == True
+                self.old_buffer.extend(old_recomputed_trajectory)
+                assert self.old_buffer[-1].t == True
+        # if self.n_goals - 1 and self.timesteps() > 0:
+        #     final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1)
+        #     assert isinstance(final_indexes, np.ndarray)
+        #
+        #     for final_state in self.old_buffer[final_indexes]:
+        #         self.old_buffer.extend(self.env.old_recompute_trajectory(self._trajectory()))
 
     def reset(self) -> State:
         self.add_hindsight_trajectories()

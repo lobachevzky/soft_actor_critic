@@ -39,10 +39,20 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        self.agent = agent = self.build_agent(
-            seq_len=seq_len,
-            sess=sess, batch_size=None, reuse=False, **kwargs)
-        self.seq_len = self.agent.seq_len
+        self.agents = Agents(
+            act=self.build_agent(
+                sess=sess,
+                batch_size=None,
+                seq_len=1,
+                reuse=False,
+                **kwargs),
+            train=self.build_agent(
+                sess=sess,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                **kwargs))
+        self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -111,9 +121,9 @@ class Trainer:
         self.episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
-        s = self.agent.initial_state
+        s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
-            a, s = self.agent.get_actions(
+            a, s = self.agents.act.get_actions(
                 self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
@@ -129,7 +139,7 @@ class Trainer:
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    step = self.agent.train_step(self.sample_buffer())
+                    step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
                             k: getattr(step, k.replace(' ', '_'))

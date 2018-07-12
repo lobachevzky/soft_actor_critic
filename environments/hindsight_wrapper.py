@@ -84,7 +84,11 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def step(self, action):
         o2, r, t, info = super().step(action)
-        return o2, max([0, r]), t, info
+        is_success = self._is_success(o2.achieved_goal, o2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
+        info['base_reward'] = r
+        return o2, new_r, new_t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]

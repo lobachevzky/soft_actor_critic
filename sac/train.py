@@ -19,9 +19,9 @@ Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int],
-                 buffer_size: int, batch_size: int, seq_len: int, num_train_steps: int,
-                 logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
+    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
+                 batch_size: int, seq_len: int, num_train_steps: int, logdir: str,
+                 save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -41,17 +41,9 @@ class Trainer:
 
         self.agents = Agents(
             act=self.build_agent(
-                sess=sess,
-                batch_size=None,
-                seq_len=1,
-                reuse=False,
-                **kwargs),
+                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
             train=self.build_agent(
-                sess=sess,
-                batch_size=batch_size,
-                seq_len=seq_len,
-                reuse=True,
-                **kwargs))
+                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
         self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
@@ -173,9 +165,7 @@ class Trainer:
         class Agent(policy_type, base_agent):
             def __init__(self):
                 super(Agent, self).__init__(
-                    o_shape=state_shape,
-                    a_shape=action_shape,
-                    **kwargs)
+                    o_shape=state_shape, a_shape=action_shape, **kwargs)
 
         return Agent()
 

@@ -35,16 +35,11 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def step(self, action):
-        s2, r, t, info = self.env.step(action)
-        new_s2 = Observation(observation=s2,
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(observation=o2,
                              desired_goal=self._desired_goal(),
                              achieved_goal=self._achieved_goal())
-        is_success = self._is_success(new_s2.achieved_goal,
-                                      new_s2.desired_goal)
-        new_t = is_success or t
-        new_r = float(is_success)
-        info['base_reward'] = r
-        return new_s2, new_r, new_t, info
+        return new_o2, r, t, info
 
     def reset(self):
         return Observation(
@@ -88,7 +83,12 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def step(self, action):
         o2, r, t, info = super().step(action)
-        return o2, max([0, r]), t, info
+        is_success = self._is_success(o2.achieved_goal,
+                                      o2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
+        info['base_reward'] = r
+        return o2, new_r, new_t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]

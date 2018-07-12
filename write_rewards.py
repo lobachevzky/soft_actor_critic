@@ -21,8 +21,8 @@ def main():
         events = islice(iterator, max(length - n_reward, 0), length)
 
         def get_reward(event):
-            return next(
-                (v.simple_value for v in event.summary.value if v.tag == args.reward_file), None)
+            return next((v.simple_value for v in event.summary.value
+                         if v.tag == args.reward_file), None)
 
         rewards = (get_reward(e) for e in events)
         rewards = [r for r in rewards if r is not None]

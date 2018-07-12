@@ -17,7 +17,7 @@ from sac.train import HindsightTrainer, Trainer
 @click.option('--buffer-size', default=1e7, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
-@click.option('--reward-scale', default=1e4, type=float)
+@click.option('--reward-scale', default=1e3, type=float)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)

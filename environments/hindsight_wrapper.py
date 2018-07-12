@@ -35,12 +35,16 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def step(self, action):
-        o2, r, t, info = self.env.step(action)
-        new_o2 = Observation(
-            observation=o2,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-        return new_o2, r, t, info
+        s2, r, t, info = self.env.step(action)
+        new_s2 = Observation(observation=s2,
+                             desired_goal=self._desired_goal(),
+                             achieved_goal=self._achieved_goal())
+        is_success = self._is_success(new_s2.achieved_goal,
+                                      new_s2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
+        info['base_reward'] = r
+        return new_s2, new_r, new_t, info
 
     def reset(self):
         return Observation(

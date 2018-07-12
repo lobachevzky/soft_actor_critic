@@ -1,17 +1,10 @@
 import click
+import gym
 import tensorflow as tf
-from gym.envs.classic_control import MountainCarEnv
-from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
-
-
-class MountCarEnv(MountainCarEnv):
-    def step(self, a):
-        s, r, t, i = super().step(a)
-        return s, max(0, r), t, i
 
 
 @click.command()
@@ -35,7 +28,7 @@ class MountCarEnv(MountainCarEnv):
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, grad_clip, batch_size, num_train_steps, logdir, save_path,
         load_path, render, n_goals, no_hindsight):
-    env = TimeLimit(MountCarEnv(), max_episode_steps=200)
+    env = gym.make('MountainCarContinuous-v0')
     kwargs = dict(
         seq_len=None,
         base_agent=MlpAgent,

@@ -248,3 +248,31 @@ class HindsightTrainer(Trainer):
         self.add_hindsight_trajectories()
         return super().reset()
 
+
+class MultiTaskTrainer(Trainer):
+    def __init__(self, evaluation, **kwargs):
+        self.eval = evaluation
+        super().__init__(**kwargs)
+
+    def run_episode(self, o1, perform_updates, render):
+        if not self.is_eval_period():
+            return super().run_episode(
+                o1=o1, perform_updates=perform_updates, render=render)
+        env = self.env.unwrapped
+        assert isinstance(env, MultiTaskEnv)
+        for goal_corner in env.goal_corners:
+            o1 = self.reset()
+            env.goal = goal_corner + env.goal_size / 2
+            count = super().run_episode(
+                o1=o1, perform_updates=perform_updates, render=render)
+            for k in count:
+                print(f'{k}: {count[k]}')
+        print('Evaluation complete.')
+        exit()
+
+    def is_eval_period(self):
+        return self.eval
+
+
+class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
+    pass

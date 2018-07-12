@@ -55,19 +55,20 @@ class Trainer:
         tick = time.time()
 
         obs = self.reset()
-        self.preprocess_func = None
-
         if not isinstance(obs, np.ndarray):
-            env = self.env
+            self.preprocess_func = None
 
-        while self.preprocess_func is None:
-            try:
-                self.preprocess_func = env.preprocess_obs
-            except AttributeError:
+            if not isinstance(obs, np.ndarray):
+                env = self.env
+
+            while self.preprocess_func is None:
                 try:
-                    env = env.env
+                    self.preprocess_func = env.preprocess_obs
                 except AttributeError:
-                    self.preprocess_func = vectorize
+                    try:
+                        env = env.env
+                    except AttributeError:
+                        self.preprocess_func = vectorize
 
         for time_steps in itertools.count():
             is_eval_period = count['episode'] % 100 == 99
@@ -75,7 +76,7 @@ class Trainer:
                 [self.preprocess_obs(obs)], sample=(not is_eval_period)).output
             if render:
                 env.render()
-            s2, r, t, info = self.step(a)
+            o2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -85,7 +86,7 @@ class Trainer:
 
             if save_path and time_steps % 5000 == 0:
                 print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            self.add_to_buffer(Step(s=0, o1=obs, a=a, r=r, o2=s2, t=t))
+            self.add_to_buffer(Step(s=0, o1=obs, a=a, r=r, o2=o2, t=t))
             if self.buffer_full() and not load_path:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
@@ -113,7 +114,7 @@ class Trainer:
                                             'pi grad',
                                         ]
                                         }))
-            obs = s2
+            obs = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
             self.episode_count.update(Counter(reward=r, time_steps=1))

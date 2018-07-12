@@ -210,9 +210,16 @@ class Trainer:
                 a=sample.a,
                 r=sample.r,
                 t=sample.t)
-
-    def time_steps(self):
-        return self.episode_count['time_steps']
+        else:
+            # adjust state for recurrent networks
+            shape = [self.batch_size, self.seq_len, -1]
+            return Step(
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
+                s=np.swapaxes(sample.s[:, -1], 0, 1),
+                a=sample.a[:, -1],
+                r=sample.r[:, -1],
+                t=sample.t[:, -1])
 
 
 class HindsightTrainer(Trainer):

@@ -49,10 +49,8 @@ class Trainer:
         if logdir:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
 
-        count = Counter(reward=0, episode=0)
+        self.count = Counter(reward=0, episode=0)
         self.episode_count = Counter()
-        episode_mean = Counter()
-        tick = time.time()
 
         obs = self.reset()
         if not isinstance(obs, np.ndarray):
@@ -70,12 +68,56 @@ class Trainer:
                     except AttributeError:
                         self.preprocess_func = vectorize
 
-        for time_steps in itertools.count():
-            is_eval_period = count['episode'] % 100 == 99
-            a = agent.get_actions(
-                [self.preprocess_obs(obs)], sample=(not is_eval_period)).output
+        for episodes in itertools.count(1):
+            if save_path and episodes % 25 == 1:
+                print("model saved in path:", saver.save(sess, save_path=save_path))
+                saver.save(sess, save_path.replace('<episode>', str(episodes)))
+            self.episode_count = self.run_episode(
+                o1=self.reset(),
+                render=render,
+                perform_updates=not self.is_eval_period() and load_path is None)
+
+            episode_reward = self.episode_count['reward']
+            self.count.update(
+                Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
+            print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
+                'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
+                self.count['time_steps'], episode_reward))
+            if logdir:
+                summary = tf.Summary()
+                if self.is_eval_period():
+                    summary.value.add(tag='eval reward', simple_value=episode_reward)
+                else:
+                    for k in self.episode_count:
+                        summary.value.add(tag=k, simple_value=self.episode_count[k])
+                tb_writer.add_summary(summary, self.count['time_steps'])
+                tb_writer.flush()
+
+    def is_eval_period(self):
+        return self.count['episode'] % 100 == 99
+
+    def trajectory(self, final_index=None) -> Optional[Step]:
+        if final_index is None:
+            final_index = 0  # points to current time step
+        else:
+            final_index -= self.time_steps()
+        if self.buffer.empty:
+            return None
+        return Step(*self.buffer[-self.time_steps():final_index])
+
+    def time_steps(self):
+        return self.episode_count['time_steps']
+
+    def run_episode(self, o1, perform_updates, render):
+        self.episode_count = Counter()
+        episode_mean = Counter()
+        tick = time.time()
+        s = self.agent.initial_state
+        for time_steps in itertools.count(1):
+            a, s = self.agent.get_actions(
+                self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
             if render:
-                env.render()
+                self.env.render()
             o2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
@@ -83,70 +125,34 @@ class Trainer:
                 self.episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
+            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
+            self.episode_count.update(Counter(reward=r, time_steps=1))
 
-            if save_path and time_steps % 5000 == 0:
-                print("model saved in path:", saver.save(agent.sess, save_path=save_path))
-            self.add_to_buffer(Step(s=0, o1=obs, a=a, r=r, o2=o2, t=t))
-            if self.buffer_full() and not load_path:
+            if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    sample_steps = self.sample_buffer()
-                    # noinspection PyProtectedMember
-                    if not is_eval_period:
-                        new_o1 = self.env.preprocess_obs(
-                            sample_steps.o1, shape=[self.batch_size, -1])
-                        new_o2 = self.env.preprocess_obs(
-                            sample_steps.o2, shape=[self.batch_size, -1])
-                        step = self.agent.train_step(
-                            sample_steps._replace(
-                                o1=new_o1,
-                                o2=new_o2,
-                            ))
-                        episode_mean.update(
-                            Counter({
-                                        k: getattr(step, k.replace(' ', '_'))
-                                        for k in [
-                                            'entropy',
-                                            'V loss',
-                                            'Q loss',
-                                            'pi loss',
-                                            'V grad',
-                                            'Q grad',
-                                            'pi grad',
-                                        ]
-                                        }))
-            obs = o2
+                    step = self.agent.train_step(self.sample_buffer())
+                    episode_mean.update(
+                        Counter({
+                            k: getattr(step, k.replace(' ', '_'))
+                            for k in [
+                                'entropy',
+                                'V loss',
+                                'Q loss',
+                                'pi loss',
+                                'V grad',
+                                'Q grad',
+                                'pi grad',
+                            ]
+                        }))
+            o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            self.episode_count.update(Counter(reward=r, time_steps=1))
             if t:
-                obs = self.reset()
-                episode_reward = self.episode_count['reward']
-                episode_time_steps = self.episode_count['time_steps']
-                count.update(Counter(reward=episode_reward, episode=1))
-                print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                    'EVAL' if is_eval_period else 'TRAIN', count['episode'], time_steps,
-                    episode_reward))
-                if logdir:
-                    summary = tf.Summary()
-                    if is_eval_period:
-                        summary.value.add(tag='eval reward', simple_value=episode_reward)
-                    summary.value.add(
-                        tag='average reward',
-                        simple_value=(count['reward'] / float(count['episode'])))
-                    for k in self.episode_count:
-                        summary.value.add(tag=k, simple_value=self.episode_count[k])
-                    for k in episode_mean:
-                        summary.value.add(
-                            tag=k,
-                            simple_value=episode_mean[k] / float(episode_time_steps))
-                    tb_writer.add_summary(summary, time_steps)
-                    tb_writer.flush()
+                for k in episode_mean:
+                    self.episode_count[k] = episode_mean[k] / float(time_steps)
+                return self.episode_count
 
-                # zero out counters
-                self.episode_count = Counter()
-                episode_mean = Counter()
-
-    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
+    def build_agent(self, base_agent: AbstractAgent, **kwargs):
         state_shape = self.env.observation_space.shape
         if isinstance(self.env.action_space, spaces.Discrete):
             action_shape = [self.env.action_space.n]
@@ -193,19 +199,18 @@ class Trainer:
     def buffer_full(self):
         return len(self.buffer) >= self.batch_size
 
-    def sample_buffer(self):
-        indices = np.random.randint(
-            -len(self.buffer), 0, size=self.batch_size)  # type: np.ndarray
-        return Step(*self.buffer[indices])
-
-    def trajectory(self, final_index: int = None) -> Optional[Step]:
-        if final_index is None:
-            final_index = 0  # points to current time step
-        else:
-            final_index -= self.time_steps()
-        if self.buffer.empty:
-            return None
-        return self.buffer[-self.time_steps():final_index]
+    def sample_buffer(self) -> Step:
+        sample = Step(*self.buffer.sample(self.batch_size, seq_len=self.seq_len))
+        if self.seq_len is None:
+            # leave state as dummy value for non-recurrent
+            shape = [self.batch_size, -1]
+            return Step(
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
+                s=sample.s,
+                a=sample.a,
+                r=sample.r,
+                t=sample.t)
 
     def time_steps(self):
         return self.episode_count['time_steps']
@@ -244,6 +249,3 @@ class HindsightTrainer(Trainer):
         self.add_hindsight_trajectories()
         return super().reset()
 
-    def preprocess_obs(self, state: Obs) -> np.ndarray:
-        assert isinstance(self.env, HindsightWrapper)
-        return self.env.preprocess_obs(state)

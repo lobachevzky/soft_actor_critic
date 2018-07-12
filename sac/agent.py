@@ -159,7 +159,7 @@ class AbstractAgent:
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
-        return NetworkOutput(output=self.sess.run(A, {self.O1: o})[0], state=0)
+        return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0)
 
     def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:

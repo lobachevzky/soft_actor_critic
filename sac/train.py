@@ -223,9 +223,10 @@ class Trainer:
 
 
 class HindsightTrainer(Trainer):
-    def __init__(self, env: HindsightWrapper, n_goals: int, **kwargs):
+    def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
-        assert isinstance(env, HindsightWrapper)
+        self.hindsight_env = unwrap_env(env, HindsightWrapper)
+        assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:

@@ -1,25 +1,26 @@
 import itertools
 import time
 from collections import Counter, namedtuple
-from typing import Any, Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import spaces
+from gym import Wrapper, spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
+from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Step, Obs, normalize, vectorize
+from sac.utils import Obs, Step, normalize, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int],
-                 buffer_size: int, batch_size: int, num_train_steps: int,
+                 buffer_size: int, batch_size: int, seq_len: int, num_train_steps: int,
                  logdir: str, save_path: str, load_path: str, render: bool, **kwargs):
 
         if seed is not None:
@@ -214,11 +215,6 @@ class Trainer:
 
     def time_steps(self):
         return self.episode_count['time_steps']
-
-    def _trajectory(self) -> Iterable:
-        if self.time_steps():
-            return self.buffer[-self.time_steps():]
-        return ()
 
 
 class HindsightTrainer(Trainer):

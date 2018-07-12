@@ -61,7 +61,7 @@ def env_wrapper(func):
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=300, type=int)
 @click.option('--batch-size', default=32, type=int)
-@click.option('--alpha', default=1. / 65e2, type=float)
+@click.option('--reward-scale', default=65e2, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
@@ -94,7 +94,7 @@ def env_wrapper(func):
     ])
 @env_wrapper
 def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
-        activation, n_layers, layer_size, learning_rate, alpha, cheat_prob,
+        activation, n_layers, layer_size, learning_rate, reward_scale, cheat_prob,
         grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
         load_path, render_freq, record_freq, record_path, image_dims, record, n_goals,
         obs_type, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
@@ -125,7 +125,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        alpha=alpha,
+        alpha=1. / reward_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,

@@ -125,7 +125,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        reward_scale=reward_scale,
+        alpha=1. / reward_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,

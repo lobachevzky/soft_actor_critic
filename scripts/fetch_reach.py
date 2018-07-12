@@ -6,7 +6,6 @@ from gym.envs.robotics.fetch_env import goal_distance
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
-from scripts.gym_env import str_to_activation
 
 ACHIEVED_GOAL = 'achieved_goal'
 
@@ -30,11 +29,9 @@ class FetchReachHindsightWrapper(HindsightWrapper):
         return self.env.unwrapped.goal.copy()
 
     @staticmethod
-    def vectorize_state(state):
-        return np.concatenate([
-            state.obs['achieved_goal'], state.obs['desired_goal'],
-            state.obs['observation']
-        ])
+    def vectorize(obs):
+        return np.concatenate(
+            [obs.obs['achieved_goal'], obs.obs['desired_goal'], obs.obs['observation']])
 
 
 @click.option('--seed', default=0, type=int)

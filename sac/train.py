@@ -40,6 +40,7 @@ class Trainer:
         sess = tf.Session(config=config)
 
         self.agent = agent = self.build_agent(
+            seq_len=seq_len,
             sess=sess, batch_size=None, reuse=False, **kwargs)
         self.seq_len = self.agent.seq_len
         saver = tf.train.Saver()
@@ -50,16 +51,13 @@ class Trainer:
         if logdir:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
 
-        self.count = Counter(reward=0, episode=0)
+        self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
-        obs = self.reset()
+        obs = env.reset()
+        self.preprocess_func = None
         if not isinstance(obs, np.ndarray):
-            self.preprocess_func = None
-
-            if not isinstance(obs, np.ndarray):
-                env = self.env
-
+            env = self.env
             while self.preprocess_func is None:
                 try:
                     self.preprocess_func = env.preprocess_obs
@@ -79,11 +77,11 @@ class Trainer:
                 perform_updates=not self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
-            self.count.update(
+            count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
-                self.count['time_steps'], episode_reward))
+                count['time_steps'], episode_reward))
             if logdir:
                 summary = tf.Summary()
                 if self.is_eval_period():
@@ -91,7 +89,7 @@ class Trainer:
                 else:
                     for k in self.episode_count:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
-                tb_writer.add_summary(summary, self.count['time_steps'])
+                tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
     def is_eval_period(self):

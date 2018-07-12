@@ -131,7 +131,7 @@ class Trainer:
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    step = self.agents.train.train_step(self.sample_buffer())
+                    step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
                             k: getattr(step, k.replace(' ', '_'))

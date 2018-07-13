@@ -118,4 +118,4 @@ class MoEAgent(AbstractAgent):
             axis=-1)  # [batch, hidden, networks]
         h = tf.reduce_sum(h * weights, axis=2)
         output = tf.layers.dense(h, units=self.layer_size, name='output')
-        return NetworkOutput(output=output, state=None)
+        return NetworkOutput(output=output, state=weights)

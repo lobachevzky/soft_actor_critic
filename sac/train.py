@@ -21,7 +21,8 @@ Agents = namedtuple('Agents', 'train act')
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, seq_len: int, num_train_steps: int, logdir: str,
-                 save_path: str, load_path: str, render: bool, **kwargs):
+                 save_path: str, load_path: str, render: bool, n_networks: int,
+                 **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -33,6 +34,7 @@ class Trainer:
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
+        self.n_networks = n_networks
 
         config = tf.ConfigProto(allow_soft_placement=True)
         config.gpu_options.allow_growth = True
@@ -41,8 +43,10 @@ class Trainer:
 
         self.agents = Agents(
             act=self.build_agent(
+                n_networks=n_networks,
                 sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
             train=self.build_agent(
+                n_networks=n_networks,
                 sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
         self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
@@ -77,6 +81,7 @@ class Trainer:
             episode_reward = self.episode_count['reward']
             count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
+            print()
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 count['time_steps'], episode_reward))
@@ -143,6 +148,10 @@ class Trainer:
                         }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            if self.n_networks:
+                weight = np.sum(s * np.arange(self.n_networks))
+                print(weight, end=',')
+                episode_mean.update(Counter(weight=weight))
             tick = time.time()
             if t:
                 for k in episode_mean:

@@ -119,3 +119,7 @@ class MoEAgent(AbstractAgent):
         h = tf.reduce_sum(h * weights, axis=2)
         output = tf.layers.dense(h, units=self.layer_size, name='output')
         return NetworkOutput(output=output, state=weights)
+
+    def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
+        A = self.A_sampled1 if sample else self.A_max_likelihood
+        return NetworkOutput(*self.sess.run([A[0], self.S_new], {self.O1: [o]}))

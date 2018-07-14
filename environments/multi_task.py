@@ -49,16 +49,16 @@ class MultiTaskEnv(PickAndPlaceEnv):
                           'arm_flex_joint',
                           'wrist_roll_joint',
                           'hand_l_proximal_joint']:
-                qpos_idx = self.sim.jnt_qposadr(joint)
+                qpos_idx = self.sim.get_jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
                 self.init_qpos[qpos_idx] = np.random.uniform(
                     *self.sim.jnt_range[jnt_range_idx])
 
-        r = self.sim.jnt_qposadr('hand_r_proximal_joint')
-        l = self.sim.jnt_qposadr('hand_l_proximal_joint')
+        r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
+        l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
         self.init_qpos[r] = self.init_qpos[l]
 
-        block_joint = self.sim.jnt_qposadr('block1joint')
+        block_joint = self.sim.get_jnt_qposadr('block1joint')
         self.init_qpos[[
             block_joint + 0, block_joint + 1, block_joint + 3, block_joint + 6
         ]] = np.random.uniform(

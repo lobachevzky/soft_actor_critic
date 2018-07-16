@@ -74,7 +74,6 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         seq_len=None,
         seed=seed,
         device_num=device_num,
-        n_goals=n_goals,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,
@@ -90,8 +89,12 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         render=False,  # because render is handled inside env
         evaluation=eval,
     )
-    MultiTaskHindsightTrainer(env=MultiTaskHindsightWrapper(geofence=.04, env=env),
-                              **kwargs)
+
+    if hindsight:
+        env = MultiTaskHindsightWrapper(env=env, geofence=geofence)
+        MultiTaskHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+    else:
+        MultiTaskTrainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

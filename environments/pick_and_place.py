@@ -1,11 +1,10 @@
 import random
-from collections import namedtuple
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environments.mujoco import MujocoEnv
+from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -39,16 +38,12 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-Goal = namedtuple('Goal', 'gripper block')
-
-
 class PickAndPlaceEnv(MujocoEnv):
     def __init__(self,
                  block_xrange=None,
                  block_yrange=None,
                  fixed_block=False,
                  min_lift_height=.02,
-                 geofence=.04,
                  cheat_prob=0,
                  obs_type=None,
                  **kwargs):
@@ -58,14 +53,14 @@ class PickAndPlaceEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
+        self.grip = 0
+        self.min_lift_height = min_lift_height
+
         self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
-        self.grip = 0
         self._fixed_block = fixed_block
-        self._goal_block_name = 'block1'
-        self.min_lift_height = min_lift_height
-        self.geofence = geofence
+        self._block_name = 'block1'
 
         super().__init__(**kwargs)
 
@@ -74,10 +69,7 @@ class PickAndPlaceEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._get_obs()))
-        assert obs_size != 0
-        self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+        self.observation_space = self._get_obs_space()
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -102,7 +94,27 @@ class PickAndPlaceEnv(MujocoEnv):
 
         return self.init_qpos
 
-    def _get_obs(self):
+    def _get_obs_space(self):
+        qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
+        qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]
+        for joint_id in range(self.sim.njnt):
+            if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
+                qposadr = self.sim.get_jnt_qposadr(joint_id)
+                qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
+        if not self._fixed_block:
+            block_joint = self.sim.get_jnt_qposadr('block1joint')
+            qpos_limits[block_joint:block_joint + 7] = [
+                self.block_xrange,  # x
+                self.block_yrange,  # y
+                (.4, .921),  # z
+                (0, 1),  # quat 0
+                (0, 0),  # quat 1
+                (0, 0),  # quat 2
+                (-1, 1),  # quat 3
+            ]
+        return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
+
+    def _qvel_obs(self):
         def get_qvels(joints):
             base_qvel = []
             for joint in joints:
@@ -113,22 +125,23 @@ class PickAndPlaceEnv(MujocoEnv):
             return np.array(base_qvel)
 
         if self._obs_type == 'qvel':
-            qvel = self.sim.qvel
+            return self.sim.qvel
 
         elif self._obs_type == 'robot-qvel':
-            qvel = get_qvels([
+            return get_qvels([
                 'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
                 'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
             ])
         elif self._obs_type == 'base-qvel':
-            qvel = get_qvels(['slide_x', 'slide_x'])
+            return get_qvels(['slide_x', 'slide_x'])
         else:
-            qvel = []
+            return []
 
-        return np.concatenate([self.sim.qpos, qvel])
+    def _get_obs(self):
+        return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
     def block_pos(self):
-        return self.sim.get_body_xpos(self._goal_block_name)
+        return self.sim.get_body_xpos(self._block_name)
 
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]

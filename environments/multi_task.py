@@ -4,7 +4,7 @@ import numpy as np
 from gym import spaces
 from mujoco import ObjType
 
-from environments.pick_and_place import Goal, PickAndPlaceEnv
+from environments.pick_and_place import PickAndPlaceEnv
 import itertools
 
 

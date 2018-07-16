@@ -13,7 +13,7 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step, normalize, unwrap_env, vectorize
+from sac.utils import Obs, Step, normalize, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -154,10 +154,10 @@ class Trainer:
 
         return Agent()
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+    def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
@@ -168,7 +168,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def preprocess_obs(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
+    def preprocess_obs(self, state: Obs, shape: Optional[tuple] = None) -> np.ndarray:
         """ Preprocess state before feeding to network """
         return state
 
@@ -230,11 +230,11 @@ class HindsightTrainer(Trainer):
         #             self.hindsight_env.recompute_trajectory(
         #                 self.trajectory()[:final_index]))
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         self.add_hindsight_trajectories()
         return super().reset()
 
-    def preprocess_obs(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
+    def preprocess_obs(self, state: Obs, shape: Optional[tuple] = None) -> np.ndarray:
         assert isinstance(self.hindsight_env, HindsightWrapper)
         return self.hindsight_env.preprocess_obs(state, shape=shape)
 

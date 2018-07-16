@@ -109,7 +109,7 @@ def unwrap_env(env: gym.Env, cls: type):
     return env
 
 
-State = Any
+Obs = Any
 
 
 class Step(namedtuple('Step', 's o1 a r o2 t')):

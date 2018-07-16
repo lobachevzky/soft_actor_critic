@@ -56,6 +56,19 @@ class Trainer:
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
+        obs = env.reset()
+        self.preprocess_func = None
+        if not isinstance(obs, np.ndarray):
+            env = self.env
+            while self.preprocess_func is None:
+                try:
+                    self.preprocess_func = env.preprocess_obs
+                except AttributeError:
+                    try:
+                        env = env.env
+                    except AttributeError:
+                        self.preprocess_func = vectorize
+
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
                 print("model saved in path:", saver.save(sess, save_path=save_path))

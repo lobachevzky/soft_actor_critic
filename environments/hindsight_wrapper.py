@@ -26,7 +26,7 @@ class HindsightWrapper(gym.Wrapper):
         self.state_vectors = {}
         super().__init__(env)
         s = self.reset()
-        vector_state = self.vectorize_state(s)
+        vector_state = self.preprocess_obs(s)
         self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
@@ -56,7 +56,7 @@ class HindsightWrapper(gym.Wrapper):
             achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
-        trajectory = deepcopy(trajectory)
+        trajectory = Step(*deepcopy(trajectory))
 
         # get values
         o1 = Observation(*trajectory.o1)
@@ -73,7 +73,7 @@ class HindsightWrapper(gym.Wrapper):
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
     @staticmethod
-    def vectorize_state(obs, shape: Optional[tuple] = None):
+    def preprocess_obs(obs, shape: Optional[tuple] = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
         return vectorize(obs, shape=shape)
@@ -117,7 +117,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return self.env.unwrapped.goal()
 
     @staticmethod
-    def vectorize_state(state, shape=None):
+    def preprocess_obs(state, shape=None):
         state = Observation(*state)
         return vectorize(
             [state.observation, state.desired_goal], shape=shape)

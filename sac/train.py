@@ -111,7 +111,7 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.agents.act.get_actions(
-                self.vectorize_state(o1), state=s, sample=(not self.is_eval_period()))
+                self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             o2, r, t, info = self.step(a)
@@ -182,7 +182,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
+    def preprocess_obs(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
         """ Preprocess state before feeding to network """
         return state
 
@@ -199,8 +199,8 @@ class Trainer:
             # leave state as dummy value for non-recurrent
             shape = [self.batch_size, -1]
             return Step(
-                o1=self.vectorize_state(sample.o1, shape=shape),
-                o2=self.vectorize_state(sample.o2, shape=shape),
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
                 s=sample.s,
                 a=sample.a,
                 r=sample.r,
@@ -209,8 +209,8 @@ class Trainer:
             # adjust state for recurrent networks
             shape = [self.batch_size, self.seq_len, -1]
             return Step(
-                o1=self.vectorize_state(sample.o1, shape=shape),
-                o2=self.vectorize_state(sample.o2, shape=shape),
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
                 s=np.swapaxes(sample.s[:, -1], 0, 1),
                 a=sample.a[:, -1],
                 r=sample.r[:, -1],
@@ -248,9 +248,9 @@ class HindsightTrainer(Trainer):
         self.add_hindsight_trajectories()
         return super().reset()
 
-    def vectorize_state(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
+    def preprocess_obs(self, state: State, shape: Optional[tuple] = None) -> np.ndarray:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        return self.hindsight_env.vectorize_state(state, shape=shape)
+        return self.hindsight_env.preprocess_obs(state, shape=shape)
 
 
 class MultiTaskHindsightTrainer(HindsightTrainer):

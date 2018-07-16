@@ -1,16 +1,14 @@
 from pathlib import Path
 
 import click
-import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper, MultiTaskHindsightWrapper
+from environments.hindsight_wrapper import MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac.networks import LstmAgent
 from sac.networks import MlpAgent
-from sac.train import MultiTaskHindsightTrainer
-from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
+from sac.train import MultiTaskHindsightTrainer, MultiTaskTrainer
+from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 
 
 @click.command()
@@ -42,6 +40,9 @@ from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
+@click.option('--hindsight', is_flag=True)
+@click.option('--geofence', default=.1, type=float)
+@click.option('--xml-file', type=Path, default='world.xml')
 @click.option(
     '--use-dof',
     multiple=True,
@@ -49,33 +50,26 @@ from scripts.pick_and_place import mutate_xml, put_in_xml_setter, parse_double
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
-def cli(max_steps, seed, device_num, buffer_size, activation,
-        n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
-        num_train_steps, steps_per_action, logdir, save_path, load_path,
-        n_goals, eval, goal_scale, set_xml, use_dof, obs_type,
-        render_freq, render, record, record_path, record_freq, image_dims):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', 'world.xml')
-    if render and not render_freq:
-        render_freq = 20
-    with mutate_xml(
-            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = MultiTaskHindsightWrapper(
-            geofence=.04,
-            env=TimeLimit(
-                max_episode_steps=max_steps,
-                env=MultiTaskEnv(
-                    goal_scale=goal_scale,
-                    xml_filepath=temp_path,
-                    steps_per_action=steps_per_action,
-                    obs_type=obs_type,
-                    render_freq=render_freq,
-                    record=record,
-                    record_path=record_path,
-                    record_freq=record_freq,
-                    image_dimensions=image_dims,
-                )))
-    MultiTaskHindsightTrainer(
-        env=env,
+@env_wrapper
+def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
+        learning_rate, reward_scale, grad_clip, batch_size, num_train_steps,
+        steps_per_action, logdir, save_path, load_path, n_goals, eval, goal_scale,
+        obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
+        hindsight, geofence):
+    env = TimeLimit(
+        max_episode_steps=max_steps,
+        env=MultiTaskEnv(
+            goal_scale=goal_scale,
+            xml_filepath=temp_path,
+            steps_per_action=steps_per_action,
+            obs_type=obs_type,
+            render_freq=render_freq,
+            record=record,
+            record_path=record_path,
+            record_freq=record_freq,
+            image_dimensions=image_dims,
+        ))
+    kwargs = dict(
         base_agent=MlpAgent,
         seq_len=None,
         seed=seed,
@@ -96,6 +90,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation,
         render=False,  # because render is handled inside env
         evaluation=eval,
     )
+    MultiTaskHindsightTrainer(env=MultiTaskHindsightWrapper(geofence=.04, env=env),
+                              **kwargs)
 
 
 if __name__ == '__main__':

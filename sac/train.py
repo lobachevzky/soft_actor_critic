@@ -250,7 +250,7 @@ class HindsightTrainer(Trainer):
         return self.hindsight_env.preprocess_obs(state, shape=shape)
 
 
-class MultiTaskHindsightTrainer(HindsightTrainer):
+class MultiTaskTrainer(Trainer):
     def __init__(self, evaluation, **kwargs):
         self.eval = evaluation
         super().__init__(**kwargs)
@@ -274,3 +274,7 @@ class MultiTaskHindsightTrainer(HindsightTrainer):
 
     def is_eval_period(self):
         return self.eval
+
+
+class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
+    pass

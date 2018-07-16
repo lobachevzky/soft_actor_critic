@@ -1,19 +1,21 @@
-from pprint import pprint
+import itertools
+from collections import namedtuple
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environments.pick_and_place import PickAndPlaceEnv
-import itertools
+from mujoco import ObjType
+from sac.utils import vectorize
+
+Observation = namedtuple('Obs', 'observation goal')
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
     def __init__(self, randomize_pose=False, goal_scale: float = .1, **kwargs):
         self.randomize_pose = randomize_pose
-        self.goal = None
-        super().__init__(fixed_block=False,
-                         **kwargs)
+        self._goal = None
+        super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
         self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale

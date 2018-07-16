@@ -11,7 +11,7 @@ import itertools
 class MultiTaskEnv(PickAndPlaceEnv):
     def __init__(self, randomize_pose=False, goal_scale: float = .1, **kwargs):
         self.randomize_pose = randomize_pose
-        self._goal = None
+        self.goal = None
         super().__init__(fixed_block=False,
                          **kwargs)
         self.goal_space = spaces.Box(
@@ -24,22 +24,11 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.goal_corners = np.array(list(itertools.product(x, y, z)))
         self.labels = {tuple(g): '.' for g in self.goal_corners}
 
-    def _set_new_goal(self):
-        goal_corner = self.goal_corners[np.random.randint(len(self.goal_corners))]
-        self._goal = goal_corner + self.goal_size / 2
-
-    def set_goal(self, goal):
-        self._goal = np.array(goal)
-
     def at_goal(self):
-        assert isinstance(self.goal().block, np.ndarray)
         assert isinstance(self.goal_size, np.ndarray)
         block_pos = self.block_pos()
-        return np.all((self.goal().block - self.goal_size / 2 <= block_pos) *
-                      (self.goal().block + self.goal_size / 2 >= block_pos))
-
-    def goal(self):
-        return Goal(gripper=self._goal, block=self._goal)
+        return np.all((self.goal - self.goal_size / 2 <= block_pos) *
+                      (self.goal + self.goal_size / 2 >= block_pos))
 
     def reset_qpos(self):
         if self.randomize_pose:
@@ -66,8 +55,13 @@ class MultiTaskEnv(PickAndPlaceEnv):
             high=list(self.goal_space.high)[:2] + [1, 1])
         return self.init_qpos
 
+    def reset(self):
+        goal_corner = self.goal_corners[np.random.randint(len(self.goal_corners))]
+        self.goal = goal_corner + self.goal_size / 2
+        return super().reset()
+
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = self.labels
-        labels[tuple(self._goal)] = 'x'
+        labels[tuple(self.goal)] = 'x'
         return super().render(labels=labels, **kwargs)

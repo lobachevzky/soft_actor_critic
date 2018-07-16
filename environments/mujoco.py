@@ -93,7 +93,6 @@ class MujocoEnv:
         self.sim.reset()
         self._step_num = 0
 
-        self._set_new_goal()
         qpos = self.reset_qpos()
         assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
@@ -110,10 +109,6 @@ class MujocoEnv:
 
     def __exit__(self, *args):
         self.sim.__exit__()
-
-    @abstractmethod
-    def _set_new_goal(self):
-        raise NotImplementedError
 
     @abstractmethod
     def _get_obs(self):

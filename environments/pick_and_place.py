@@ -102,9 +102,6 @@ class PickAndPlaceEnv(MujocoEnv):
 
         return self.init_qpos
 
-    def _set_new_goal(self):
-        pass
-
     def _get_obs(self):
         def get_qvels(joints):
             base_qvel = []

@@ -65,8 +65,7 @@ class HindsightWrapper(gym.Wrapper):
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
-    @staticmethod
-    def preprocess_obs(obs, shape: Optional[tuple] = None):
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
         return vectorize(obs, shape=shape)
@@ -84,17 +83,21 @@ class MountaincarHindsightWrapper(HindsightWrapper):
             high=vectorize([self.observation_space.high, env.unwrapped.max_position]))
 
     def step(self, action):
-        s2, r, t, info = super().step(action)
-        return s2, max([0, r]), t, info
+        o2, r, t, info = super().step(action)
+        is_success = self._is_success(o2.achieved_goal, o2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
+        info['base_reward'] = r
+        return o2, new_r, new_t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]
 
-    def _is_success(self, achieved_goal, desired_goal):
-        return self.env.unwrapped.state[0] >= self._desired_goal()
-
     def _desired_goal(self):
         return 0.45
+
+    def _is_success(self, achieved_goal, desired_goal):
+        return achieved_goal >= desired_goal
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
@@ -121,16 +124,13 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)
-
-        geofence = self.env.unwrapped.geofence
         block_distance = distance_between(achieved_goal.block, desired_goal.block)
         goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
-        return np.logical_and(block_distance < geofence, goal_distance < geofence)
+        return np.logical_and(block_distance < self._geofence,
+                              goal_distance < self._geofence)
 
     def _achieved_goal(self):
-        return Goal(
-            gripper=self.env.unwrapped.gripper_pos(),
-            block=self.env.unwrapped.block_pos())
+        return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()

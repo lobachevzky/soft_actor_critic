@@ -25,6 +25,9 @@ class MultiTaskEnv(PickAndPlaceEnv):
         z = np.ones_like(x) * .40
         self.goal_corners = np.array(list(itertools.product(x, y, z)))
         self.labels = {tuple(g): '.' for g in self.goal_corners}
+        self.observation_space = spaces.Box(
+            low=vectorize([self.observation_space.low, self.goal_space.low]),
+            high=vectorize([self.observation_space.high, self.goal_space.high]))
 
     def _is_successful(self):
         assert isinstance(self.goal, np.ndarray)

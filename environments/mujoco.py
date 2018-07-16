@@ -2,13 +2,15 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
-import mujoco
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
+import mujoco
+
 
 class MujocoEnv:
-    def __init__(self, xml_filepath: Path,
+    def __init__(self,
+                 xml_filepath: Path,
                  steps_per_action: int,
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
@@ -26,7 +28,6 @@ class MujocoEnv:
         self.spec = None
         self.render_freq = render_freq
         self.steps_per_action = steps_per_action
-        self.episode_id = 0
 
         self.video_recorder = None
         self._record_video = any((record_path, record_freq, record))
@@ -55,7 +56,6 @@ class MujocoEnv:
 
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
-        self._step_num = 0
         self._image_dimensions = image_dimensions
 
     def seed(self, seed=None):
@@ -99,8 +99,6 @@ class MujocoEnv:
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
-        # if self._record_video:
-        self.episode_id += 1
         return self._get_obs()
 
     @abstractmethod

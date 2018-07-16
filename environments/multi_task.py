@@ -31,12 +31,12 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def set_goal(self, goal):
         self._goal = np.array(goal)
 
-    def at_goal(self, goal: Goal):
-        assert isinstance(goal.block, np.ndarray)
+    def at_goal(self):
+        assert isinstance(self.goal().block, np.ndarray)
         assert isinstance(self.goal_size, np.ndarray)
         block_pos = self.block_pos()
-        return np.all((goal.block - self.goal_size / 2 <= block_pos) *
-                      (goal.block + self.goal_size / 2 >= block_pos))
+        return np.all((self.goal().block - self.goal_size / 2 <= block_pos) *
+                      (self.goal().block + self.goal_size / 2 >= block_pos))
 
     def goal(self):
         return Goal(gripper=self._goal, block=self._goal)

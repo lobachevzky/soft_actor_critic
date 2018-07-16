@@ -75,8 +75,8 @@ class MujocoEnv:
     def step(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         self._set_action(action)
-        done = self.compute_terminal(self.goal(), self._get_obs())
-        reward = self.compute_reward(self.goal(), self._get_obs())
+        done = self.compute_terminal()
+        reward = self.compute_reward()
         return self._get_obs(), reward, done, {}
 
     def _set_action(self, action):

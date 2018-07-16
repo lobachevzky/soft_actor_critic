@@ -91,10 +91,8 @@ class MujocoEnv:
 
     def reset(self):
         self.sim.reset()
-        self._step_num = 0
-
         qpos = self._reset_qpos()
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
@@ -115,15 +113,11 @@ class MujocoEnv:
         raise NotImplementedError
 
     @abstractmethod
-    def goal(self):
+    def compute_terminal(self):
         raise NotImplementedError
 
     @abstractmethod
-    def compute_terminal(self, goal, obs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def compute_reward(self, goal, obs):
+    def compute_reward(self):
         raise NotImplementedError
 
 

@@ -1,6 +1,7 @@
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import wraps
 from pathlib import Path, PurePath
 from typing import List
 from xml.etree import ElementTree as ET
@@ -12,7 +13,7 @@ from gym.wrappers import TimeLimit
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.networks import LstmAgent, MlpAgent
-from sac.train import HindsightTrainer
+from sac.train import HindsightTrainer, Trainer
 from scripts.gym_env import check_probability
 
 
@@ -30,6 +31,20 @@ def parse_double(ctx, param, string):
         return
     a, b = map(float, string.split(','))
     return a, b
+
+
+def env_wrapper(func):
+    @wraps(func)
+    def _wrapper(render, render_freq, set_xml, use_dof, xml_file, **kwargs):
+        if render and not render_freq:
+            render_freq = 20
+        xml_filepath = Path(
+            Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
+        with mutate_xml(
+                changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+            return func(temp_path=temp_path, render_freq=render_freq, **kwargs)
+
+    return _wrapper
 
 
 @click.command()
@@ -50,7 +65,7 @@ def parse_double(ctx, param, string):
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=300, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.4, type=float)
+@click.option('--geofence', default=.1, type=float)
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
@@ -63,62 +78,54 @@ def parse_double(ctx, param, string):
 @click.option('--record-freq', type=int, default=0)
 @click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
+@click.option('--hindsight', is_flag=True)
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True, default=['slide_x',
-                                                   'slide_y',
-                                                   'arm_lift_joint',
-                                                   'arm_flex_joint',
-                                                   'wrist_roll_joint',
-                                                   'hand_l_proximal_joint',
-                                                   'hand_r_proximal_joint'])
-def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
-        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_freq, record_path, image_dims, record, n_goals, xml_file, set_xml,
-        use_dof, obs_type, block_xrange, block_yrange, agent, seq_len, render):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models',
-                        xml_file).absolute()
-    if render and not render_freq:
-        render_freq = 20
-    with mutate_xml(
-            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = PickAndPlaceHindsightWrapper(
-            env=TimeLimit(
-                max_episode_steps=max_steps,
-                env=PickAndPlaceEnv(
-                    cheat_prob=cheat_prob,
-                    steps_per_action=steps_per_action,
-                    fixed_block=fixed_block,
-                    min_lift_height=min_lift_height,
-                    geofence=geofence,
-                    xml_filepath=temp_path,
-                    obs_type=obs_type,
-                    block_xrange=block_xrange,
-                    block_yrange=block_yrange,
-                    render_freq=render_freq,
-                    record=record,
-                    record_path=record_path,
-                    record_freq=record_freq,
-                    image_dimensions=image_dims,
-                )))
-    HindsightTrainer(
-        env=env,
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+    ])
+@env_wrapper
+def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
+        activation, n_layers, layer_size, learning_rate, reward_scale, cheat_prob,
+        grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
+        load_path, render_freq, record_freq, record_path, image_dims, record, n_goals,
+        obs_type, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
+    env = TimeLimit(
+        max_episode_steps=max_steps,
+        env=PickAndPlaceEnv(
+            cheat_prob=cheat_prob,
+            steps_per_action=steps_per_action,
+            fixed_block=fixed_block,
+            min_lift_height=min_lift_height,
+            xml_filepath=temp_path,
+            obs_type=obs_type,
+            block_xrange=block_xrange,
+            block_yrange=block_yrange,
+            render_freq=render_freq,
+            record=record,
+            record_path=record_path,
+            record_freq=record_freq,
+            image_dimensions=image_dims,
+        ))
+    kwargs = dict(
         seq_len=seq_len,
         base_agent=agent,
         seed=seed,
         device_num=device_num,
-        n_goals=n_goals,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        reward_scale=reward_scale,
+        alpha=1. / reward_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
@@ -126,6 +133,11 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num,
         save_path=save_path,
         load_path=load_path,
         render=False)  # because render is handled inside env
+    if hindsight:
+        env = PickAndPlaceHindsightWrapper(env=env, geofence=geofence)
+        HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+    else:
+        Trainer(env=env, **kwargs)
 
 
 XMLSetter = namedtuple('XMLSetter', 'path value')

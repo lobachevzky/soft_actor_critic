@@ -38,12 +38,10 @@ class MultiTaskEnv(PickAndPlaceEnv):
 
     def _reset_qpos(self):
         if self.randomize_pose:
-            for joint in ['slide_x',
-                          'slide_y',
-                          'arm_lift_joint',
-                          'arm_flex_joint',
-                          'wrist_roll_joint',
-                          'hand_l_proximal_joint']:
+            for joint in [
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
+            ]:
                 qpos_idx = self.sim.get_jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
                 self.init_qpos[qpos_idx] = np.random.uniform(

@@ -147,20 +147,13 @@ class PickAndPlaceEnv(MujocoEnv):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
 
-    def goal(self):
-        goal_pos = self.initial_block_pos + \
-                   np.array([0, 0, self.min_lift_height])
-        return Goal(gripper=goal_pos, block=goal_pos)
-
-    def goal_3d(self):
-        return self.goal()[0]
-
     def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
-        # return False
-        return self._is_successful()
+        EPSILON = .01
+        below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
+        return below_table or self._is_successful()
 
     def compute_reward(self):
         if self._is_successful():
@@ -169,7 +162,6 @@ class PickAndPlaceEnv(MujocoEnv):
             return 0
 
     def step(self, action):
-        # action = np.array([1, 1, 0, 0, 0, 0])
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'
@@ -178,7 +170,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-            ]
+        ]
         # necessary because np.insert can't append multiple values to end:
         mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
         action = np.insert(action, mirroring_index, action[mirrored_index])

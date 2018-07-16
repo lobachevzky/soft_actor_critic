@@ -183,9 +183,10 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def preprocess_obs(self, state: Obs, shape: Optional[tuple] = None) -> np.ndarray:
-        """ Preprocess state before feeding to network """
-        return state
+    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+        if self.preprocess_func is not None:
+            obs = self.preprocess_func(obs, shape)
+        return obs
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -244,10 +245,6 @@ class HindsightTrainer(Trainer):
     def reset(self) -> Obs:
         self.add_hindsight_trajectories()
         return super().reset()
-
-    def preprocess_obs(self, state: Obs, shape: Optional[tuple] = None) -> np.ndarray:
-        assert isinstance(self.hindsight_env, HindsightWrapper)
-        return self.hindsight_env.preprocess_obs(state, shape=shape)
 
 
 class MultiTaskTrainer(Trainer):

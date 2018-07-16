@@ -142,15 +142,15 @@ class PickAndPlaceEnv(MujocoEnv):
     def goal_3d(self):
         return self.goal()[0]
 
-    def at_goal(self):
+    def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
         # return False
-        return self.at_goal()
+        return self._is_successful()
 
     def compute_reward(self):
-        if self.at_goal():
+        if self._is_successful():
             return 1
         else:
             return 0

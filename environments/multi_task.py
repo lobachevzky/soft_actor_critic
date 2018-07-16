@@ -24,7 +24,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.goal_corners = np.array(list(itertools.product(x, y, z)))
         self.labels = {tuple(g): '.' for g in self.goal_corners}
 
-    def at_goal(self):
+    def _is_successful(self):
+        assert isinstance(self.goal, np.ndarray)
         assert isinstance(self.goal_size, np.ndarray)
         block_pos = self.block_pos()
         return np.all((self.goal - self.goal_size / 2 <= block_pos) *

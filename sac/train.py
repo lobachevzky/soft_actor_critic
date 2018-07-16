@@ -102,6 +102,8 @@ class Trainer:
             final_index = 0  # points to current time step
         else:
             final_index -= self.time_steps()
+        if self.buffer.empty:
+            return None
         return Step(*self.buffer[-self.time_steps():final_index])
 
     def time_steps(self):
@@ -219,12 +221,7 @@ class Trainer:
 class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
-        self.hindsight_env = env
-        while not isinstance(self.hindsight_env, HindsightWrapper):
-            try:
-                self.hindsight_env = self.hindsight_env.env
-            except AttributeError:
-                raise RuntimeError(f"env {env} must include HindsightWrapper.")
+        self.hindsight_env = unwrap_env(env, HindsightWrapper)
         assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 

@@ -22,13 +22,6 @@ class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env):
-        self.state_vectors = {}
-        super().__init__(env)
-        s = self.reset()
-        vector_state = self.preprocess_obs(s)
-        self.observation_space = Box(-1, 1, vector_state.shape)
-
     @abstractmethod
     def _achieved_goal(self):
         raise NotImplementedError
@@ -84,6 +77,12 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = Box(
+            low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
+            high=vectorize([self.observation_space.high, env.unwrapped.max_position]))
+
     def step(self, action):
         s2, r, t, info = super().step(action)
         return s2, max([0, r]), t, info
@@ -99,6 +98,26 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
+    def __init__(self, env, geofence):
+        super().__init__(env)
+        self.pap_env = unwrap_env(env, PickAndPlaceEnv)
+        self._geofence = geofence
+        self.observation_space = Box(
+            low=vectorize(
+                Observation(
+                    observation=env.observation_space.low,
+                    desired_goal=Goal(self.goal_space.low, self.goal_space.low),
+                    achieved_goal=None)),
+            high=vectorize(
+                Observation(
+                    observation=env.observation_space.high,
+                    desired_goal=Goal(self.goal_space.high, self.goal_space.high),
+                    achieved_goal=None)))
+
+    @property
+    def goal_space(self):
+        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)
@@ -121,3 +140,9 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         state = Observation(*state)
         return vectorize(
             [state.observation, state.desired_goal], shape=shape)
+
+
+class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+    def __init__(self, env, geofence):
+        self.multi_task_env = unwrap_env(env, MultiTaskEnv)
+        super().__init__(env, geofence)

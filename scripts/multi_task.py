@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper, MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.networks import LstmAgent
 from sac.networks import MlpAgent
@@ -59,7 +59,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation,
         render_freq = 20
     with mutate_xml(
             changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = PickAndPlaceHindsightWrapper(
+        env = MultiTaskHindsightWrapper(
+            geofence=.04,
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=MultiTaskEnv(

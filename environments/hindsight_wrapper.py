@@ -133,16 +133,16 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
 
     def _desired_goal(self):
-        return self.env.unwrapped.goal()
-
-    @staticmethod
-    def preprocess_obs(state, shape=None):
-        state = Observation(*state)
-        return vectorize(
-            [state.observation, state.desired_goal], shape=shape)
+        assert isinstance(self.pap_env, PickAndPlaceEnv)
+        goal = self.pap_env.initial_block_pos.copy()
+        goal[2] += self.pap_env.min_lift_height
+        return Goal(gripper=goal, block=goal)
 
 
 class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env, geofence):
         self.multi_task_env = unwrap_env(env, MultiTaskEnv)
         super().__init__(env, geofence)
+
+    def _desired_goal(self):
+        return self.multi_task_env.goal()

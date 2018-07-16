@@ -91,3 +91,31 @@ class LstmAgent(AbstractAgent):
         feed_dict = {**{self.O1: [[o]]}, **self.state_feed(state)}
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return self.sess.run([A[0], self.S_new], feed_dict)
+
+
+class MoEAgent(AbstractAgent):
+    def __init__(self, n_networks, device_num, **kwargs):
+        self.n_networks = n_networks
+        super().__init__(device_num=device_num, **kwargs)
+
+    @property
+    def seq_len(self):
+        return None
+
+    def network(self, inputs: tf.Tensor):
+        weights = tf.nn.softmax(
+            logits=tf.layers.dense(inputs=inputs, units=self.n_networks, name='weights'),
+            axis=-1)
+        weights = tf.expand_dims(weights, axis=1)  # [batch, hidden, networks]
+
+        def vote(i):
+            return self.activation(
+                tf.layers.dense(
+                    inputs=inputs, units=self.layer_size, name='vote' + str(i)))
+
+        h = tf.stack(
+            values=list(map(vote, range(self.n_networks))),
+            axis=-1)  # [batch, hidden, networks]
+        h = tf.reduce_sum(h * weights, axis=2)
+        output = tf.layers.dense(h, units=self.layer_size, name='output')
+        return NetworkOutput(output=output, state=None)

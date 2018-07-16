@@ -143,7 +143,10 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env, geofence):
         self.multi_task_env = unwrap_env(env, MultiTaskEnv)
         super().__init__(env, geofence)
-        self.observation_space = env.observation_space
+        # tack on gripper goal_space
+        self.observation_space = Box(
+            low=vectorize([env.observation_space.low, self.goal_space.low]),
+            high=vectorize([env.observation_space.high, self.goal_space.high]))
 
     def _desired_goal(self):
         assert isinstance(self.multi_task_env, MultiTaskEnv)

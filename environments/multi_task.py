@@ -18,35 +18,23 @@ class MultiTaskEnv(PickAndPlaceEnv):
         super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
-        # self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale
-        self.goal_size = np.array([.0317, .0635]) * goal_scale
-        x, y = [
-            np.arange(l, h, s)
-            for l, h, s in zip(self.goal_space.low, self.goal_space.high, self.goal_size)
-        ]
-        self.goal_corners = np.array(list(itertools.product(x, y)))
-        self.labels = {tuple(g) + (.4, ): '.' for g in self.goal_corners}
-        self.observation_space = spaces.Box(
-            low=vectorize([self.observation_space.low, self.goal_space.low]),
-            high=vectorize([self.observation_space.high, self.goal_space.high]))
+        self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale
+        # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
+        x, y = [np.arange(l, h, s) for l, h, s in
+                zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
+        z = np.ones_like(x) * .40
+        self.goal_corners = np.array(list(itertools.product(x, y, z)))
+        self.labels = {tuple(g): '.' for g in self.goal_corners}
 
     def _is_successful(self):
         assert isinstance(self.goal, np.ndarray)
         assert isinstance(self.goal_size, np.ndarray)
-        pos = self.block_pos()[:2]
-        return np.all((self.goal - self.goal_size / 2 <= pos) *
-                      (self.goal + self.goal_size / 2 >= pos))
+        block_pos = self.block_pos()
+        return np.all((self.goal - self.goal_size / 2 <= block_pos) *
+                      (self.goal + self.goal_size / 2 >= block_pos))
 
     def _get_obs(self):
         return Observation(observation=super()._get_obs(), goal=self.goal)
-
-    @property
-    def goal(self):
-        return self._goal
-
-    @goal.setter
-    def goal(self, goal):
-        self._goal = goal
 
     def _reset_qpos(self):
         if self.randomize_pose:
@@ -79,5 +67,5 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = self.labels
-        labels[tuple(self._goal)] = 'x'
+        labels[tuple(self.goal)] = 'x'
         return super().render(labels=labels, **kwargs)

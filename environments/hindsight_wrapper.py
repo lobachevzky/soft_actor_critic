@@ -144,13 +144,9 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
         self.multi_task_env = unwrap_env(env, MultiTaskEnv)
         super().__init__(env, geofence)
 
-    @property
-    def goal_space(self):
-        return Box(low=np.array([-.14, -.2240]), high=np.array([.11, .2241]))
-
     def _desired_goal(self):
         assert isinstance(self.multi_task_env, MultiTaskEnv)
-        goal = np.append(self.multi_task_env.goal, .4)
+        goal = self.multi_task_env.goal
         return Goal(goal, goal)
 
     def step(self, action):

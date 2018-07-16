@@ -257,11 +257,10 @@ class MultiTaskTrainer(Trainer):
             return super().run_episode(
                 o1=o1, perform_updates=perform_updates, render=render)
         env = self.env.unwrapped
-        assert isinstance(env, MultiTaskEnv), type(env)
-        all_goals = itertools.product(*env.goals)
-        for goal in all_goals:
+        assert isinstance(env, MultiTaskEnv)
+        for goal_corner in env.goal_corners:
             o1 = self.reset()
-            env.set_goal(goal)
+            env.goal = goal_corner + env.goal_size / 2
             count = super().run_episode(
                 o1=o1, perform_updates=perform_updates, render=render)
             for k in count:

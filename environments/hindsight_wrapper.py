@@ -8,28 +8,12 @@ import numpy as np
 from gym.spaces import Box
 
 from environments.mujoco import distance_between
-from environments.pick_and_place import Goal
+from environments.multi_task import MultiTaskEnv
+from environments.pick_and_place import PickAndPlaceEnv
 from sac.array_group import ArrayGroup
-from sac.utils import Step
+from sac.utils import Step, unwrap_env, vectorize
 
-
-def get_size(x):
-    if np.isscalar(x):
-        return 1
-    return sum(map(get_size, x))
-
-
-def assign_to_vector(x, vector: np.ndarray):
-    dim = vector.size / vector.shape[-1]
-    if isinstance(x, np.ndarray) or np.isscalar(x):
-        vector.reshape(x.shape)[:] = x
-    else:
-        sizes = np.array(list(map(get_size, x)))
-        sizes = np.cumsum(sizes / dim, dtype=int)
-        for _x, start, stop in zip(x, [0] + list(sizes), sizes):
-            indices = [slice(None) for _ in vector.shape]
-            indices[-1] = slice(start, stop)
-            assign_to_vector(_x, vector[tuple(indices)])
+Goal = namedtuple('Goal', 'gripper block')
 
 
 class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
@@ -56,20 +40,6 @@ class HindsightWrapper(gym.Wrapper):
     @abstractmethod
     def _desired_goal(self):
         raise NotImplementedError
-
-    @staticmethod
-    def vectorize_state(state, shape: Optional[tuple] = None):
-        if isinstance(state, np.ndarray):
-            return state
-
-        size = get_size(state)
-        vector = np.zeros(size)
-        if shape:
-            vector = vector.reshape(shape)
-
-        assert isinstance(vector, np.ndarray)
-        assign_to_vector(x=state, vector=vector)
-        return vector
 
     def step(self, action):
         o2, r, t, info = self.env.step(action)
@@ -101,6 +71,12 @@ class HindsightWrapper(gym.Wrapper):
 
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
+
+    @staticmethod
+    def vectorize_state(obs, shape: Optional[tuple] = None):
+        obs = Observation(*obs)
+        obs = [obs.observation, obs.desired_goal]
+        return vectorize(obs, shape=shape)
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):
@@ -143,5 +119,5 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     @staticmethod
     def vectorize_state(state, shape=None):
         state = Observation(*state)
-        return HindsightWrapper.vectorize_state(
+        return vectorize(
             [state.observation, state.desired_goal], shape=shape)

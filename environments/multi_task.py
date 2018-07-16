@@ -30,7 +30,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         return np.all((self.goal - self.goal_size / 2 <= block_pos) *
                       (self.goal + self.goal_size / 2 >= block_pos))
 
-    def reset_qpos(self):
+    def _reset_qpos(self):
         if self.randomize_pose:
             for joint in ['slide_x',
                           'slide_y',

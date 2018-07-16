@@ -93,7 +93,7 @@ class MujocoEnv:
         self.sim.reset()
         self._step_num = 0
 
-        qpos = self.reset_qpos()
+        qpos = self._reset_qpos()
         assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
@@ -101,7 +101,7 @@ class MujocoEnv:
         return self._get_obs()
 
     @abstractmethod
-    def reset_qpos(self):
+    def _reset_qpos(self):
         raise NotImplemented
 
     def __enter__(self):

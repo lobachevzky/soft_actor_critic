@@ -5,13 +5,11 @@ from pathlib import Path
 
 import numpy as np
 from click._unicodefun import click
-from mujoco import ObjType
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+import ipdb
 from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
-from sac.utils import Step
+from mujoco import ObjType
 
 saved_pos = None
 
@@ -26,13 +24,12 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
-    env = PickAndPlaceHindsightWrapper(
-        env=MultiTaskEnv(
-            xml_filepath=xml_filepath,
-            goal_scale=4,
-            steps_per_action=200,
-            block_xrange=(0, 0),
-            block_yrange=(0, 0), ))
+    env = PickAndPlaceEnv(
+        xml_filepath=xml_filepath,
+        steps_per_action=200,
+        block_xrange=(0, 0),
+        block_yrange=(0, 0),
+    )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
@@ -50,7 +47,7 @@ def cli(discrete, xml_file):
     s1 = env.reset()
 
     while True:
-        lastkey = env.env.sim.get_last_key_press()
+        lastkey = env.sim.get_last_key_press()
         if moving:
             if discrete:
                 for k in range(1, 7):
@@ -58,10 +55,11 @@ def cli(discrete, xml_file):
                         action = int(lastkey)
 
             else:
-                action[i] += env.env.sim.get_mouse_dy() * .05
+                action[i] += env.sim.get_mouse_dy() * .05
 
         if lastkey is 'R':
-            env.reset()
+            print(env.reset())
+
         if lastkey is ' ':
             moving = not moving
             print('\rmoving:', moving)
@@ -75,7 +73,6 @@ def cli(discrete, xml_file):
             high = eu.goal().block + eu.goal_size / 2
             print('high', high)
             print('in between', (low <= block_pos) * (block_pos <= high))
-            import ipdb;
             ipdb.set_trace()
             # print('gipper pos', env.env.gripper_pos())
             # for joint in [
@@ -96,7 +93,7 @@ def cli(discrete, xml_file):
                 if lastkey == str(k):
                     i = k - 1
                     print('')
-                    print(env.env.sim.id2name(ObjType.ACTUATOR, i))
+                    print(env.sim.id2name(ObjType.ACTUATOR, i))
 
         if not pause and not np.allclose(action, 0):
             if not discrete:
@@ -120,7 +117,7 @@ def cli(discrete, xml_file):
         #                      for x in env.env.goal_x
         #                      for y in env.env.goal_y
         #                      for z in env.env.goal_z])}
-        env.env.render()
+        env.render()
 
 
 def run_tests(env, obs):

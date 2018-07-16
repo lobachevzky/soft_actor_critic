@@ -145,5 +145,20 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
         super().__init__(env, geofence)
 
     def _desired_goal(self):
+        assert isinstance(self.multi_task_env, MultiTaskEnv)
         goal = self.multi_task_env.goal
-        return Goal(gripper=goal, block=goal)
+        return Goal(goal, goal)
+
+    def step(self, action):
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=o2.observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        return new_o2, r, t, info
+
+    def reset(self):
+        return Observation(
+            observation=self.env.reset().observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())

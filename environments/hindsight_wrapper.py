@@ -138,11 +138,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         goal[2] += self.pap_env.min_lift_height
         return Goal(gripper=goal, block=goal)
 
-    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
-        obs = Observation(*obs)
-        obs = [obs.observation, obs.desired_goal]
-        return vectorize(obs, shape=shape)
-
 
 class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env, geofence):

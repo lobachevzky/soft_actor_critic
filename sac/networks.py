@@ -103,9 +103,10 @@ class MoEAgent(AbstractAgent):
         return None
 
     def network(self, inputs: tf.Tensor):
-        weights = tf.nn.softmax(
-            logits=tf.layers.dense(inputs=inputs, units=self.n_networks, name='weights'),
-            axis=-1)
+        with tf.variable_scope('weights'):
+            weights = mlp(inputs, self.layer_size, n_layers=self.n_layers-1, activation=self.activation)
+            weights = tf.layers.dense(weights, units=self.n_networks)
+            weights = tf.nn.softmax(logits=weights, axis=-1)
         weights = tf.expand_dims(weights, axis=1)  # [batch, hidden, networks]
 
         def vote(i):

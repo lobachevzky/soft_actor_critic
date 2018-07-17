@@ -92,11 +92,12 @@ def vectorize(x, shape: Optional[tuple] = None):
 
 
 def normalize(vector: np.ndarray, low: np.ndarray, high: np.ndarray):
-    low[np.isinf(low)] = -.5
-    high[np.isinf(high)] = .5
     mean = (low + high) / 2
+    mean = np.clip(mean, -1e4, 1e4)
+    mean[np.isnan(mean)] = 0
     dev = high - low
-    dev[dev == 0] = 1
+    dev[dev < 1e-3] = 1
+    dev[np.isinf(dev)] = 1
     return (vector - mean) / dev
 
 

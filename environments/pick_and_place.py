@@ -151,9 +151,7 @@ class PickAndPlaceEnv(MujocoEnv):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
-        EPSILON = .01
-        below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
-        return below_table or self._is_successful()
+        return self._is_successful()
 
     def compute_reward(self):
         if self._is_successful():

@@ -227,7 +227,6 @@ class HindsightTrainer(Trainer):
         super().__init__(env=env, **kwargs)
 
     def add_hindsight_trajectories(self) -> None:
-        return
         assert isinstance(self.hindsight_env, HindsightWrapper)
         if self.time_steps() > 0:
             new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())

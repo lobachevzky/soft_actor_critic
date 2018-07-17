@@ -13,6 +13,11 @@ def check_probability(ctx, param, value):
     return value
 
 
+def parse_double(ctx, param, string):
+    a, b = map(int, string.split('x'))
+    return a, b
+
+
 @click.command()
 @click.option('--seed', default=0, type=int)
 @click.option('--n-layers', default=2, type=int)
@@ -26,15 +31,24 @@ def check_probability(ctx, param, value):
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
-@click.option('--map-name', default="4x4", type=str)
+@click.option('--map-dims', default="4x4", type=str, callback=parse_double)
+@click.option('--random-map', is_flag=True)
+@click.option('--random-start', is_flag=True)
+@click.option('--random-goal', is_flag=True)
+@click.option('--slip-prob', default=None, type=float)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--n-networks', default=None, type=int)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale, batch_size,
-        num_train_steps, logdir, save_path, load_path, render, grad_clip, map_name,
-        max_steps, n_networks):
+        num_train_steps, logdir, save_path, load_path, render, grad_clip, map_dims,
+        max_steps, n_networks, random_map, random_start, random_goal, slip_prob):
     env = TimeLimit(
-        env=FrozenLakeEnv(map_name=map_name, is_slippery=False),
+        env=FrozenLakeEnv(
+            map_dims=map_dims,
+            random_map=random_map,
+            random_start=random_start,
+            random_goal=random_goal,
+            slip_prob=slip_prob),
         max_episode_steps=max_steps)
     kwargs = dict(
         env=env,

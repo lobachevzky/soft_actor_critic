@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Optional, Union, Callable
+from typing import Any, Callable, Optional, Union
 
 import gym
 import numpy as np

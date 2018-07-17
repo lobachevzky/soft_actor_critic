@@ -3,10 +3,10 @@
 # import gym
 from pathlib import Path
 
+import ipdb
 import numpy as np
 from click._unicodefun import click
 
-import ipdb
 from environments.mujoco import print1
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType

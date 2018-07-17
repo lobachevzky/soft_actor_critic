@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.networks import MlpAgent, MoEAgent
-from sac.train import HindsightTrainer, Trainer
+from sac.train import HindsightTrainer
 
 
 @click.command()
@@ -53,6 +53,7 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         HindsightTrainer(base_agent=MoEAgent, n_networks=n_networks, **kwargs)
     else:
         HindsightTrainer(base_agent=MlpAgent, **kwargs)
+
 
 if __name__ == '__main__':
     cli()

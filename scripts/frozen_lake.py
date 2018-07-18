@@ -60,7 +60,7 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale, ba
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        reward_scale=reward_scale,
+        alpha=1. / reward_scale,
         batch_size=batch_size,
         grad_clip=grad_clip,
         num_train_steps=num_train_steps,

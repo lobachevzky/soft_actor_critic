@@ -3,9 +3,9 @@ from collections import namedtuple
 
 import numpy as np
 from gym import spaces
+from mujoco import ObjType
 
 from environments.pick_and_place import PickAndPlaceEnv
-from mujoco import ObjType
 from sac.utils import vectorize
 
 Observation = namedtuple('Obs', 'observation goal')
@@ -18,10 +18,12 @@ class MultiTaskEnv(PickAndPlaceEnv):
         super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .4001]))
-            # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
+        # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         self.goal_size = np.array([.0317, .0635, .0234]) * goal_scale
-        x, y, z = [np.arange(l, h, s) for l, h, s in
-                zip(self.goal_space.low, self.goal_space.high, self.goal_size)]
+        x, y, z = [
+            np.arange(l, h, s)
+            for l, h, s in zip(self.goal_space.low, self.goal_space.high, self.goal_size)
+        ]
         self.goal_corners = np.array(list(itertools.product(x, y, z)))
         self.labels = {tuple(g): '.' for g in self.goal_corners}
         self.observation_space = spaces.Box(

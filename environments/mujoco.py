@@ -2,10 +2,9 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
+import mujoco
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
-
-import mujoco
 
 
 class MujocoEnv:

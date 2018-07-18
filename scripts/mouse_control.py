@@ -6,10 +6,10 @@ from pathlib import Path
 import ipdb
 import numpy as np
 from click._unicodefun import click
+from mujoco import ObjType
 
 from environments.mujoco import print1
 from environments.pick_and_place import PickAndPlaceEnv
-from mujoco import ObjType
 
 saved_pos = None
 

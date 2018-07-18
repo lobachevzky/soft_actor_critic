@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import gym
 import numpy as np
@@ -101,12 +101,12 @@ def normalize(vector: np.ndarray, low: np.ndarray, high: np.ndarray):
     return (vector - mean) / dev
 
 
-def unwrap_env(env: gym.Env, cls: type):
-    while not isinstance(env, cls):
+def unwrap_env(env: gym.Env, condition: Callable[[gym.Env], bool]):
+    while not condition(env):
         try:
             env = env.env
         except AttributeError:
-            raise RuntimeError(f"env {env} must include {cls}.")
+            raise RuntimeError(f"env {env} has no children that meet condition.")
     return env
 
 

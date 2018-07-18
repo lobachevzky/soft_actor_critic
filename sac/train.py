@@ -59,15 +59,11 @@ class Trainer:
         obs = env.reset()
         self.preprocess_func = None
         if not isinstance(obs, np.ndarray):
-            env = self.env
-            while self.preprocess_func is None:
-                try:
-                    self.preprocess_func = env.preprocess_obs
-                except AttributeError:
-                    try:
-                        env = env.env
-                    except AttributeError:
-                        self.preprocess_func = vectorize
+            try:
+                self.preprocess_func = unwrap_env(
+                    env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
+            except RuntimeError:
+                self.preprocess_func = vectorize
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
@@ -225,7 +221,7 @@ class Trainer:
 class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
-        self.hindsight_env = unwrap_env(env, HindsightWrapper)
+        self.hindsight_env = unwrap_env(env, lambda e: isinstance(e, HindsightWrapper))
         assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 

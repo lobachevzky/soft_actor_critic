@@ -103,7 +103,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.pap_env = unwrap_env(env, PickAndPlaceEnv)
+        self.pap_env = unwrap_env(env, lambda e: isinstance(e, PickAndPlaceEnv))
         self._geofence = geofence
         self.observation_space = Box(
             low=vectorize(
@@ -141,7 +141,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
 class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
     def __init__(self, env, geofence):
-        self.multi_task_env = unwrap_env(env, MultiTaskEnv)
+        self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env, geofence)
         # tack on gripper goal_space
         self.observation_space = Box(

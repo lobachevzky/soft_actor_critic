@@ -1,14 +1,13 @@
+import sys
+import time
 from typing import Tuple
 
 import numpy as np
-import sys
-
-import time
 from gym import utils
-from six import StringIO
 from gym.envs.toy_text.discrete import DiscreteEnv
 from gym.envs.toy_text.frozen_lake import MAPS
 from gym.spaces import Box
+from six import StringIO
 
 from environments.multi_task import Observation
 
@@ -112,7 +111,8 @@ class FrozenLakeEnv(DiscreteEnv):
             self.isd = self.get_initial_state_distribution(self.map)
             self.P = self.get_transitions(self.map)
         if self.random_goal:
-            observation = Observation(observation=self.one_hotify(super().reset()), goal=self.goal_vector)
+            observation = Observation(
+                observation=self.one_hotify(super().reset()), goal=self.goal_vector)
             return observation
         else:
             return self.one_hotify(super().reset())
@@ -186,10 +186,11 @@ class FrozenLakeEnv(DiscreteEnv):
         desc = [[c.decode('utf-8') for c in line] for line in desc]
         desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
         if self.lastaction is not None:
-            outfile.write("  ({})\n".format(["Left","Down","Right","Up"][self.lastaction]))
+            outfile.write("  ({})\n".format(["Left", "Down", "Right",
+                                             "Up"][self.lastaction]))
         else:
             outfile.write("\n")
-        outfile.write("\n".join(''.join(line) for line in desc)+"\n")
+        outfile.write("\n".join(''.join(line) for line in desc) + "\n")
 
         if mode != 'human':
             return outfile

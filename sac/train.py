@@ -161,8 +161,7 @@ class Trainer:
         class Agent(policy_type, base_agent):
             def __init__(self):
                 super(Agent, self).__init__(
-                    o_shape=state_shape,
-                    a_shape=action_shape, **kwargs)
+                    o_shape=state_shape, a_shape=action_shape, **kwargs)
 
         return Agent()
 

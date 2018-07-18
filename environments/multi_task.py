@@ -3,9 +3,9 @@ from collections import namedtuple
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environments.pick_and_place import PickAndPlaceEnv
+from mujoco import ObjType
 from sac.utils import vectorize
 
 Observation = namedtuple('Obs', 'observation goal')

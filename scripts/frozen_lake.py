@@ -26,7 +26,8 @@ def parse_double(ctx, param, string):
 @click.option('--buffer-size', default=1e4, type=int)
 @click.option('--num-train-steps', default=1, type=int)
 @click.option('--batch-size', default=32, type=int)
-@click.option('--reward-scale', default=2e5, type=float)
+@click.option('--reward-scale', default=1, type=float)
+@click.option('--entropy-scale', default=5e-6, type=float)
 @click.option('--grad-clip', default=2e-2, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
@@ -39,7 +40,8 @@ def parse_double(ctx, param, string):
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--n-networks', default=None, type=int)
-def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale, batch_size,
+def cli(seed, buffer_size, n_layers, layer_size, learning_rate,
+        entropy_scale, reward_scale, batch_size,
         num_train_steps, logdir, save_path, load_path, render, grad_clip, map_dims,
         max_steps, n_networks, random_map, random_start, random_goal, is_slippery):
     env = TimeLimit(
@@ -60,7 +62,8 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale, ba
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        alpha=1. / reward_scale,
+        entropy_scale=entropy_scale,
+        reward_scale=reward_scale,
         batch_size=batch_size,
         grad_clip=grad_clip,
         num_train_steps=num_train_steps,

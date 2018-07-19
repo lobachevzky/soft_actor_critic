@@ -3,6 +3,7 @@ import gym
 import numpy as np
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
+import tensorflow as tf
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer
@@ -35,7 +36,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 
 
 @click.option('--seed', default=0, type=int)
-@click.option('--activation', default='relu', callback=str_to_activation)
+@click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
@@ -43,6 +44,7 @@ class FetchReachHindsightWrapper(HindsightWrapper):
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=9e3, type=float)
+@click.option('--entropy-scale', default=1, type=float)
 @click.option('--reward-prop', action='store_true')
 @click.option('--logdir', default=None, type=str)
 @click.option('--render', action='store_true')

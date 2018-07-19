@@ -19,6 +19,7 @@ from sac.train import HindsightTrainer
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1e3, type=float)
+@click.option('--entropy-scale', default=1, type=float)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
@@ -27,7 +28,7 @@ from sac.train import HindsightTrainer
 @click.option('--render', is_flag=True)
 @click.option('--no-hindsight', is_flag=True)
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, grad_clip, batch_size, num_train_steps, logdir, save_path,
+        reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps, logdir, save_path,
         load_path, render, n_goals, no_hindsight, n_networks):
     kwargs = dict(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
@@ -39,7 +40,8 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        alpha=1. / reward_scale,
+        entropy_scale=entropy_scale,
+        reward_scale=reward_scale,
         n_goals=n_goals,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,

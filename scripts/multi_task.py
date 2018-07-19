@@ -23,6 +23,7 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
+@click.option('--entropy-scale', default=1, type=float)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--goal-scale', default=.1, type=float)
@@ -52,7 +53,7 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
     ])
 @env_wrapper
 def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, grad_clip, batch_size, num_train_steps,
+        learning_rate, reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, n_goals, eval, goal_scale,
         obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
         hindsight, geofence):
@@ -79,7 +80,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        alpha=1. / reward_scale,
+        reward_scale=reward_scale,
+        entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,

@@ -22,11 +22,13 @@ def check_probability(ctx, param, value):
 @click.option('--num-train-steps', default=1, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1., type=float)
+@click.option('--entropy-scale', default=1., type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
+def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate,
+        reward_scale, entropy_scale,
         batch_size, num_train_steps, logdir, save_path, load_path, render):
     Trainer(
         env=gym.make(env),
@@ -39,7 +41,8 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        alpha=1. / reward_scale,
+        entropy_scale=entropy_scale,
+        reward_scale=reward_scale,
         batch_size=batch_size,
         grad_clip=None,
         num_train_steps=num_train_steps,

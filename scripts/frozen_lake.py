@@ -23,7 +23,7 @@ def parse_double(ctx, param, string):
 @click.option('--n-layers', default=2, type=int)
 @click.option('--layer-size', default=128, type=int)
 @click.option('--learning-rate', default=1e-4, type=float)
-@click.option('--buffer-size', default=1e4, type=int)
+@click.option('--buffer-size', default=1e5, type=int)
 @click.option('--num-train-steps', default=1, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1, type=float)

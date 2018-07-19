@@ -122,11 +122,21 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
                     rew = float(newletter == b'G')
                     self.P[s][a] = [(1.0, newstate, rew, done)]
 
+    def mutate_desc(self, old_pos, new_pos):
+        letter = self.desc[old_pos]
+        self.desc[old_pos] = self.original_desc[old_pos]
+        self.desc[new_pos] = letter
+
     def reset(self):
         time.sleep(1)
         if self.random_start:
-            self.isd[self.to_s(*self.start)] = 0
-            self.start = np.random.randint(self.n_row), np.random.randint(self.n_col)
+            old_start = self.start
+            while True:
+                self.start = np.random.randint(self.n_row), np.random.randint(self.n_col)
+                if self.desc[self.start] != b'G':
+                    break
+            self.mutate_desc(old_start, self.start)
+            self.isd[self.to_s(*old_start)] = 0
             self.isd[self.to_s(*self.start)] = 1
         if self.random_goal:
             old_goal = self.goal
@@ -135,8 +145,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             if new_goal == self.start:
                 # Can only happen if starts or goals are random. Just roll again.
                 return self.reset()
-            self.desc[old_goal] = self.original_desc[old_goal]
-            self.desc[new_goal] = 'G'
+            self.mutate_desc(old_goal, new_goal)
             self.set_transition(new_goal)
             self.set_transition(old_goal)
             self.goal = new_goal

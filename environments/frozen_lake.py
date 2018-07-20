@@ -1,13 +1,9 @@
-import sys
 import time
-from typing import Tuple
+from typing import Tuple, Union, Iterable
 
-import numpy as np
-from gym import utils
-from gym.envs.toy_text.discrete import DiscreteEnv
 import gym.envs.toy_text.frozen_lake
+import numpy as np
 from gym.spaces import Box
-from six import StringIO
 
 from environments.multi_task import Observation
 
@@ -21,34 +17,11 @@ MAPS["3x3"] = [
 MAPS["3x4"] = ["SFFF", "FHFH", "HFFG"]
 
 DIRECTIONS = np.array([
-    [-1, 0],
-    [1, 0],
     [0, -1],
+    [1, 0],
     [0, 1],
+    [-1, 0],
 ])
-
-def in_bounds(pos, n_row, n_col):
-    pos = np.array(pos)
-    lower = np.zeros(2)
-    upper = np.array([n_row, n_col])
-    return np.all((lower <= pos) * (pos < upper))
-
-def random_walk(m: np.ndarray, pos: tuple, n_steps: int):
-    explored = []
-    while n_steps > 0:
-        explored.append(pos)
-        low = np.zeros(2)
-        high = np.shape(m)
-        apos = np.array(pos)
-        next_positions = [
-            apos + d for d in DIRECTIONS if in_bounds(apos + d, *high)
-                and not tuple(apos + d) in explored
-            ]
-        if not next_positions:
-            return pos
-        pos = tuple(next_positions[np.random.randint(len(next_positions))])
-        n_steps -= 1
-    return pos
 
 
 class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
@@ -69,11 +42,17 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         self.start = (0, 0)
         self.goal = (h - 1, w - 1)
         self.goal_vector = self.one_hotify(self.to_s(h - 1, w - 1))
+        self.reverse = {
+            0: 2,  # left -> right
+            2: 0,  # right -> left
+            1: 3,  # down -> up
+            3: 1  # up -> down
+        }
 
         if random_map:
             while True:
                 desc = np.random.choice([b'F', b'H'], [h, w], p=[.85, .15])
-                if random_walk(desc, self.start, 1) != self.start:
+                if self.random_walk(self.start, 1) != self.start:
                     break  # start is not surrounded by holes
             self.original_desc = np.copy(desc)
         else:
@@ -103,10 +82,26 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             row = max(row - 1, 0)
         return row, col
 
-    def set_transition(self, pos: tuple):
+    def random_walk(self, pos: tuple, n_steps: int):
+        explored = []
+        while n_steps > 0:
+            explored.append(pos)
+            next_positions = [
+                self.inc(*pos, d) for d in range(4)
+                if not self.inc(*pos, d) in explored
+                and not self.desc[self.inc(*pos, d)] == b'H'
+                ]
+            if not next_positions:
+                return pos
+            pos = next_positions[np.random.randint(len(next_positions))]
+            n_steps -= 1
+        return pos
+
+    def set_transition(self, pos: Union[tuple, np.ndarray], actions: Iterable = None):
         pos = tuple(pos)
         s = self.to_s(*pos)
-        for a in range(4):
+        actions = actions or range(4)  # type: Iterable
+        for a in actions:
             letter = self.desc[pos]
             if letter in b'GH':
                 self.P[s][a] = [(1.0, s, 0, True)]
@@ -127,6 +122,14 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
                     rew = float(newletter == b'G')
                     self.P[s][a] = [(1.0, newstate, rew, done)]
 
+    def set_transitions(self, pos: Union[tuple, np.ndarray]):
+        self.set_transition(pos)
+        for a in range(4):
+            adjacent = self.inc(*pos, a)
+            if adjacent != pos:
+                self.set_transition(adjacent, actions=[self.reverse[a]])
+                assert self.inc(*adjacent, self.reverse[a]) == pos
+
     def mutate_desc(self, old_pos, new_pos):
         letter = self.desc[old_pos]
         self.desc[old_pos] = self.original_desc[old_pos]
@@ -145,19 +148,32 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             self.isd[self.to_s(*self.start)] = 1
         if self.random_goal:
             old_goal = self.goal
-            new_goal = random_walk(
-                self.desc, self.start, n_steps=self.n_row * self.n_col // 2)
+            new_goal = self.random_walk(
+                self.start, n_steps=self.n_row * self.n_col // 2)
+
             if new_goal == self.start:
+
                 # Can only happen if starts or goals are random. Just roll again.
                 return self.reset()
+
             self.mutate_desc(old_goal, new_goal)
-            self.set_transition(new_goal)
-            self.set_transition(old_goal)
-            for d in DIRECTIONS:
-                pos = np.array(new_goal) + d
-                if in_bounds(pos, self.n_col, self.n_row):
-                    self.set_transition(pos)
-            import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+            self.set_transitions(new_goal)
+            self.set_transitions(old_goal)
+            for d in range(4):
+                pos = self.inc(*new_goal, d)
+                if pos != new_goal:
+                    transition = self.P[self.to_s(*pos)][self.reverse[d]][0]
+                    if self.desc[pos] in b'SF':
+                        # going backward on ice
+                        assert transition[1:] == (self.to_s(*new_goal), 1, True)
+                    elif self.desc[pos] == b'H':
+                        # going backward in a hole
+                        assert transition[1:] == (self.to_s(*pos), 0, True)
+
+            for transition in self.P[self.to_s(*new_goal)].values():
+                # transitions from goal
+                assert transition[0][1:] == (self.to_s(*new_goal), 0, True)
+
             self.goal = new_goal
 
         if self.random_goal:

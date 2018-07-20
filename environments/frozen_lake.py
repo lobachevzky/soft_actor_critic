@@ -192,6 +192,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         s = self.one_hotify(s)
         if self.random_goal:
             s = Observation(observation=s, goal=self.goal_vector)
+        if r == 0:
+            r = -.1
         return s, r, t, i
 
     def one_hotify(self, s):

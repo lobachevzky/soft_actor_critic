@@ -27,6 +27,11 @@ DIRECTIONS = np.array([
     [0, 1],
 ])
 
+def in_bounds(pos, n_row, n_col):
+    pos = np.array(pos)
+    lower = np.zeros(2)
+    upper = np.array([n_row, n_col])
+    return np.all((lower <= pos) * (pos < upper))
 
 def random_walk(m: np.ndarray, pos: tuple, n_steps: int):
     explored = []
@@ -36,8 +41,8 @@ def random_walk(m: np.ndarray, pos: tuple, n_steps: int):
         high = np.shape(m)
         apos = np.array(pos)
         next_positions = [
-            apos + d for d in DIRECTIONS if np.all((low <= (apos + d)) * (
-                (apos + d) < high)) and not tuple(apos + d) in explored
+            apos + d for d in DIRECTIONS if in_bounds(apos + d, *high)
+                and not tuple(apos + d) in explored
             ]
         if not next_positions:
             return pos
@@ -148,6 +153,11 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             self.mutate_desc(old_goal, new_goal)
             self.set_transition(new_goal)
             self.set_transition(old_goal)
+            for d in DIRECTIONS:
+                pos = np.array(new_goal) + d
+                if in_bounds(pos, self.n_col, self.n_row):
+                    self.set_transition(pos)
+            import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
             self.goal = new_goal
 
         if self.random_goal:

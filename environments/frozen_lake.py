@@ -172,3 +172,6 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         array[s] = 1
         return array
 
+    def render(self, *args, **kwargs):
+        time.sleep(.5)
+        return super().render(*args, **kwargs)

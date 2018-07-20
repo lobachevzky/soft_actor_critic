@@ -26,7 +26,6 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 @click.option('--entropy-scale', default=1, type=float)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--goal-scale', default=.1, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
@@ -41,8 +40,8 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 @click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--hindsight', is_flag=True)
-@click.option('--geofence', default=.1, type=float)
+@click.option('--geofence', default=.25, type=float)
+@click.option('--hindsight-geofence', default=None, type=float)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option(
     '--use-dof',
@@ -54,13 +53,12 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 @env_wrapper
 def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps,
-        steps_per_action, logdir, save_path, load_path, n_goals, eval, goal_scale,
-        obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight, geofence):
+        steps_per_action, logdir, save_path, load_path, n_goals, eval, obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
+        hindsight_geofence, geofence):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(
-            goal_scale=goal_scale,
+            geofence=geofence,
             xml_filepath=temp_path,
             steps_per_action=steps_per_action,
             obs_type=obs_type,
@@ -92,8 +90,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         evaluation=eval,
     )
 
-    if hindsight:
-        env = MultiTaskHindsightWrapper(env=env, geofence=geofence)
+    if hindsight_geofence:
+        env = MultiTaskHindsightWrapper(env=env, geofence=hindsight_geofence)
         MultiTaskHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
         MultiTaskTrainer(env=env, **kwargs)

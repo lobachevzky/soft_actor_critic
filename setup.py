@@ -25,6 +25,7 @@ setup(
         'mouse-control=scripts.mouse_control:cli',
         'write-rewards=write_rewards:main',
     ]),
+    scripts=['load'],
     install_requires=[
         'tensorflow>=1.6.0', 'scipy==1.1.0', 'gym==0.10.4', 'pygame==1.9.3', 'click==6.7'
     ])

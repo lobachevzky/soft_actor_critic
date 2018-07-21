@@ -150,8 +150,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             self.isd[self.to_s(*self.start)] = 1
         if self.random_goal:
             old_goal = self.goal
-            new_goal = self.random_walk(
-                self.start, n_steps=self.n_row * self.n_col // 2)
+            new_goal = np.random.randint(self.n_row), np.random.randint(self.n_col)
 
             if new_goal == self.start:
 

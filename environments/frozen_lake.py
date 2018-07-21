@@ -8,6 +8,7 @@ from gym.spaces import Box
 from environments.multi_task import Observation
 
 MAPS = gym.envs.toy_text.frozen_lake.MAPS
+MAPS["2x2"] = ["FF"] * 2
 MAPS["4x4"] = ["FFFF"] * 4
 MAPS["3x3"] = [
     "SFF",

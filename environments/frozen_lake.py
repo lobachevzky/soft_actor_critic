@@ -170,7 +170,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             self.set_transitions(new_goal)
             self.set_transitions(old_goal)
             assert self.desc[new_goal] == b'G'
-            assert self.desc[old_goal] != b'G'
+            if old_goal != new_goal:
+                assert self.desc[old_goal] != b'G'
             for d in range(4):
                 pos = self.inc(*new_goal, d)
                 if pos != new_goal:

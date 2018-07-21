@@ -9,8 +9,6 @@ from environments.multi_task import Observation
 
 MAPS = gym.envs.toy_text.frozen_lake.MAPS
 MAPS["2x2"] = ["FF"] * 2
-MAPS["3x3"] = ["FFF"] * 3
-# MAPS["4x4"] = ["FFFF"] * 4
 MAPS["3x3"] = [
     "SFF",
     "FHF",
@@ -205,6 +203,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         s = self.one_hotify(s)
         if self.random_goal:
             s = Observation(observation=s, goal=self.goal_vector())
+        if r == 0:
+            r = -.1
         return s, r, t, i
 
     def one_hotify(self, s):

@@ -1,5 +1,5 @@
 import time
-from typing import Tuple, Union, Iterable
+from typing import Iterable, Tuple, Union
 
 import gym.envs.toy_text.frozen_lake
 import numpy as np
@@ -9,7 +9,7 @@ from environments.multi_task import Observation
 
 MAPS = gym.envs.toy_text.frozen_lake.MAPS
 MAPS["2x2"] = ["FF"] * 2
-MAPS["2x2"] = ["FFF"] * 3
+MAPS["3x3"] = ["FFF"] * 3
 # MAPS["4x4"] = ["FFFF"] * 4
 MAPS["3x3"] = [
     "SFF",
@@ -38,18 +38,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         self.is_slippery = is_slippery
         self.random_start = random_start
         self.random_goal = random_goal
-        h, w = map_dims
-        self.n_state = h * w
-        self.n_row = h
-        self.n_col = w
         self.start = (0, 0)
-        self.goal = (h - 1, w - 1)
-        self.reverse = {
-            0: 2,  # left -> right
-            2: 0,  # right -> left
-            1: 3,  # down -> up
-            3: 1  # up -> down
-        }
+        h, w = map_dims
 
         if random_map:
             while True:
@@ -63,8 +53,15 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             self.original_desc[0, 0] = b'F'
             self.original_desc[-1, -1] = b'F'
 
+        self.goal = tuple(desc.shape - np.ones(2, dtype=int))
         desc[self.start] = b'S'
         desc[self.goal] = b'G'
+        self.reverse = {
+            0: 2,  # left -> right
+            2: 0,  # right -> left
+            1: 3,  # down -> up
+            3: 1  # up -> down
+        }
         super().__init__(desc=desc, is_slippery=is_slippery)
 
         if self.random_goal:
@@ -77,9 +74,9 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         if a == 0:  # left
             col = max(col - 1, 0)
         elif a == 1:  # down
-            row = min(row + 1, self.n_row - 1)
+            row = min(row + 1, self.nrow - 1)
         elif a == 2:  # right
-            col = min(col + 1, self.n_col - 1)
+            col = min(col + 1, self.ncol - 1)
         elif a == 3:  # up
             row = max(row - 1, 0)
         return row, col
@@ -89,10 +86,9 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         while n_steps > 0:
             explored.append(pos)
             next_positions = [
-                self.inc(*pos, d) for d in range(4)
-                if not self.inc(*pos, d) in explored
+                self.inc(*pos, d) for d in range(4) if not self.inc(*pos, d) in explored
                 and not self.desc[self.inc(*pos, d)] == b'H'
-                ]
+            ]
             if not next_positions:
                 return pos
             pos = next_positions[np.random.randint(len(next_positions))]
@@ -146,11 +142,10 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             assert self.desc[self.start] == b'S'
             old_start = self.start
             while True:
-                new_start = np.random.randint(self.n_row), np.random.randint(self.n_col)
+                new_start = np.random.randint(self.nrow), np.random.randint(self.ncol)
                 if self.desc[new_start] not in b'GH':
                     break
             assert self.desc[new_start] not in b'GH'
-            prev_desc = np.copy(self.desc)
             self.mutate_desc(old_start, new_start)
             assert self.desc[new_start] == b'S'
             if new_start != old_start:
@@ -162,7 +157,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         if self.random_goal:
             old_goal = self.goal
             while True:
-                new_goal = np.random.randint(self.n_row), np.random.randint(self.n_col)
+                new_goal = np.random.randint(self.nrow), np.random.randint(self.ncol)
                 if self.desc[new_goal] not in b'SH':
                     break
 
@@ -197,7 +192,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             return self.one_hotify(super().reset())
 
     def to_s(self, row, col):
-        return row * self.n_col + col
+        return row * self.ncol + col
 
     def step(self, a):
         s, r, t, i = super().step(a)
@@ -207,7 +202,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         return s, r, t, i
 
     def one_hotify(self, s):
-        array = np.zeros(self.n_state)
+        array = np.zeros(self.nS)
         array[s] = 1
         return array
 

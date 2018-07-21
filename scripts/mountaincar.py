@@ -28,8 +28,8 @@ from sac.train import HindsightTrainer
 @click.option('--render', is_flag=True)
 @click.option('--no-hindsight', is_flag=True)
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps, logdir, save_path,
-        load_path, render, n_goals, no_hindsight, n_networks):
+        reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps, logdir,
+        save_path, load_path, render, n_goals, no_hindsight, n_networks):
     kwargs = dict(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
         seq_len=None,

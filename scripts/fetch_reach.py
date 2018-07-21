@@ -1,9 +1,9 @@
 import click
 import gym
 import numpy as np
+import tensorflow as tf
 from gym.envs.robotics import FetchReachEnv
 from gym.envs.robotics.fetch_env import goal_distance
-import tensorflow as tf
 
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.train import HindsightTrainer

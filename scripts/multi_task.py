@@ -52,8 +52,9 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
     ])
 @env_wrapper
 def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
-        learning_rate, reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps,
-        steps_per_action, logdir, save_path, load_path, n_goals, eval, obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
+        learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
+        num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
+        obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
         hindsight_geofence, geofence):
     env = TimeLimit(
         max_episode_steps=max_steps,

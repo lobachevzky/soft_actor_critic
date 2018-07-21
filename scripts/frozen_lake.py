@@ -40,10 +40,10 @@ def parse_double(ctx, param, string):
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--n-networks', default=None, type=int)
-def cli(seed, buffer_size, n_layers, layer_size, learning_rate,
-        entropy_scale, reward_scale, batch_size,
-        num_train_steps, logdir, save_path, load_path, render, grad_clip, map_dims,
-        max_steps, n_networks, random_map, random_start, random_goal, is_slippery):
+def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
+        reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
+        grad_clip, map_dims, max_steps, n_networks, random_map, random_start, random_goal,
+        is_slippery):
     env = TimeLimit(
         env=FrozenLakeEnv(
             map_dims=map_dims,

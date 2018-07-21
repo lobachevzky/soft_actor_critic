@@ -95,10 +95,11 @@ def env_wrapper(func):
     ])
 @env_wrapper
 def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
-        activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale, cheat_prob,
-        grad_clip, batch_size, num_train_steps, steps_per_action, logdir, save_path,
-        load_path, render_freq, record_freq, record_path, image_dims, record, n_goals,
-        obs_type, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
+        activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
+        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
+        save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
+        n_goals, obs_type, block_xrange, block_yrange, agent, seq_len, hindsight,
+        temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=PickAndPlaceEnv(

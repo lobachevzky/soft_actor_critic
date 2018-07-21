@@ -143,25 +143,34 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
     def reset(self):
         time.sleep(1)
         if self.random_start:
+            assert self.desc[self.start] == b'S'
             old_start = self.start
             while True:
-                self.start = np.random.randint(self.n_row), np.random.randint(self.n_col)
-                if self.desc[self.start] not in b'GH':
+                new_start = np.random.randint(self.n_row), np.random.randint(self.n_col)
+                if self.desc[new_start] not in b'GH':
                     break
-            self.mutate_desc(old_start, self.start)
+            assert self.desc[new_start] not in b'GH'
+            prev_desc = np.copy(self.desc)
+            self.mutate_desc(old_start, new_start)
+            assert self.desc[new_start] == b'S'
+            if new_start != old_start:
+                assert self.desc[old_start] != b'S'
             self.isd[self.to_s(*old_start)] = 0
-            self.isd[self.to_s(*self.start)] = 1
+            self.isd[self.to_s(*new_start)] = 1
+            self.start = new_start
 
         if self.random_goal:
             old_goal = self.goal
             while True:
                 new_goal = np.random.randint(self.n_row), np.random.randint(self.n_col)
-                if self.desc[self.goal] not in b'SH':
+                if self.desc[new_goal] not in b'SH':
                     break
 
             self.mutate_desc(old_goal, new_goal)
             self.set_transitions(new_goal)
             self.set_transitions(old_goal)
+            assert self.desc[new_goal] == b'G'
+            assert self.desc[old_goal] != b'G'
             for d in range(4):
                 pos = self.inc(*new_goal, d)
                 if pos != new_goal:

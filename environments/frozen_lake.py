@@ -43,7 +43,6 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         self.n_col = w
         self.start = (0, 0)
         self.goal = (h - 1, w - 1)
-        self.goal_vector = self.one_hotify(self.to_s(h - 1, w - 1))
         self.reverse = {
             0: 2,  # left -> right
             2: 0,  # right -> left
@@ -137,6 +136,9 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         self.desc[old_pos] = self.original_desc[old_pos]
         self.desc[new_pos] = letter
 
+    def goal_vector(self):
+        return self.one_hotify(self.to_s(*self.goal))
+
     def reset(self):
         time.sleep(1)
         if self.random_start:
@@ -179,7 +181,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
 
         if self.random_goal:
             observation = Observation(
-                observation=self.one_hotify(super().reset()), goal=self.goal_vector)
+                observation=self.one_hotify(super().reset()), goal=self.goal_vector())
             return observation
         else:
             return self.one_hotify(super().reset())
@@ -191,7 +193,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         s, r, t, i = super().step(a)
         s = self.one_hotify(s)
         if self.random_goal:
-            s = Observation(observation=s, goal=self.goal_vector)
+            s = Observation(observation=s, goal=self.goal_vector())
         return s, r, t, i
 
     def one_hotify(self, s):

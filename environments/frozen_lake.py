@@ -10,7 +10,7 @@ from environments.multi_task import Observation
 MAPS = gym.envs.toy_text.frozen_lake.MAPS
 MAPS["2x2"] = ["FF"] * 2
 MAPS["2x2"] = ["FFF"] * 3
-MAPS["4x4"] = ["FFFF"] * 4
+# MAPS["4x4"] = ["FFFF"] * 4
 MAPS["3x3"] = [
     "SFF",
     "FHF",

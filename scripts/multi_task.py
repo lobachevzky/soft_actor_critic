@@ -6,13 +6,14 @@ from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac.networks import MlpAgent
+from sac.networks import MlpAgent, MoEAgent
 from sac.train import MultiTaskHindsightTrainer, MultiTaskTrainer
 from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 
 
 @click.command()
 @click.option('--seed', default=0, type=int)
+@click.option('--n-networks', default=None, type=int)
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
@@ -55,7 +56,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence):
+        hindsight_geofence, geofence, n_networks):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(
@@ -90,6 +91,9 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         render=False,  # because render is handled inside env
         evaluation=eval,
     )
+    if n_networks:
+        kwargs['base_agent'] = MoEAgent
+        kwargs['n_networks'] = n_networks
 
     if hindsight_geofence:
         env = MultiTaskHindsightWrapper(env=env, geofence=hindsight_geofence)

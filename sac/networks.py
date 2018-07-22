@@ -114,9 +114,8 @@ class MoEAgent(AbstractAgent):
         weights = tf.expand_dims(weights, axis=1)  # [batch, hidden, networks]
 
         def vote(i):
-            return self.activation(
-                tf.layers.dense(
-                    inputs=inputs, units=self.layer_size, name='vote' + str(i)))
+            with tf.variable_scope('vote' + str(i)):
+                return mlp(inputs, self.layer_size, self.n_layers - 1, self.activation)
 
         h = tf.stack(
             values=list(map(vote, range(self.n_networks))),

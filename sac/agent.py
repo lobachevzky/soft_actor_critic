@@ -50,10 +50,9 @@ class AbstractAgent:
             gamma = 0.99
             tau = 0.01
 
-            with tf.variable_scope('pi'):
-                processed_s, self.S_new = self.network(self.O1)
-                parameters = self.parameters = self.produce_policy_parameters(
-                    a_shape[0], processed_s)
+            processed_s, self.S_new = self.pi_network(self.O1)
+            parameters = self.parameters = self.produce_policy_parameters(
+                a_shape[0], processed_s)
 
             def pi_network_log_prob(a: tf.Tensor, name: str, reuse: bool) \
                     -> tf.Tensor:
@@ -164,6 +163,10 @@ class AbstractAgent:
         A = self.A_sampled1 if sample else self.A_max_likelihood
         return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0)
 
+    def pi_network(self, o: tf.Tensor) -> NetworkOutput:
+        with tf.variable_scope('pi'):
+            return self.network(o)
+
     def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
@@ -203,3 +206,4 @@ class AbstractAgent:
     @abstractmethod
     def entropy_from_params(self, params: tf.Tensor) -> tf.Tensor:
         pass
+

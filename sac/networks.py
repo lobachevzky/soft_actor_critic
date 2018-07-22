@@ -29,6 +29,40 @@ class MlpAgent(AbstractAgent):
             state=None)
 
 
+class SACXAgent(AbstractAgent):
+    @property
+    def seq_len(self):
+        return None
+
+    @staticmethod
+    def actor_network(inputs: tf.Tensor) -> NetworkOutput:
+        l1 = tf.layers.dense(inputs, 200, tf.nn.elu)
+        l2 = tf.contrib.layers.layer_norm(l1)
+        l3 = tf.layers.dense(l2, 200, tf.nn.elu)
+        return NetworkOutput(output=tf.layers.dense(l3, 100, tf.nn.elu), state=None)
+
+    @staticmethod
+    def critic_network(inputs: tf.Tensor) -> NetworkOutput:
+        l1 = tf.layers.dense(inputs, 400, tf.nn.elu)
+        l2 = tf.contrib.layers.layer_norm(l1)
+        l3 = tf.layers.dense(l2, 400, tf.nn.elu)
+        return NetworkOutput(output=tf.layers.dense(l3, 200, tf.nn.elu), state=None)
+
+    def pi_network(self, o: tf.Tensor):
+        with tf.variable_scope('pi'):
+            return self.actor_network(o)
+
+    def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str,
+                  reuse: bool = None):
+        with tf.variable_scope(name, reuse=reuse):
+            oa = tf.concat([o, a], axis=1)
+            return tf.reshape(tf.layers.dense(self.critic_network(oa).output, 1, name='q'), [-1])
+
+    def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
+        with tf.variable_scope(name, reuse=reuse):
+            return tf.reshape(tf.layers.dense(self.critic_network(o).output, 1, name='v'), [-1])
+
+
 class LstmAgent(AbstractAgent):
     @property
     def seq_len(self):

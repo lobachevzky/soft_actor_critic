@@ -1,0 +1,5 @@
+#! /usr/bin/env zsh
+
+tmux send-keys -t $1 '^C Enter' 
+tmux send-keys -t $1 '!! Enter' 
+

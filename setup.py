@@ -23,7 +23,8 @@ setup(
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',
-        'write-rewards=write_rewards:main',
+        'write-rewards=scripts.write_rewards:main',
+        'best-run=scripts.best_run:main',
     ]),
     scripts=['load'],
     install_requires=[

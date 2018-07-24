@@ -134,14 +134,9 @@ def collect_reward(event_file_path: Path, n_rewards: int) -> Optional[float]:
         return None
 
 
-def collect_events_files(tensorboard_dir: Path, run_names: List[Path]):
+def collect_events_files(dirs):
     pattern = '**/events*'
-    if run_names:
-        return [path for name in run_names
-                for path in Path(tensorboard_dir, name).glob(pattern)]
-    else:
-        return [path for path in Path(tensorboard_dir).glob(pattern)]
-
+    return [path for d in dirs for path in d.glob(pattern)]
 
 
 Obs = Any

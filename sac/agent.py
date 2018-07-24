@@ -27,6 +27,8 @@ class AbstractAgent:
                  device_num: int,
                  reuse=False) -> None:
 
+        self.learning_rate = learning_rate
+        self.grad_clip = grad_clip
         self.reward_scale = reward_scale
         self.activation = activation
         self.n_layers = n_layers
@@ -106,23 +108,11 @@ class AbstractAgent:
 
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
-            def train_op(loss, var_list, dependency):
-                with tf.control_dependencies([dependency]):
-                    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-                    gradients, variables = zip(
-                        *optimizer.compute_gradients(loss, var_list=var_list))
-                    if grad_clip:
-                        gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
-                    else:
-                        norm = tf.global_norm(gradients)
-                    op = optimizer.apply_gradients(zip(gradients, variables))
-                    return op, norm
-
-            self.train_V, self.V_grad = train_op(
+            self.train_V, self.V_grad, self.V_grad_norm = self.train_op(
                 loss=V_loss, var_list=xi, dependency=self.pi_loss)
-            self.train_Q, self.Q_grad = train_op(
+            self.train_Q, self.Q_grad, self.Q_grad_norm = self.train_op(
                 loss=Q_loss, var_list=theta, dependency=self.train_V)
-            self.train_pi, self.pi_grad = train_op(
+            self.train_pi, self.pi_grad, self.pi_grad_norm = self.train_op(
                 loss=pi_loss, var_list=phi, dependency=self.train_Q)
 
             with tf.control_dependencies([self.train_pi]):
@@ -131,7 +121,6 @@ class AbstractAgent:
                     for (xbar, x) in zip(xi_bar, xi)
                 ]
                 self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
-                # self.check = tf.add_check_numerics_ops()
                 self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
                 # ensure that xi and xi_bar are the same at initialization
 
@@ -146,6 +135,22 @@ class AbstractAgent:
     @property
     def seq_len(self):
         return self._seq_len
+
+    @property
+    def train_values(self):
+        return TRAIN_VALUES
+
+    def train_op(self, loss, var_list, dependency=None):
+        with tf.control_dependencies([dependency]):
+            optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+            gradients, variables = zip(
+                *optimizer.compute_gradients(loss, var_list=var_list))
+            if self.grad_clip:
+                gradients, norm = tf.clip_by_global_norm(gradients, self.grad_clip)
+            else:
+                norm = tf.global_norm(gradients)
+            op = optimizer.apply_gradients(zip(gradients, variables))
+            return op, gradients, norm
 
     def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
         if feed_dict is None:

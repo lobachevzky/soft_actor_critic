@@ -15,12 +15,14 @@ def main():
     args = parser.parse_args()
 
     def reward(event_file):
-        print(event_file)
-        return collect_reward(event_file, args.smoothing) or -float('inf')
+        reward = collect_reward(event_file, args.smoothing)
+        print(event_file, reward, sep=':\t')
+        return reward or -float('inf')
 
     event_files = collect_events_files(args.dirs)
     if event_files:
         best_file = str(max(event_files, key=reward))
+        print('Best run:')
         print(re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', best_file))
     else:
         print('No event files found.')

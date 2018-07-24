@@ -49,6 +49,7 @@ class HindsightWrapper(gym.Wrapper):
             achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
+        import ipdb; ipdb.set_trace()
         trajectory = Step(*deepcopy(trajectory))
 
         # get values
@@ -125,9 +126,9 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         achieved_goal = Goal(*achieved_goal)
         desired_goal = Goal(*desired_goal)
         block_distance = distance_between(achieved_goal.block, desired_goal.block)
-        goal_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
+        gripper_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
         return np.logical_and(block_distance < self._geofence,
-                              goal_distance < self._geofence)
+                              gripper_distance < self._geofence)
 
     def _achieved_goal(self):
         return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())

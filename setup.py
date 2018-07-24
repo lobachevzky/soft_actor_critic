@@ -26,7 +26,7 @@ setup(
         'write-rewards=scripts.write_rewards:main',
         'best-run=scripts.best_run:main',
     ]),
-    scripts=['bin/load', 'bin/restart'],
+    scripts=['bin/load'],
     install_requires=[
         'tensorflow>=1.6.0', 'scipy==1.1.0', 'gym==0.10.4', 'pygame==1.9.3', 'click==6.7'
     ])

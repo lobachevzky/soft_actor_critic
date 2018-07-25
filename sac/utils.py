@@ -154,8 +154,8 @@ soft_update_xi_bar
 V_loss
 Q_loss
 pi_loss
-V_grad_norm
-Q_grad_norm
-pi_grad_norm\
+V_grad
+Q_grad
+pi_grad\
 """.split('\n')
 TrainStep = namedtuple('TrainStep', TRAIN_VALUES)

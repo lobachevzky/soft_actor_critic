@@ -15,9 +15,7 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 def parse_coordinate(ctx, param, string):
     if string is None:
         return
-    a, b, c = np.array(list(map(float, string.split(','))))
-    return a, b, c
-
+    return np.array(list(map(float, string.split(','))))
 
 @click.command()
 @click.option('--seed', default=0, type=int)

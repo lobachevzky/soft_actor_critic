@@ -49,7 +49,6 @@ class HindsightWrapper(gym.Wrapper):
             achieved_goal=self._achieved_goal())
 
     def recompute_trajectory(self, trajectory: Step):
-        import ipdb; ipdb.set_trace()
         trajectory = Step(*deepcopy(trajectory))
 
         # get values

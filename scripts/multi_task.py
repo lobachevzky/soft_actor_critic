@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import click
+import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
@@ -9,6 +10,13 @@ from environments.multi_task import MultiTaskEnv
 from sac.networks import MlpAgent, MoEAgent, SACXAgent
 from sac.train import MultiTaskHindsightTrainer, MultiTaskTrainer
 from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
+
+
+def parse_coordinate(ctx, param, string):
+    if string is None:
+        return
+    a, b, c = np.array(list(map(float, string.split(','))))
+    return a, b, c
 
 
 @click.command()
@@ -45,6 +53,9 @@ from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--geofence', default=.25, type=float)
 @click.option('--hindsight-geofence', default=None, type=float)
+@click.option('--curriculum-rate', default=None, type=float)
+@click.option('--fixed-block', is_flag=True)
+@click.option('--fixed-goal', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option(
     '--use-dof',
@@ -58,7 +69,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence, n_networks, agent):
+        hindsight_geofence, geofence, n_networks, agent, curricum_rate, fixed_block,
+        fixed_goal):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(
@@ -71,6 +83,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
             record_path=record_path,
             record_freq=record_freq,
             image_dimensions=image_dims,
+            fixed_block=fixed_block,
+            fixed_goal=fixed_goal,
         ))
     kwargs = dict(
         base_agent=agent,
@@ -92,6 +106,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         load_path=load_path,
         render=False,  # because render is handled inside env
         evaluation=eval,
+        curricum_rate=curricum_rate,
     )
     if n_networks:
         kwargs['base_agent'] = MoEAgent

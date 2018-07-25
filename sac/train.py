@@ -247,7 +247,8 @@ class HindsightTrainer(Trainer):
 
 
 class MultiTaskTrainer(Trainer):
-    def __init__(self, evaluation, env, **kwargs):
+    def __init__(self, evaluation, env, curriculum_rate, **kwargs):
+        self.curriculum_rate = curriculum_rate
         self.eval = evaluation
         self.last_n_rewards = deque(maxlen=20)
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
@@ -261,7 +262,7 @@ class MultiTaskTrainer(Trainer):
                 self.last_n_rewards.append(episode_count['reward'])
             if self.last_n_rewards:
                 if sum(self.last_n_rewards) / len(self.last_n_rewards) > .9:
-                    self.multi_task_env.geofence *= .95
+                    self.multi_task_env.geofence *= self.curriculum_rate
             return episode_count
         env = self.env.unwrapped
         assert isinstance(env, MultiTaskEnv)

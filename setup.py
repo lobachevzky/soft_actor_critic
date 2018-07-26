@@ -24,7 +24,7 @@ setup(
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',
         'write-rewards=scripts.write_rewards:main',
-        'best-run=scripts.best_run:main',
+        'sort-runs=scripts.sort_runs:main',
     ]),
     scripts=['bin/load', 'bin/filter', 'bin/new-tb'],
     install_requires=[

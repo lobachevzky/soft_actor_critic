@@ -14,14 +14,17 @@ def main():
     parser.add_argument('--smoothing', type=int, default=2000)
     args = parser.parse_args()
 
-    def reward(event_file):
-        print(event_file)
-        return collect_reward(event_file, args.smoothing) or -float('inf')
+    def get_reward(event_file):
+        reward = collect_reward(event_file, args.smoothing)
+        print('file:', event_file, '\treward:', reward)
+        return reward or -float('inf')
 
     event_files = collect_events_files(args.dirs)
     if event_files:
-        best_file = str(max(event_files, key=reward))
-        print(re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', best_file))
+        sorted_files = sorted(event_files, key=get_reward)
+        print('\nEvents files, sorted worst to best:')
+        for event_file in sorted_files:
+            print(re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', str(event_file)))
     else:
         print('No event files found.')
 

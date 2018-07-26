@@ -262,6 +262,8 @@ class MultiTaskTrainer(Trainer):
             if self.last_n_rewards:
                 if sum(self.last_n_rewards) / len(self.last_n_rewards) > .9:
                     self.multi_task_env.geofence *= .95
+                    self.multi_task_env.geofence = max(self.multi_task_env.geofence, .006)
+                    print('Geofence:', self.multi_task_env.geofence)
             return episode_count
         env = self.env.unwrapped
         assert isinstance(env, MultiTaskEnv)

@@ -8,6 +8,7 @@ import numpy as np
 from click._unicodefun import click
 
 from environments.mujoco import print1
+from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 
@@ -24,11 +25,12 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
-    env = PickAndPlaceEnv(
+    env = MultiTaskEnv(
         xml_filepath=xml_filepath,
+        fixed_block=True,
+        fixed_goal=np.array([.11, .22, .4]),
         steps_per_action=200,
-        block_xrange=(0, 0),
-        block_yrange=(0, 0),
+        geofence=.01,
     )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()

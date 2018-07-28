@@ -22,6 +22,17 @@ MAPS["5x5"] = [
     'HFFFF',
     'FHFFF',
     'FFFFF']
+MAPS["10x10"] = [
+    'HFFFFFFFFF',
+    'HFFFFFFFFH',
+    'FFFFFFHFHF',
+    'FFFFFFFHFF',
+    'FFFFFFFFHF',
+    'FFFHFFHFHF',
+    'FFFFFFFFFF',
+    'FFFFFFFFFF',
+    'FHFFFFFFFF',
+    'FFFFHFFFFF']
 
 DIRECTIONS = np.array([
     [0, -1],

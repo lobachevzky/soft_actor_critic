@@ -28,7 +28,7 @@ def parse_double(ctx, param, string):
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1, type=float)
 @click.option('--entropy-scale', default=5e-6, type=float)
-@click.option('--grad-clip', default=2e-2, type=float)
+@click.option('--grad-clip', default=None, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)

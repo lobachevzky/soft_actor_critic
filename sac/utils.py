@@ -148,14 +148,3 @@ class Step(namedtuple('Step', 's o1 a r o2 t')):
 
 
 ArrayLike = Union[np.ndarray, list]
-TRAIN_VALUES = """\
-entropy
-soft_update_xi_bar
-V_loss
-Q_loss
-pi_loss
-V_grad
-Q_grad
-pi_grad\
-""".split('\n')
-TrainStep = namedtuple('TrainStep', TRAIN_VALUES)

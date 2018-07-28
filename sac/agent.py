@@ -5,7 +5,7 @@ from typing import Callable, Iterable, List, Sequence
 import numpy as np
 import tensorflow as tf
 
-from sac.utils import TRAIN_VALUES, ArrayLike, Step, TrainStep
+from sac.utils import ArrayLike, Step
 
 NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
@@ -156,8 +156,18 @@ class AbstractAgent:
                 self.O2: step.o2,
                 self.T: step.t
             }
+            train_values = [
+            'entropy',
+            'soft_update_xi_bar',
+            'V_loss',
+            'Q_loss',
+            'pi_loss',
+            'V_grad',
+            'Q_grad',
+            'pi_grad',
+            ]
             return self.sess.run({attr: getattr(self, attr)
-                              for attr in TRAIN_VALUES}, feed_dict)
+                              for attr in train_values}, feed_dict)
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state = None) -> NetworkOutput:
         A=self.A_sampled1 if sample else self.A_max_likelihood

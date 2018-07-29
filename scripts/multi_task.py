@@ -51,7 +51,6 @@ def parse_coordinate(ctx, param, string):
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--geofence', default=.25, type=float)
 @click.option('--hindsight-geofence', default=None, type=float)
-@click.option('--curriculum-rate', default=1., type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--fixed-goal', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -67,7 +66,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence, n_networks, agent, curriculum_rate, fixed_block,
+        hindsight_geofence, geofence, n_networks, agent, fixed_block,
         fixed_goal):
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -104,7 +103,6 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         load_path=load_path,
         render=False,  # because render is handled inside env
         evaluation=eval,
-        curriculum_rate=curriculum_rate,
     )
     if n_networks:
         kwargs['base_agent'] = MoEAgent

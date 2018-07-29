@@ -240,34 +240,27 @@ class HindsightTrainer(Trainer):
 
 
 class MultiTaskTrainer(Trainer):
-    def __init__(self, evaluation, env, curriculum_rate, **kwargs):
-        self.curriculum_rate = curriculum_rate
+    def __init__(self, evaluation, env, **kwargs):
         self.eval = evaluation
         self.last_n_rewards = deque(maxlen=20)
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env=env, **kwargs)
 
     def run_episode(self, o1, perform_updates, render):
-        if not self.is_eval_period():
-            episode_count = super().run_episode(
-                o1=o1, perform_updates=perform_updates, render=render)
-            if episode_count['time_steps'] > 5:
-                self.last_n_rewards.append(episode_count['reward'])
-            if self.last_n_rewards:
-                if sum(self.last_n_rewards) / len(self.last_n_rewards) > .9:
-                    self.multi_task_env.geofence *= self.curriculum_rate
-            return episode_count
         env = self.env.unwrapped
         assert isinstance(env, MultiTaskEnv)
-        for goal_corner in env.goal_corners:
-            o1 = self.reset()
-            env.goal = goal_corner + env.goal_size / 2
-            count = super().run_episode(
-                o1=o1, perform_updates=perform_updates, render=render)
-            for k in count:
-                print(f'{k}: {count[k]}')
-        print('Evaluation complete.')
-        exit()
+        if self.is_eval_period():
+            for goal_corner in env.goal_corners:
+                o1 = self.reset()
+                env.goal = goal_corner + env.goal_size / 2
+                count = super().run_episode(
+                    o1=o1, perform_updates=perform_updates, render=render)
+                for k in count:
+                    print(f'{k}: {count[k]}')
+            print('Evaluation complete.')
+            exit()
+        else:
+            return super().run_episode(o1, perform_updates, render)
 
     def is_eval_period(self):
         return self.eval

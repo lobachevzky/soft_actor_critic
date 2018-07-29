@@ -36,6 +36,7 @@ def parse_double(ctx, param, string):
 @click.option('--random-map', is_flag=True)
 @click.option('--random-start', is_flag=True)
 @click.option('--random-goal', is_flag=True)
+@click.option('--default-reward', default=-.1, type=float)
 @click.option('--is-slippery', is_flag=True)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
@@ -43,14 +44,16 @@ def parse_double(ctx, param, string):
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
         grad_clip, map_dims, max_steps, n_networks, random_map, random_start, random_goal,
-        is_slippery):
+        is_slippery, default_reward):
     env = TimeLimit(
         env=FrozenLakeEnv(
             map_dims=map_dims,
             random_map=random_map,
             random_start=random_start,
             random_goal=random_goal,
-            is_slippery=is_slippery),
+            is_slippery=is_slippery,
+            default_reward=default_reward,
+        ),
         max_episode_steps=max_steps)
     kwargs = dict(
         env=env,

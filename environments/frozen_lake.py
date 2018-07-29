@@ -45,11 +45,13 @@ DIRECTIONS = np.array([
 class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
     def __init__(self,
                  map_dims: Tuple[int, int] = (4, 4),
+                 default_reward: float = 0.,
                  is_slippery: bool = False,
                  random_start: bool = False,
                  random_goal: bool = False,
                  random_map=False):
 
+        self.default_reward = default_reward or 0
         self.is_slippery = is_slippery
         self.random_start = random_start
         self.random_goal = random_goal
@@ -215,7 +217,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         if self.random_goal:
             s = Observation(observation=s, goal=self.goal_vector())
         if r == 0:
-            r = -.1
+            r = self.default_reward
         i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
 

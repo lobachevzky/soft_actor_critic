@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.contrib.rnn import BasicLSTMCell, LSTMStateTuple
 
 from sac.agent import AbstractAgent, NetworkOutput
-from sac.utils import ArrayLike, Step, TrainStep
+from sac.utils import ArrayLike, Step
 
 
 def mlp(inputs, layer_size, n_layers, activation):
@@ -96,7 +96,7 @@ class LstmAgent(AbstractAgent):
     def state_feed(self, states):
         return dict(zip(self.S, states))
 
-    def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
+    def train_step(self, step: Step, feed_dict: dict = None) -> dict:
         assert np.shape(step.s) == np.shape(self.initial_state)
         if feed_dict is None:
             feed_dict = {

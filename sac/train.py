@@ -131,16 +131,9 @@ class Trainer:
                     step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
+                            k.replace(' ', '_'): v
+                            for k, v in step.items()
+                            if np.isscalar(v)
                         }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))

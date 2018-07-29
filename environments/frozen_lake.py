@@ -216,6 +216,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             s = Observation(observation=s, goal=self.goal_vector())
         if r == 0:
             r = -.1
+        i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
 
     def one_hotify(self, s):

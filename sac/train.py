@@ -98,7 +98,7 @@ class Trainer:
         if final_index is None:
             final_index = 0  # points to current time step
         else:
-            final_index -= self.time_steps()
+            final_index -= self.time_steps()  # relative to start of episode
         if self.buffer.empty:
             return None
         return Step(*self.buffer[-self.time_steps():final_index])
@@ -224,15 +224,14 @@ class HindsightTrainer(Trainer):
         if self.time_steps() > 0:
             new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
             self.buffer.append(new_trajectory)
-        if self.n_goals - 1 and self.time_steps() > 0:
-            final_indexes = np.random.randint(
-                1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
+        if self.n_goals - 1 and self.time_steps() > 1:
+            final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:
-                self.buffer.append(
-                    self.hindsight_env.recompute_trajectory(
-                        self.trajectory()[:final_index]))
+                traj = self.trajectory(final_index)
+                new_traj = self.hindsight_env.recompute_trajectory(traj)
+                self.buffer.append(new_traj)
 
     def reset(self) -> Obs:
         self.add_hindsight_trajectories()

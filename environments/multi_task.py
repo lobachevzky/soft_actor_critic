@@ -20,7 +20,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.geofence = geofence
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .4001]))
-        self.goal = self.fixed_goal or self.goal_space.sample()
+        self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
 

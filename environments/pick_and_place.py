@@ -6,6 +6,8 @@ from gym import spaces
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 
+from sac.utils import vectorize
+
 CHEAT_STARTS = [[
     7.450e-05,
     -3.027e-03,
@@ -69,7 +71,8 @@ class PickAndPlaceEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        self.observation_space = self._get_obs_space()
+        inf_like_obs = np.inf * np.ones_like(vectorize(self._get_obs()), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-inf_like_obs, high=inf_like_obs)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -94,51 +97,60 @@ class PickAndPlaceEnv(MujocoEnv):
 
         return self.init_qpos
 
-    def _get_obs_space(self):
-        qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
-        qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]
-        for joint_id in range(self.sim.njnt):
-            if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
-                qposadr = self.sim.get_jnt_qposadr(joint_id)
-                qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
-        if not self._fixed_block:
-            block_joint = self.sim.get_jnt_qposadr('block1joint')
-            qpos_limits[block_joint:block_joint + 7] = [
-                self.block_xrange,  # x
-                self.block_yrange,  # y
-                (.4, .921),  # z
-                (0, 1),  # quat 0
-                (0, 0),  # quat 1
-                (0, 0),  # quat 2
-                (-1, 1),  # quat 3
-            ]
-        return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
+    def _get_obs_space(self, obs):
+        inf_like_obs = np.inf * np.ones_like(obs, dtype=np.float32)
+        return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
 
-    def _qvel_obs(self):
-        def get_qvels(joints):
-            base_qvel = []
-            for joint in joints:
-                try:
-                    base_qvel.append(self.sim.get_joint_qvel(joint))
-                except RuntimeError:
-                    pass
-            return np.array(base_qvel)
+    def get_qvels(self, joints):
+        base_qvel = []
+        for joint in joints:
+            try:
+                base_qvel.append(self.sim.get_joint_qvel(joint))
+            except RuntimeError:
+                pass
+        return np.array(base_qvel)
 
-        if self._obs_type == 'qvel':
+    def _qvel_obs(self, obs_type=None):
+        obs_type = obs_type or self._obs_type
+
+        if obs_type == 'qvel':
             return self.sim.qvel
 
-        elif self._obs_type == 'robot-qvel':
-            return get_qvels([
+        elif obs_type == 'robot-qvel':
+            return self.get_qvels([
                 'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
                 'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
             ])
-        elif self._obs_type == 'base-qvel':
-            return get_qvels(['slide_x', 'slide_x'])
+        elif obs_type == 'base-qvel':
+            return self.get_qvels(['slide_x', 'slide_x'])
         else:
             return []
 
     def _get_obs(self):
-        return np.concatenate([self.sim.qpos, self._qvel_obs()])
+        # positions
+        grip_pos = self.gripper_pos()
+        dt = self.sim.nsubsteps * self.sim.timestep
+        grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
+                             for name in self._finger_names)
+        object_pos = self.block_pos()
+        # rotations
+        object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+        # velocities
+        object_velp = self.sim.get_body_xvelp(self._block_name) * dt
+        object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+        # gripper state
+        object_rel_pos = object_pos - grip_pos
+        object_velp -= grip_velp
+        gripper_state = self.gripper_pos()
+        qvels = self.get_qvels([f'hand_{x}_proximal_joint' for x in 'lr'])
+        gripper_vel = dt * .5 * qvels
+
+        #     achieved_goal = np.squeeze(object_pos.copy())
+
+        return np.concatenate([
+            grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
+            object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
+        ])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._block_name)
@@ -177,3 +189,24 @@ class PickAndPlaceEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
+
+
+
+def mat2euler(mat):
+    """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
+    mat = np.asarray(mat, dtype=np.float64)
+    assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
+
+    cy = np.sqrt(mat[..., 2, 2] * mat[..., 2, 2] + mat[..., 1, 2] * mat[..., 1, 2])
+    condition = cy > np.finfo(np.float64).eps * 4.
+    euler = np.empty(mat.shape[:-1], dtype=np.float64)
+    euler[..., 2] = np.where(condition,
+                             -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
+                             -np.arctan2(-mat[..., 1, 0], mat[..., 1, 1]))
+    euler[..., 1] = np.where(condition,
+                             -np.arctan2(-mat[..., 0, 2], cy),
+                             -np.arctan2(-mat[..., 0, 2], cy))
+    euler[..., 0] = np.where(condition,
+                             -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]),
+                             0.0)
+    return euler

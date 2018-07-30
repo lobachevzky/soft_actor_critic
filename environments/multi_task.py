@@ -18,14 +18,11 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
         self.geofence = geofence
-        self.goal = self.fixed_goal
-        super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .4001]))
+        self.goal = self.fixed_goal or self.goal_space.sample()
+        super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
-        self.observation_space = spaces.Box(
-            low=vectorize([self.observation_space.low, self.goal_space.low]),
-            high=vectorize([self.observation_space.high, self.goal_space.high]))
 
         goal_size = np.array([.0317, .0635, .0234]) * geofence
         x, y, z = [
@@ -44,8 +41,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def _reset_qpos(self):
         if self.randomize_pose:
             for joint in [
-                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                    'wrist_roll_joint', 'hand_l_proximal_joint'
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint'
             ]:
                 qpos_idx = self.sim.get_jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)

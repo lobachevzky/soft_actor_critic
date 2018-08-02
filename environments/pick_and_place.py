@@ -101,28 +101,28 @@ class PickAndPlaceEnv(MujocoEnv):
         inf_like_obs = np.inf * np.ones_like(obs, dtype=np.float32)
         return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
 
-    def get_qvels(self, joints):
-        base_qvel = []
-        for joint in joints:
-            try:
-                base_qvel.append(self.sim.get_joint_qvel(joint))
-            except RuntimeError:
-                pass
-        return np.array(base_qvel)
-
     def _qvel_obs(self, obs_type=None):
         obs_type = obs_type or self._obs_type
+
+        def get_qvels(joints):
+            base_qvel = []
+            for joint in joints:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except RuntimeError:
+                    pass
+            return np.array(base_qvel)
 
         if obs_type == 'qvel':
             return self.sim.qvel
 
         elif obs_type == 'robot-qvel':
-            return self.get_qvels([
+            return get_qvels([
                 'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
                 'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
             ])
         elif obs_type == 'base-qvel':
-            return self.get_qvels(['slide_x', 'slide_x'])
+            return get_qvels(['slide_x', 'slide_x'])
         else:
             return []
 
@@ -130,9 +130,9 @@ class PickAndPlaceEnv(MujocoEnv):
         # positions
         grip_pos = self.gripper_pos()
         dt = self.sim.nsubsteps * self.sim.timestep
+        object_pos = self.block_pos()
         grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
                              for name in self._finger_names)
-        object_pos = self.block_pos()
         # rotations
         object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
         # velocities
@@ -141,11 +141,11 @@ class PickAndPlaceEnv(MujocoEnv):
         # gripper state
         object_rel_pos = object_pos - grip_pos
         object_velp -= grip_velp
-        gripper_state = self.gripper_pos()
-        qvels = self.get_qvels([f'hand_{x}_proximal_joint' for x in 'lr'])
+        gripper_state = np.array(
+            [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
+        qvels = np.array(
+            [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
         gripper_vel = dt * .5 * qvels
-
-        #     achieved_goal = np.squeeze(object_pos.copy())
 
         return np.concatenate([
             grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
@@ -189,7 +189,6 @@ class PickAndPlaceEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
-
 
 
 def mat2euler(mat):

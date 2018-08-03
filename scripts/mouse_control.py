@@ -27,10 +27,10 @@ def cli(discrete, xml_file):
 
     env = MultiTaskEnv(
         xml_filepath=xml_filepath,
-        fixed_block=True,
+        fixed_block=np.array([0, 0, .43]),
         fixed_goal=np.array([.11, .22, .4]),
         steps_per_action=200,
-        geofence=.01,
+        geofence=.03,
     )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()

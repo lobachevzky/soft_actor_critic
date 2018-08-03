@@ -19,7 +19,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.randomize_pose = randomize_pose
         self.geofence = geofence
         self.goal_space = spaces.Box(
-            low=np.array([-.13, -.21, .40]), high=np.array([.10, .21, .4001]))
+            low=np.array([-.11, -.19, .40]), high=np.array([.09, .2, .4001]))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
@@ -77,4 +77,5 @@ class MultiTaskEnv(PickAndPlaceEnv):
             labels = dict()
         for label in self.labels:
             labels[tuple(label)] = 'x'
+        labels[tuple(self.goal)] = 'g'
         return super().render(labels=labels, **kwargs)

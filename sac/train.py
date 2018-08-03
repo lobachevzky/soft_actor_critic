@@ -241,7 +241,8 @@ class HindsightTrainer(Trainer):
 class MultiTaskTrainer(Trainer):
     def __init__(self, evaluation, env, **kwargs):
         self.eval = evaluation
-        self.last_n_rewards = deque(maxlen=20)
+        self.n = 50000
+        self.last_n_rewards = deque(maxlen=self.n)
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env=env, **kwargs)
 
@@ -259,7 +260,13 @@ class MultiTaskTrainer(Trainer):
             print('Evaluation complete.')
             exit()
         else:
-            return super().run_episode(o1, perform_updates, render)
+            episode_count = super().run_episode(o1, perform_updates, render)
+            self.last_n_rewards.append(episode_count['reward'])
+            average_reward = sum(self.last_n_rewards) / self.n
+            if average_reward > .96:
+                print(f'Reward for last {self.n} episodes: {average_reward}')
+                exit()
+            return episode_count
 
     def is_eval_period(self):
         return self.eval

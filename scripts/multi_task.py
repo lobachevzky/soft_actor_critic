@@ -51,7 +51,7 @@ def parse_coordinate(ctx, param, string):
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--geofence', default=.25, type=float)
 @click.option('--hindsight-geofence', default=None, type=float)
-@click.option('--fixed-block', is_flag=True)
+@click.option('--fixed-block', default=None, callback=parse_coordinate)
 @click.option('--fixed-goal', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option(

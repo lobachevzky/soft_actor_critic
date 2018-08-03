@@ -13,7 +13,7 @@ Observation = namedtuple('Obs', 'observation goal')
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, geofence: float, randomize_pose=False, fixed_block=False, fixed_goal=None, **kwargs):
+    def __init__(self, geofence: float, randomize_pose=False, fixed_block=None, fixed_goal=None, **kwargs):
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
@@ -55,12 +55,16 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.init_qpos[r] = self.init_qpos[l]
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
-        if not self.fixed_block:
+        if self.fixed_block is None:
             self.init_qpos[[
                 block_joint + 0, block_joint + 1, block_joint + 3, block_joint + 6
             ]] = np.random.uniform(
                 low=list(self.goal_space.low)[:2] + [0, -1],
                 high=list(self.goal_space.high)[:2] + [1, 1])
+        else:
+            self.init_qpos[[
+                block_joint + 0, block_joint + 1, block_joint + 2
+            ]] = self.fixed_block
         return self.init_qpos
 
     def reset(self):

@@ -25,12 +25,13 @@ class MultiTaskEnv(PickAndPlaceEnv):
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
 
         goal_size = np.array([.0317, .0635, .0234]) * geofence
+        intervals = [2, 3, 1]
         x, y, z = [
-            np.arange(l, h, s)
-            for l, h, s in zip(self.goal_space.low, self.goal_space.high, goal_size)
+            np.linspace(l, h, n)
+            for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y, z)))
-        # self.labels = {tuple(g): '.' for g in goal_corners}
+        self.labels = {tuple(g): '.' for g in goal_corners}
 
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()) < self.geofence
@@ -70,5 +71,6 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = dict()
-        labels[tuple(self.goal)] = 'x'
+        for label in self.labels:
+            labels[tuple(label)] = 'x'
         return super().render(labels=labels, **kwargs)

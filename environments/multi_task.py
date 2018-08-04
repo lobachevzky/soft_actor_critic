@@ -3,11 +3,10 @@ from collections import namedtuple
 
 import numpy as np
 from gym import spaces
+from mujoco import ObjType
 
 from environments.mujoco import distance_between
 from environments.pick_and_place import PickAndPlaceEnv
-from mujoco import ObjType
-from sac.utils import vectorize
 
 Observation = namedtuple('Obs', 'observation goal')
 
@@ -23,8 +22,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
-
-        goal_size = np.array([.0317, .0635, .0234]) * geofence
+        # goal_size = np.array([.0317, .0635, .0234]) * geofence
         intervals = [2, 3, 1]
         x, y, z = [
             np.linspace(l, h, n)

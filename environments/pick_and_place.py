@@ -47,7 +47,6 @@ class PickAndPlaceEnv(MujocoEnv):
                  fixed_block=False,
                  min_lift_height=.02,
                  cheat_prob=0,
-                 obs_type=None,
                  **kwargs):
         if block_xrange is None:
             block_xrange = (0, 0)
@@ -58,7 +57,6 @@ class PickAndPlaceEnv(MujocoEnv):
         self.grip = 0
         self.min_lift_height = min_lift_height
 
-        self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
@@ -71,8 +69,9 @@ class PickAndPlaceEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        inf_like_obs = np.inf * np.ones_like(vectorize(self._get_obs()), dtype=np.float32)
-        self.observation_space = spaces.Box(low=-inf_like_obs, high=inf_like_obs)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf,
+                                            shape=np.shape(vectorize(self._get_obs())))
+
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -101,32 +100,8 @@ class PickAndPlaceEnv(MujocoEnv):
         inf_like_obs = np.inf * np.ones_like(obs, dtype=np.float32)
         return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
 
-    def _qvel_obs(self, obs_type=None):
-        obs_type = obs_type or self._obs_type
-
-        def get_qvels(joints):
-            base_qvel = []
-            for joint in joints:
-                try:
-                    base_qvel.append(self.sim.get_joint_qvel(joint))
-                except RuntimeError:
-                    pass
-            return np.array(base_qvel)
-
-        if obs_type == 'qvel':
-            return self.sim.qvel
-
-        elif obs_type == 'robot-qvel':
-            return get_qvels([
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
-            ])
-        elif obs_type == 'base-qvel':
-            return get_qvels(['slide_x', 'slide_x'])
-        else:
-            return []
-
     def _get_obs(self):
+
         # positions
         grip_pos = self.gripper_pos()
         dt = self.sim.nsubsteps * self.sim.timestep
@@ -135,9 +110,11 @@ class PickAndPlaceEnv(MujocoEnv):
                              for name in self._finger_names)
         # rotations
         object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+
         # velocities
         object_velp = self.sim.get_body_xvelp(self._block_name) * dt
         object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+
         # gripper state
         object_rel_pos = object_pos - grip_pos
         object_velp -= grip_velp

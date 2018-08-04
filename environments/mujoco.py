@@ -66,7 +66,7 @@ class MujocoEnv:
 
     def render(self, mode=None, camera_name=None, labels=None):
         if mode == 'rgb_array':
-            return self.sim.render_offscreen(camera_name=camera_name)
+            return self.sim.render_offscreen(camera_name=camera_name, labels=labels)
         return self.sim.render(camera_name=camera_name, labels=labels)
 
     def image(self, camera_name='rgb'):

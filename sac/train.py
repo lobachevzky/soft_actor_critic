@@ -1,7 +1,6 @@
 import itertools
 import time
-from collections import Counter, namedtuple
-from collections import deque
+from collections import Counter, deque, namedtuple
 from typing import Optional, Tuple
 
 import gym
@@ -132,8 +131,7 @@ class Trainer:
                     episode_mean.update(
                         Counter({
                             k.replace(' ', '_'): v
-                            for k, v in step.items()
-                            if np.isscalar(v)
+                            for k, v in step.items() if np.isscalar(v)
                         }))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))

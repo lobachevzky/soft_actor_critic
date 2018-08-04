@@ -5,7 +5,6 @@ from gym import spaces
 
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
-
 from sac.utils import vectorize
 
 CHEAT_STARTS = [[
@@ -69,8 +68,8 @@ class PickAndPlaceEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf,
-                                            shape=np.shape(vectorize(self._get_obs())))
+        self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
 
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
@@ -106,8 +105,7 @@ class PickAndPlaceEnv(MujocoEnv):
         grip_pos = self.gripper_pos()
         dt = self.sim.nsubsteps * self.sim.timestep
         object_pos = self.block_pos()
-        grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
-                             for name in self._finger_names)
+        grip_velp = .5 * sum(self.sim.get_body_xvelp(name) for name in self._finger_names)
         # rotations
         object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
 
@@ -125,8 +123,15 @@ class PickAndPlaceEnv(MujocoEnv):
         gripper_vel = dt * .5 * qvels
 
         return np.concatenate([
-            grip_pos, object_pos.ravel(), object_rel_pos.ravel(), gripper_state, object_rot.ravel(),
-            object_velp.ravel(), object_velr.ravel(), grip_velp, gripper_vel,
+            grip_pos,
+            object_pos.ravel(),
+            object_rel_pos.ravel(),
+            gripper_state,
+            object_rot.ravel(),
+            object_velp.ravel(),
+            object_velr.ravel(),
+            grip_velp,
+            gripper_vel,
         ])
 
     def block_pos(self):
@@ -176,13 +181,9 @@ def mat2euler(mat):
     cy = np.sqrt(mat[..., 2, 2] * mat[..., 2, 2] + mat[..., 1, 2] * mat[..., 1, 2])
     condition = cy > np.finfo(np.float64).eps * 4.
     euler = np.empty(mat.shape[:-1], dtype=np.float64)
-    euler[..., 2] = np.where(condition,
-                             -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
+    euler[..., 2] = np.where(condition, -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
                              -np.arctan2(-mat[..., 1, 0], mat[..., 1, 1]))
-    euler[..., 1] = np.where(condition,
-                             -np.arctan2(-mat[..., 0, 2], cy),
+    euler[..., 1] = np.where(condition, -np.arctan2(-mat[..., 0, 2], cy),
                              -np.arctan2(-mat[..., 0, 2], cy))
-    euler[..., 0] = np.where(condition,
-                             -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]),
-                             0.0)
+    euler[..., 0] = np.where(condition, -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]), 0.0)
     return euler

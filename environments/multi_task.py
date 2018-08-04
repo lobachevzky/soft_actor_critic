@@ -3,16 +3,21 @@ from collections import namedtuple
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environments.mujoco import distance_between
 from environments.pick_and_place import PickAndPlaceEnv
+from mujoco import ObjType
 
 Observation = namedtuple('Obs', 'observation goal')
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, geofence: float, randomize_pose=False, fixed_block=None, fixed_goal=None, **kwargs):
+    def __init__(self,
+                 geofence: float,
+                 randomize_pose=False,
+                 fixed_block=None,
+                 fixed_goal=None,
+                 **kwargs):
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
@@ -40,8 +45,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def _reset_qpos(self):
         if self.randomize_pose:
             for joint in [
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint'
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
             ]:
                 qpos_idx = self.sim.get_jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
@@ -60,9 +65,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
                 low=list(self.goal_space.low)[:2] + [0, -1],
                 high=list(self.goal_space.high)[:2] + [1, 1])
         else:
-            self.init_qpos[[
-                block_joint + 0, block_joint + 1, block_joint + 2
-            ]] = self.fixed_block
+            self.init_qpos[[block_joint + 0, block_joint + 1,
+                            block_joint + 2]] = self.fixed_block
         return self.init_qpos
 
     def reset(self):

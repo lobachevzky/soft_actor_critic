@@ -1,7 +1,7 @@
 from collections import namedtuple
 from itertools import islice
 from pathlib import Path
-from typing import Any, Callable, Optional, Union, List
+from typing import Any, Callable, Optional, Union
 
 import gym
 import numpy as np
@@ -130,8 +130,8 @@ def collect_reward(event_file_path: Path, n_rewards: int) -> Optional[float]:
     events = islice(iterator, max(length - n_rewards, 0), length)
 
     def get_reward(event):
-        return next((v.simple_value for v in event.summary.value
-                     if v.tag == 'reward'), None)
+        return next((v.simple_value for v in event.summary.value if v.tag == 'reward'),
+                    None)
 
     rewards = (get_reward(e) for e in events)
     rewards = [r for r in rewards if r is not None]

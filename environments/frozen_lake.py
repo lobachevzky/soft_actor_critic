@@ -16,23 +16,11 @@ MAPS["3x3"] = [
 ]
 
 MAPS["3x4"] = ["SFFF", "FHFH", "HFFG"]
-MAPS["5x5"] = [
-    'FFFFH',
-    'HHFFF',
-    'HFFFF',
-    'FHFFF',
-    'FFFFF']
+MAPS["5x5"] = ['FFFFH', 'HHFFF', 'HFFFF', 'FHFFF', 'FFFFF']
 MAPS["10x10"] = [
-    'HFFFFFFFFF',
-    'HFFFFFFFFH',
-    'FFFFFFHFHF',
-    'FFFFFFFHFF',
-    'FFFFFFFFHF',
-    'FFFHFFHFHF',
-    'FFFFFFFFFF',
-    'FFFFFFFFFF',
-    'FHFFFFFFFF',
-    'FFFFHFFFFF']
+    'HFFFFFFFFF', 'HFFFFFFFFH', 'FFFFFFHFHF', 'FFFFFFFHFF', 'FFFFFFFFHF', 'FFFHFFHFHF',
+    'FFFFFFFFFF', 'FFFFFFFFFF', 'FHFFFFFFFF', 'FFFFHFFFFF'
+]
 
 DIRECTIONS = np.array([
     [0, -1],

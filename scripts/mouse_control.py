@@ -9,7 +9,6 @@ from click._unicodefun import click
 
 from environments.mujoco import print1
 from environments.multi_task import MultiTaskEnv
-from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
 
 saved_pos = None

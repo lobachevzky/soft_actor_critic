@@ -23,21 +23,21 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.randomize_pose = randomize_pose
         self.geofence = geofence
         self.goal_space = spaces.Box(
-            low=np.array([-.11, -.19, .40]), high=np.array([.09, .2, .4001]))
+            low=np.array([-.11, -.19]), high=np.array([.09, .2]))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         # goal_size = np.array([.0317, .0635, .0234]) * geofence
         intervals = [2, 3, 1]
-        x, y, z = [
+        x, y = [
             np.linspace(l, h, n)
             for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
-        goal_corners = np.array(list(itertools.product(x, y, z)))
-        self.labels = {tuple(g): '.' for g in goal_corners}
+        goal_corners = np.array(list(itertools.product(x, y)))
+        self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
 
     def _is_successful(self):
-        return distance_between(self.goal, self.block_pos()) < self.geofence
+        return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
 
     def _get_obs(self):
         return Observation(observation=super()._get_obs(), goal=self.goal)
@@ -62,8 +62,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
             self.init_qpos[[
                 block_joint + 0, block_joint + 1, block_joint + 3, block_joint + 6
             ]] = np.random.uniform(
-                low=list(self.goal_space.low)[:2] + [0, -1],
-                high=list(self.goal_space.high)[:2] + [1, 1])
+                low=list(self.goal_space.low) + [0, -1],
+                high=list(self.goal_space.high) + [1, 1])
         else:
             self.init_qpos[[block_joint + 0, block_joint + 1,
                             block_joint + 2]] = self.fixed_block

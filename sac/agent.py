@@ -157,34 +157,34 @@ class AbstractAgent:
                 self.T: step.t
             }
             train_values = [
-            'entropy',
-            'soft_update_xi_bar',
-            'V_loss',
-            'Q_loss',
-            'pi_loss',
-            'V_grad',
-            'Q_grad',
-            'pi_grad',
+                'entropy',
+                'soft_update_xi_bar',
+                'V_loss',
+                'Q_loss',
+                'pi_loss',
+                'V_grad',
+                'Q_grad',
+                'pi_grad',
             ]
             return self.sess.run({attr: getattr(self, attr)
-                              for attr in train_values}, feed_dict)
+                                  for attr in train_values}, feed_dict)
 
-    def get_actions(self, o: ArrayLike, sample: bool = True, state = None) -> NetworkOutput:
-        A=self.A_sampled1 if sample else self.A_max_likelihood
-        return NetworkOutput(output = self.sess.run(A, {self.O1: [o]})[0], state = 0)
+    def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
+        A = self.A_sampled1 if sample else self.A_max_likelihood
+        return NetworkOutput(output=self.sess.run(A, {self.O1: [o]})[0], state=0)
 
     def pi_network(self, o: tf.Tensor) -> NetworkOutput:
         with tf.variable_scope('pi'):
             return self.network(o)
 
     def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str,
-                  reuse: bool= None) -> tf.Tensor:
-        with tf.variable_scope(name, reuse = reuse):
-            oa=tf.concat([o, a], axis = 1)
+                  reuse: bool = None) -> tf.Tensor:
+        with tf.variable_scope(name, reuse=reuse):
+            oa = tf.concat([o, a], axis=1)
             return tf.reshape(tf.layers.dense(self.network(oa).output, 1, name='q'), [-1])
 
-    def v_network(self, o: tf.Tensor, name: str, reuse: bool= None) -> tf.Tensor:
-        with tf.variable_scope(name, reuse = reuse):
+    def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
+        with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.network(o).output, 1, name='v'), [-1])
 
     @abstractmethod

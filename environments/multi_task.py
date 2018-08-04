@@ -13,7 +13,12 @@ Observation = namedtuple('Obs', 'observation goal')
 
 
 class MultiTaskEnv(PickAndPlaceEnv):
-    def __init__(self, geofence: float, randomize_pose=False, fixed_block=False, fixed_goal=None, **kwargs):
+    def __init__(self,
+                 geofence: float,
+                 randomize_pose=False,
+                 fixed_block=False,
+                 fixed_goal=None,
+                 **kwargs):
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
@@ -22,8 +27,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
         super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
             low=np.array([-.13, -.21, .40]), high=np.array([.10, .21, .4001]))
-            # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .4001]))
-            # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
+        # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .4001]))
+        # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         self.observation_space = spaces.Box(
             low=vectorize([self.observation_space.low, self.goal_space.low]),
             high=vectorize([self.observation_space.high, self.goal_space.high]))

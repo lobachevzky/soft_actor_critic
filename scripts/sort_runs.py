@@ -1,9 +1,8 @@
 #! /usr/bin/env python
 
 import argparse
-from pathlib import Path
-
 import re
+from pathlib import Path
 
 from sac.utils import collect_events_files, collect_reward
 
@@ -24,10 +23,11 @@ def main():
         sorted_files = sorted(event_files, key=get_reward)
         print('\nEvents files, sorted worst to best:')
         for event_file in sorted_files:
-            print(re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', str(event_file)))
+            print(
+                re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', str(event_file)))
     else:
         print('No event files found.')
 
+
 if __name__ == '__main__':
     main()
-

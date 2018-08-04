@@ -7,7 +7,6 @@ from gym import spaces
 from environments.mujoco import distance_between
 from environments.pick_and_place import PickAndPlaceEnv
 from mujoco import ObjType
-from sac.utils import vectorize
 
 Observation = namedtuple('Obs', 'observation goal')
 
@@ -16,30 +15,26 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def __init__(self,
                  geofence: float,
                  randomize_pose=False,
-                 fixed_block=False,
+                 fixed_block=None,
                  fixed_goal=None,
                  **kwargs):
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
         self.geofence = geofence
-        self.goal = self.fixed_goal
-        super().__init__(fixed_block=False, **kwargs)
         self.goal_space = spaces.Box(
-            low=np.array([-.13, -.21, .40]), high=np.array([.10, .21, .4001]))
-        # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .4001]))
+            low=np.array([-.11, -.19, .40]), high=np.array([.09, .2, .4001]))
+        self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
+        super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
-        self.observation_space = spaces.Box(
-            low=vectorize([self.observation_space.low, self.goal_space.low]),
-            high=vectorize([self.observation_space.high, self.goal_space.high]))
-
-        goal_size = np.array([.0317, .0635, .0234]) * geofence
+        # goal_size = np.array([.0317, .0635, .0234]) * geofence
+        intervals = [2, 3, 1]
         x, y, z = [
-            np.arange(l, h, s)
-            for l, h, s in zip(self.goal_space.low, self.goal_space.high, goal_size)
+            np.linspace(l, h, n)
+            for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y, z)))
-        # self.labels = {tuple(g): '.' for g in goal_corners}
+        self.labels = {tuple(g): '.' for g in goal_corners}
 
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()) < self.geofence
@@ -63,12 +58,15 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.init_qpos[r] = self.init_qpos[l]
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
-        if not self.fixed_block:
+        if self.fixed_block is None:
             self.init_qpos[[
                 block_joint + 0, block_joint + 1, block_joint + 3, block_joint + 6
             ]] = np.random.uniform(
                 low=list(self.goal_space.low)[:2] + [0, -1],
                 high=list(self.goal_space.high)[:2] + [1, 1])
+        else:
+            self.init_qpos[[block_joint + 0, block_joint + 1,
+                            block_joint + 2]] = self.fixed_block
         return self.init_qpos
 
     def reset(self):
@@ -79,5 +77,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = dict()
-        labels[tuple(self.goal)] = 'x'
+        for label in self.labels:
+            labels[tuple(label)] = 'x'
+        labels[tuple(self.goal)] = 'g'
         return super().render(labels=labels, **kwargs)

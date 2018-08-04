@@ -53,10 +53,17 @@ def component(function):
     return wrapper
 
 
+def is_scalar(x):
+    try:
+        return np.shape(x) == ()
+    except ValueError:
+        return False
+
+
 def get_size(x):
     if x is None:
         return 0
-    if np.isscalar(x):
+    if is_scalar(x):
         return 1
     return sum(map(get_size, x))
 
@@ -66,7 +73,7 @@ def assign_to_vector(x, vector: np.ndarray):
         dim = vector.size / vector.shape[-1]
     except ZeroDivisionError:
         return
-    if np.isscalar(x):
+    if is_scalar(x):
         x = np.array([x])
     if isinstance(x, np.ndarray):
         vector.reshape(x.shape)[:] = x

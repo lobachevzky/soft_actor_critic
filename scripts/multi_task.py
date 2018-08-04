@@ -47,12 +47,10 @@ def parse_coordinate(ctx, param, string):
 @click.option('--image-dims', type=str, callback=parse_double)
 @click.option('--record', is_flag=True)
 @click.option('--eval', is_flag=True)
-@click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
-@click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--geofence', default=.25, type=float)
 @click.option('--hindsight-geofence', default=None, type=float)
-@click.option('--fixed-block', is_flag=True)
+@click.option('--fixed-block', default=None, callback=parse_coordinate)
 @click.option('--fixed-goal', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option(
@@ -66,7 +64,7 @@ def parse_coordinate(ctx, param, string):
 def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
-        obs_type, temp_path, render_freq, record, record_path, record_freq, image_dims,
+        temp_path, render_freq, record, record_path, record_freq, image_dims,
         hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal):
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -74,7 +72,6 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
             geofence=geofence,
             xml_filepath=temp_path,
             steps_per_action=steps_per_action,
-            obs_type=obs_type,
             render_freq=render_freq,
             record=record,
             record_path=record_path,

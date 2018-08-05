@@ -77,7 +77,5 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = dict()
-        for label in self.labels:
-            labels[tuple(label)] = 'x'
         labels[tuple(self.goal) + (.412,)] = 'g'
         return super().render(labels=labels, **kwargs)

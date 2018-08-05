@@ -6,10 +6,10 @@
         <joint axis="0 1 0" damping="2200" name="slide_y" pos="0 0 0" type="slide" />
         <inertial pos="-0.025978 -0.005498 0.17633" quat="0.995796 0.0411155 -0.0685908 0.0446655" mass="50"
                   diaginertia="0.378627 0.344913 0.145159"/>
-        <geom type="mesh" group="1" mesh="base_light"/>
-        <geom type="mesh" group="1" mesh="body_light"/>
-        <geom type="mesh" group="1" mesh="torso_base"/>
-        <geom type="mesh" mesh="base"/>
+        <geom type="mesh" group="1" mesh="base_light" contype="0" conaffinity="0"/>
+        <geom type="mesh" group="1" mesh="body_light" contype="0" conaffinity="0"/>
+        <geom type="mesh" group="1" mesh="torso_base" />
+        <geom type="mesh" mesh="base" contype="0" conaffinity="0"/>
         <body name="base_roll_link" pos="0 0hsr">
             <inertial pos="-0.019482 0.002191 0.071013" quat="-0.163088 0.695987 0.176074 0.676759" mass="10.2394"
                       diaginertia="0.145076 0.0958414 0.0713624"/>
@@ -142,7 +142,7 @@
                           quat="0.4 0 .6 0">
                         <inertial pos="0.000131 -0.003929 0.00217" quat="0.672298 0.740248 0.0055614 0.00418043"
                                   mass="0.681225" diaginertia="7.43604e-05 6.49274e-05 3.81796e-05"/>
-                        <!--<joint name="wrist_flex_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-1.92 1.22" />-->
+                        <joint name="wrist_flex_joint" pos="0 0 0" axis="0 -1 0"/>
                         <geom type="mesh" contype="0" conaffinity="0" group="1" rgba="0.33 0.33 0.33 1"
                               mesh="wrist_flex"/>
                         <geom size="0.017 0.01" pos="0 0 0.04" type="cylinder" contype="0" conaffinity="0" group="1"

@@ -5,6 +5,7 @@ from functools import wraps
 from pathlib import Path, PurePath
 from typing import List
 from xml.etree import ElementTree as ET
+import re
 
 import click
 import tensorflow as tf
@@ -23,7 +24,7 @@ def put_in_xml_setter(ctx, param, value: str):
                  for p, v in setters if '_l_' in p] \
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
                    for p, v in setters if '_r_' in p]
-    return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
+    return [s._replace(path=s.path) for s in setters + mirroring]
 
 
 def parse_double(ctx, param, string):
@@ -153,10 +154,12 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
     def mutate_tree(tree: ET.ElementTree):
         for change in changes:
-            element_to_change = tree.find(str(change.path.parent))
+            parent = re.sub('/[^/]*$', '', change.path)
+            element_to_change = tree.find(parent)
             if isinstance(element_to_change, ET.Element):
                 print('setting', change.path, 'to', change.value)
-                element_to_change.set(change.path.name, change.value)
+                name = re.search('[^/]*$', change.path)[0]
+                element_to_change.set(name, change.value)
 
         for actuators in tree.iter('actuator'):
             for actuator in list(actuators):

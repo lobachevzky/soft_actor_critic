@@ -110,7 +110,7 @@
         <position gear="1" kp="1000" name="wrist_roll_motor" joint="wrist_roll_joint"
                   forcelimited="true" forcerange="-20 20"
                   ctrllimited="true" ctrlrange="-1.57 1.57"/>
-        <position gear="1" kp="1000" name="wrist_flex_motor" joint="wrist_flex_joint"
+        <position gear="1" kp="1500" name="wrist_flex_motor" joint="wrist_flex_joint"
                   forcelimited="true" forcerange="-20 20"
                   ctrllimited="true" ctrlrange="0 .6"/>
         <position gear="1" kp="1000" name="hand_l_proximal_motor" joint="hand_l_proximal_joint"

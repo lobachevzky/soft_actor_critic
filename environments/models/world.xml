@@ -76,11 +76,11 @@
         <geom name="floor" type="plane" size="2 2 2" pos="0 0 0" class="floor"/>
 
         <body name="pan" pos="0 0 .4">
-            <geom type="box" size=".17 .3167 .005" class="box"/>
-            <geom type="box" size=".001  .3167 .02" pos=".17 0  .01"  class="clear"/>
-            <geom type="box" size=".001  .3167 .02" pos="-.17 0 .01" class="clear"/>
-            <geom type="box" size=".17 .001  .02" pos="0 .3167  .01"  class="clear"/>
-            <geom type="box" size=".17 .001  .02" pos="0 -.3167 .01" class="clear"/>
+            <geom type="box" size=".17 .35 .005" class="box"/>
+            <geom type="box" size=".001  .35 .02" pos=".17 0  .01"  class="clear"/>
+            <geom type="box" size=".001  .35 .02" pos="-.17 0 .01" class="clear"/>
+            <geom type="box" size=".17 .001  .02" pos="0 .35  .01"  class="clear"/>
+            <geom type="box" size=".17 .001  .02" pos="0 -.35 .01" class="clear"/>
         </body>
 
         <body name="block1" pos="0 0 .43">

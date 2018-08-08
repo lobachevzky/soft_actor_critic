@@ -78,8 +78,8 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = dict()
-        z = (.412,)
-        labels[tuple(self.goal_space.low) + z] = 'x'
-        labels[tuple(self.goal_space.high) + z] = 'x'
-        labels[tuple(self.goal) + z] = 'g'
+        z = (.4,)
+        labels[tuple(self.goal_space.low) + z] = '['
+        labels[tuple(self.goal_space.high) + z] = ']'
+        labels[tuple(self.goal) + z] = '|'
         return super().render(labels=labels, **kwargs)

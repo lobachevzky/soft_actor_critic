@@ -74,13 +74,15 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def reset(self):
         if self.fixed_goal is None:
             self.goal = self.goal_space.sample()
+            self.init_qpos[self.sim.get_jnt_qposadr('goal_x')] = self.goal[0]
+            self.init_qpos[self.sim.get_jnt_qposadr('goal_y')] = self.goal[1]
         return super().reset()
 
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = dict()
-        z = (.4,)
-        labels[tuple(self.goal_space.low) + z] = '['
-        labels[tuple(self.goal_space.high) + z] = ']'
-        labels[tuple(self.goal) + z] = '|'
+        # z = (.4,)
+        # labels[tuple(self.goal_space.low) + z] = '['
+        # labels[tuple(self.goal_space.high) + z] = ']'
+        # labels[tuple(self.goal) + z] = '|'
         return super().render(labels=labels, **kwargs)

@@ -90,6 +90,11 @@ class MujocoEnv:
                 self.video_recorder.capture_frame()
 
     def reset(self):
+        for _ in range(100):
+            if self.render_freq > 0:
+                self.render()
+            if self._record_video:
+                self.video_recorder.capture_frame()
         self.sim.reset()
         qpos = self._reset_qpos()
         assert qpos.shape == (self.sim.nq, )

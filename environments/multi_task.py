@@ -53,6 +53,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
                 self.init_qpos[qpos_idx] = \
                     np.random.uniform(
                     *self.sim.jnt_range[jnt_range_idx])
+                    # self.sim.jnt_range[jnt_range_idx][1]
 
         r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')

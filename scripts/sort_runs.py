@@ -20,11 +20,14 @@ def main():
 
     event_files = collect_events_files(args.dirs)
     if event_files:
-        sorted_files = sorted(event_files, key=get_reward)
+        sorted_files = sorted([(get_reward(f), f) for f in event_files])
         print('\nEvents files, sorted worst to best:')
-        for event_file in sorted_files:
+        for reward, event_file in sorted_files:
             print(
-                re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', str(event_file)))
+                re.sub('.runs/tensorboard/|/events.out.tfevents.*', '', str(event_file)),
+                reward,
+                sep='\t'
+            )
     else:
         print('No event files found.')
 

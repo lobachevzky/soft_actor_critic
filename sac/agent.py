@@ -25,7 +25,8 @@ class AbstractAgent:
                  learning_rate: float,
                  grad_clip: float,
                  device_num: int,
-                 reuse=False) -> None:
+                 reuse=False,
+                 name='agent') -> None:
 
         self.reward_scale = reward_scale
         self.activation = activation
@@ -36,7 +37,7 @@ class AbstractAgent:
         self.sess = sess
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(
-                'agent', reuse=reuse):
+                name, reuse=reuse):
             seq_dim = [batch_size]
             if self.seq_len is not None:
                 seq_dim = [batch_size, self.seq_len]
@@ -100,9 +101,9 @@ class AbstractAgent:
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
-            def get_variables(name: str) -> List[tf.Variable]:
+            def get_variables(var_name: str) -> List[tf.Variable]:
                 return tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'agent/{name}/')
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/{var_name}/')
 
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 

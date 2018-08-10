@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 from gym import Wrapper, spaces
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -39,11 +39,7 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        self.agents = Agents(
-            act=self.build_agent(
-                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
-            train=self.build_agent(
-                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
+        self.agents = self.build_agents(batch_size, kwargs, seq_len, sess)
         self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
@@ -90,6 +86,13 @@ class Trainer:
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
 
+    def build_agents(self, batch_size, kwargs, seq_len, sess):
+        return Agents(
+            act=self.build_agent(
+                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
+            train=self.build_agent(
+                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
+
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
 
@@ -111,8 +114,7 @@ class Trainer:
         tick = time.time()
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
-            a, s = self.agents.act.get_actions(
-                self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
+            a, s = self.get_actions(o1, s)
             if render:
                 self.env.render()
             o2, r, t, info = self.step(a)
@@ -141,13 +143,21 @@ class Trainer:
                     self.episode_count[k] = episode_mean[k] / float(time_steps)
                 return self.episode_count
 
-    def build_agent(self, base_agent: AbstractAgent, **kwargs):
-        state_shape = self.env.observation_space.shape
-        if isinstance(self.env.action_space, spaces.Discrete):
-            action_shape = [self.env.action_space.n]
+    def get_actions(self, o1, s):
+        return self.agents.act.get_actions(
+            self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
+
+    def build_agent(self, base_agent: AbstractAgent, action_space=None, observation_space=None, **kwargs):
+        if observation_space is None:
+            observation_space = self.env.observation_space
+        if action_space is None:
+            action_space = self.env.action_space
+        state_shape = observation_space.shape
+        if isinstance(action_space, spaces.Discrete):
+            action_shape = [action_space.n]
             policy_type = CategoricalPolicy
         else:
-            action_shape = self.env.action_space.shape
+            action_shape = action_space.shape
             policy_type = GaussianPolicy
 
         class Agent(policy_type, base_agent):
@@ -272,3 +282,57 @@ class MultiTaskTrainer(Trainer):
 
 class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
     pass
+
+
+Hierarchical = namedtuple('Hierarchical', 'boss worker')
+
+
+class HierarchicalTrainer(MultiTaskHindsightTrainer):
+    def __init__(self, boss_act_freq,  **kwargs):
+        self.boss_act_freq = boss_act_freq
+        self.last_achieved_goal = None
+        super().__init__(**kwargs)
+
+    def build_agents(self, **kwargs):
+        obs = self.env.reset()  # type: Observation
+        action_space = spaces.Box(low=-1, high=1, shape=np.shape(obs.desired_goal))
+        boss_obs_shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
+
+        boss_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=boss_obs_shape)
+        boss_agent = self.build_agent(action_space=action_space,
+                                      observation_space=boss_obs_space,
+                                      name='master_agent',
+                                      **kwargs)
+        worker_agent = self.build_agent(action_space=self.env.action_space,
+                                        observation_space=self.env.observation_space,
+                                        name='servant_agent',
+                                        **kwargs)
+        return Hierarchical(boss=boss_agent, worker=worker_agent)
+
+    def get_actions(self, o1, s):
+        assert isinstance(self.agents, Hierarchical)
+        sample = not self.is_eval_period()
+        boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
+        if self.time_steps() % self.boss_act_freq == 0:
+            self.direction = self.agents.boss.get_action(self.preprocess_obs(boss_obs),
+                                                         state=s, sample=sample)
+            self.direction /= np.linalg.norm(self.direction)
+        worker_obs = vectorize([o1.observation, self.direction])
+        return self.agents.worker.get_action(self.preprocess_obs(worker_obs),
+                                             state=s, sample=sample)
+
+    def add_to_buffer(self, step: Step):
+        if self.time_steps() % self.boss_act_freq == 0:
+            if self.time_steps() > 0:
+                rel_step = step.o1.achieved_goal - self.last_achieved_goal
+                rel_step /= np.linalg.norm(rel_step)
+                self.buffers.boss.append(step.replace(a=rel_step))
+            self.last_achieved_goal = step.o1.achieved_goal
+        self.buffers.worker.append(step.replace(
+            o1=step.o1.replace(desired_goal=self.direction),
+            o2=step.o2.replace(desired_goal=self.direction),
+            r=np.dot()
+        ))
+
+
+

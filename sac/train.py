@@ -290,7 +290,7 @@ Hierarchical = namedtuple('Hierarchical', 'boss worker')
 class HierarchicalTrainer(MultiTaskHindsightTrainer):
     def __init__(self, boss_act_freq,  **kwargs):
         self.boss_act_freq = boss_act_freq
-        self.last_achieved_goal = None
+        self.last_achieved_goal = Hierarchical(boss=None, worker=None)
         super().__init__(**kwargs)
 
     def build_agents(self, **kwargs):
@@ -327,11 +327,11 @@ class HierarchicalTrainer(MultiTaskHindsightTrainer):
                 rel_step = step.o1.achieved_goal - self.last_achieved_goal
                 rel_step /= np.linalg.norm(rel_step)
                 self.buffers.boss.append(step.replace(a=rel_step))
-            self.last_achieved_goal = step.o1.achieved_goal
+            self.last_achieved_goal.boss = step.o1.achieved_goal
         self.buffers.worker.append(step.replace(
             o1=step.o1.replace(desired_goal=self.direction),
             o2=step.o2.replace(desired_goal=self.direction),
-            r=np.dot()
+            r=np.dot(self.direction, )
         ))
 
 

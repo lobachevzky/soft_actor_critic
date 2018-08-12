@@ -139,7 +139,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         self.desc[new_pos] = letter
 
     def goal_vector(self):
-        return self.one_hotify(self.to_s(*self.goal))
+        return np.array(self.goal)
 
     def reset(self):
         time.sleep(1)
@@ -191,17 +191,17 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
 
         if self.random_goal:
             observation = Observation(
-                observation=self.one_hotify(super().reset()), goal=self.goal_vector())
+                observation=self.preprocess(super().reset()), goal=self.goal_vector())
             return observation
         else:
-            return self.one_hotify(super().reset())
+            return self.preprocess(super().reset())
 
     def to_s(self, row, col):
         return row * self.ncol + col
 
     def step(self, a):
         s, r, t, i = super().step(a)
-        s = self.one_hotify(s)
+        s = self.preprocess(s)
         if self.random_goal:
             s = Observation(observation=s, goal=self.goal_vector())
         if r == 0:
@@ -209,10 +209,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
 
-    def one_hotify(self, s):
-        array = np.zeros(self.nS)
-        array[s] = 1
-        return array
+    def preprocess(self, s):
+        return s // self.nrow, s % self.ncol
 
     def render(self, *args, **kwargs):
         time.sleep(.5)

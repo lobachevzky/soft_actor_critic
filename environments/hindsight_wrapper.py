@@ -176,10 +176,11 @@ class FrozenLakeHindsightWrapper(HindsightWrapper):
         super().__init__(env)
 
     def _achieved_goal(self):
-        return self.frozen_lake_env.s
+        fl_env = self.frozen_lake_env
+        return np.array([fl_env.s // fl_env.nrow, fl_env.s % fl_env.ncol])
 
     def _is_success(self, achieved_goal, desired_goal):
-        return achieved_goal == desired_goal
+        return np.array_equal(achieved_goal, desired_goal)
 
     def _desired_goal(self):
-        return self.frozen_lake_env.goal
+        return self.frozen_lake_env.goal_vector()

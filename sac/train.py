@@ -8,9 +8,10 @@ import numpy as np
 import tensorflow as tf
 from gym import Wrapper, spaces
 
+from environments.frozen_lake import FrozenLakeEnv
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
-from sac.agent import AbstractAgent
+from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import Obs, Step, normalize, unwrap_env, vectorize
@@ -329,15 +330,19 @@ class HierarchicalTrainer(HindsightTrainer):
         sample = not self.is_eval_period()
         boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
         if self.time_steps() % self.boss_act_freq == 0:
-            self.direction = self.agents.act.boss.get_actions(boss_obs,
-                                                              state=s, sample=sample).output
-            self.direction /= np.linalg.norm(self.direction)
+            # self.direction = self.agents.act.boss.get_actions(boss_obs,
+            #                                                   state=s, sample=sample).output
+            self.direction = self.hindsight_env._desired_goal() - self.hindsight_env._achieved_goal()
+            self.direction = self.direction.astype(float) / np.linalg.norm(self.direction)
+            print(self.direction)
         worker_obs = vectorize([o1.observation, self.direction])
-        return self.agents.act.worker.get_actions(worker_obs,
-                                                  state=s, sample=sample)
+        oracle = worker_oracle(self.hindsight_env.frozen_lake_env, self.direction)
+        return NetworkOutput(output=oracle, state=0)
+        # return self.agents.act.worker.get_actions(worker_obs,
+        #                                           state=s, sample=sample)
 
     def add_to_buffer(self, step: Step):
-        if self.time_steps() % self.boss_act_freq == 0:
+        if self.time_steps() % self.boss_act_freq == 0 or step.t:
             if self.time_steps() > 0:
                 rel_step = step.o1.achieved_goal - self.last_achieved_goal
                 norm = np.linalg.norm(rel_step)
@@ -384,3 +389,28 @@ class HierarchicalTrainer(HindsightTrainer):
         self.add_hindsight_trajectories(self.buffers.boss)
         self.add_hindsight_trajectories(self.buffers.worker)
         return Trainer.reset(self)
+
+
+DIRECTIONS = np.array([
+    [0, -1],  # left
+    [1, 0],  # down
+    [0, 1],  # right
+    [-1, 0],  # up
+])
+
+
+def worker_oracle(env: FrozenLakeEnv, boss_dir):
+    def in_bounds(s):
+        return np.all(np.zeros(2) <= s) and np.all(s < np.array([env.nrow, env.ncol]))
+
+    s = np.array([env.s // env.nrow, env.s % env.ncol])
+
+    def alignment(i):
+        d = DIRECTIONS[i]
+        new_s = s + d
+        if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
+            return -np.inf
+        return np.dot(d, boss_dir)
+
+    l = list(map(alignment, range(4)))
+    return l

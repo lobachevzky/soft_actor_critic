@@ -61,6 +61,9 @@ class Trainer:
             except RuntimeError:
                 self.preprocess_func = vectorize
 
+        self.train(count, load_path, logdir, render, save_path, saver, sess, tb_writer)
+
+    def train(self, count, load_path, logdir, render, save_path, saver, sess, tb_writer):
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
                 print("model saved in path:", saver.save(sess, save_path=save_path))
@@ -288,16 +291,19 @@ Hierarchical = namedtuple('Hierarchical', 'boss worker')
 
 
 class HierarchicalTrainer(MultiTaskHindsightTrainer):
-    def __init__(self, boss_act_freq,  **kwargs):
+    def __init__(self, boss_act_freq, buffer_size, **kwargs):
         self.boss_act_freq = boss_act_freq
-        self.last_achieved_goal = Hierarchical(boss=None, worker=None)
-        super().__init__(**kwargs)
+        self.last_achieved_goal = None
+        self.direction = None
+        super().__init__(buffer_size=buffer_size, **kwargs)
+        self.buffers = Hierarchical(boss=ReplayBuffer(buffer_size),
+                                    worker=ReplayBuffer(buffer_size))
+        del self.buffer
 
     def build_agents(self, **kwargs):
         obs = self.env.reset()  # type: Observation
         action_space = spaces.Box(low=-1, high=1, shape=np.shape(obs.desired_goal))
         boss_obs_shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
-
         boss_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=boss_obs_shape)
         boss_agent = self.build_agent(action_space=action_space,
                                       observation_space=boss_obs_space,
@@ -310,7 +316,6 @@ class HierarchicalTrainer(MultiTaskHindsightTrainer):
         return Hierarchical(boss=boss_agent, worker=worker_agent)
 
     def get_actions(self, o1, s):
-        assert isinstance(self.agents, Hierarchical)
         sample = not self.is_eval_period()
         boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
         if self.time_steps() % self.boss_act_freq == 0:
@@ -327,12 +332,11 @@ class HierarchicalTrainer(MultiTaskHindsightTrainer):
                 rel_step = step.o1.achieved_goal - self.last_achieved_goal
                 rel_step /= np.linalg.norm(rel_step)
                 self.buffers.boss.append(step.replace(a=rel_step))
-            self.last_achieved_goal.boss = step.o1.achieved_goal
+            self.last_achieved_goal = step.o1.achieved_goal
+        movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         self.buffers.worker.append(step.replace(
             o1=step.o1.replace(desired_goal=self.direction),
             o2=step.o2.replace(desired_goal=self.direction),
-            r=np.dot(self.direction, )
+            r=np.dot(self.direction, movement)
         ))
-
-
 

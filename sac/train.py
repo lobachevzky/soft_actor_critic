@@ -290,7 +290,7 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 Hierarchical = namedtuple('Hierarchical', 'boss worker')
 
 
-class HierarchicalTrainer(MultiTaskHindsightTrainer):
+class HierarchicalTrainer(HindsightTrainer):
     def __init__(self, boss_act_freq, buffer_size, **kwargs):
         self.boss_act_freq = boss_act_freq
         self.last_achieved_goal = None

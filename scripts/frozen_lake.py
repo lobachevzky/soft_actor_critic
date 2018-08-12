@@ -4,7 +4,7 @@ from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
 from sac.networks import MlpAgent, MoEAgent
-from sac.train import Trainer
+from sac.train import Trainer, HierarchicalTrainer
 
 
 def check_probability(ctx, param, value):
@@ -40,11 +40,12 @@ def parse_double(ctx, param, string):
 @click.option('--is-slippery', is_flag=True)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
-@click.option('--n-networks', default=None, type=int)
+@click.option('--eval', is_flag=True)
+@click.option('--boss-freq', default=None, type=int)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
-        grad_clip, map_dims, max_steps, n_networks, random_map, random_start, random_goal,
-        is_slippery, default_reward):
+        grad_clip, map_dims, max_steps, random_map, random_start, random_goal,
+        is_slippery, default_reward, boss_freq, eval):
     env = TimeLimit(
         env=FrozenLakeEnv(
             map_dims=map_dims,
@@ -56,6 +57,7 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         ),
         max_episode_steps=max_steps)
     kwargs = dict(
+        base_agent=MlpAgent,
         env=env,
         seq_len=0,
         device_num=1,
@@ -73,11 +75,12 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         logdir=logdir,
         save_path=save_path,
         load_path=load_path,
-        render=render)
-    if n_networks:
-        Trainer(base_agent=MoEAgent, n_networks=n_networks, **kwargs)
+        render=render,
+    )
+    if boss_freq:
+        HierarchicalTrainer(boss_act_freq=boss_freq, **kwargs)
     else:
-        Trainer(base_agent=MlpAgent, **kwargs)
+        Trainer(**kwargs)
 
 
 if __name__ == '__main__':

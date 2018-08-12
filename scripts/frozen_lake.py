@@ -3,6 +3,7 @@ import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
+from environments.hindsight_wrapper import FrozenLakeHindsightWrapper
 from sac.networks import MlpAgent, MoEAgent
 from sac.train import Trainer, HierarchicalTrainer
 
@@ -40,22 +41,23 @@ def parse_double(ctx, param, string):
 @click.option('--is-slippery', is_flag=True)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
-@click.option('--eval', is_flag=True)
+@click.option('--n-goals', default=1, type=int)
 @click.option('--boss-freq', default=None, type=int)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
         grad_clip, map_dims, max_steps, random_map, random_start, random_goal,
-        is_slippery, default_reward, boss_freq, eval):
-    env = TimeLimit(
-        env=FrozenLakeEnv(
-            map_dims=map_dims,
-            random_map=random_map,
-            random_start=random_start,
-            random_goal=random_goal,
-            is_slippery=is_slippery,
-            default_reward=default_reward,
-        ),
-        max_episode_steps=max_steps)
+        is_slippery, default_reward, boss_freq, n_goals):
+    env = FrozenLakeHindsightWrapper(
+        TimeLimit(
+            env=FrozenLakeEnv(
+                map_dims=map_dims,
+                random_map=random_map,
+                random_start=random_start,
+                random_goal=random_goal,
+                is_slippery=is_slippery,
+                default_reward=default_reward,
+            ),
+            max_episode_steps=max_steps))
     kwargs = dict(
         base_agent=MlpAgent,
         env=env,
@@ -76,11 +78,12 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         save_path=save_path,
         load_path=load_path,
         render=render,
+        n_goals=n_goals,
     )
     if boss_freq:
         HierarchicalTrainer(boss_act_freq=boss_freq, **kwargs)
     else:
-        Trainer(**kwargs)
+        HierarchicalTrainer(**kwargs)
 
 
 if __name__ == '__main__':

@@ -39,7 +39,11 @@ class Trainer:
         config.inter_op_parallelism_threads = 1
         sess = tf.Session(config=config)
 
-        self.agents = self.build_agents(batch_size, kwargs, seq_len, sess)
+        self.agents = Agents(
+            act=self.build_agent(
+                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
+            train=self.build_agent(
+                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
         self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
@@ -88,13 +92,6 @@ class Trainer:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, count['time_steps'])
                 tb_writer.flush()
-
-    def build_agents(self, batch_size, kwargs, seq_len, sess):
-        return Agents(
-            act=self.build_agent(
-                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
-            train=self.build_agent(
-                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
 
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
@@ -290,6 +287,16 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 Hierarchical = namedtuple('Hierarchical', 'boss worker')
 
 
+class HierarchicalAgents(AbstractAgent):
+    def __init__(self, boss, worker):
+        self.boss = boss
+        self.worker = worker
+
+    @property
+    def seq_len(self):
+        return self._seq_len
+
+
 class HierarchicalTrainer(HindsightTrainer):
     def __init__(self, boss_act_freq, buffer_size, **kwargs):
         self.boss_act_freq = boss_act_freq
@@ -300,31 +307,31 @@ class HierarchicalTrainer(HindsightTrainer):
                                     worker=ReplayBuffer(buffer_size))
         del self.buffer
 
-    def build_agents(self, **kwargs):
+    def build_agent(self, name='agent', action_space=None, observation_space=None, **kwargs):
         obs = self.env.reset()  # type: Observation
         action_space = spaces.Box(low=-1, high=1, shape=np.shape(obs.desired_goal))
         boss_obs_shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
         boss_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=boss_obs_shape)
         boss_agent = self.build_agent(action_space=action_space,
                                       observation_space=boss_obs_space,
-                                      name='master_agent',
+                                      name='boss_' + name,
                                       **kwargs)
         worker_agent = self.build_agent(action_space=self.env.action_space,
                                         observation_space=self.env.observation_space,
-                                        name='servant_agent',
+                                        name='worker_' + name,
                                         **kwargs)
-        return Hierarchical(boss=boss_agent, worker=worker_agent)
+        return HierarchicalAgents(boss=boss_agent, worker=worker_agent)
 
     def get_actions(self, o1, s):
         sample = not self.is_eval_period()
         boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
         if self.time_steps() % self.boss_act_freq == 0:
-            self.direction = self.agents.boss.get_action(self.preprocess_obs(boss_obs),
-                                                         state=s, sample=sample)
+            self.direction = self.agents.act.boss.get_action(self.preprocess_obs(boss_obs),
+                                                             state=s, sample=sample)
             self.direction /= np.linalg.norm(self.direction)
         worker_obs = vectorize([o1.observation, self.direction])
-        return self.agents.worker.get_action(self.preprocess_obs(worker_obs),
-                                             state=s, sample=sample)
+        return self.agents.act.worker.get_action(self.preprocess_obs(worker_obs),
+                                                 state=s, sample=sample)
 
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0:
@@ -339,4 +346,3 @@ class HierarchicalTrainer(HindsightTrainer):
             o2=step.o2.replace(desired_goal=self.direction),
             r=np.dot(self.direction, movement)
         ))
-

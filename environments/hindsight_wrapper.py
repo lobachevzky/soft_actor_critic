@@ -7,6 +7,7 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
+from environments.frozen_lake import FrozenLakeEnv
 from environments.mujoco import distance_between
 from environments.multi_task import MultiTaskEnv
 from environments.pick_and_place import PickAndPlaceEnv
@@ -167,3 +168,18 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
             observation=self.env.reset().observation,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
+
+
+class FrozenLakeHindsightWrapper(HindsightWrapper):
+    def __init__(self, env):
+        self.frozen_lake_env = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))
+        super().__init__(env)
+
+    def _achieved_goal(self):
+        return self.frozen_lake_env.s
+
+    def _is_success(self, achieved_goal, desired_goal):
+        return achieved_goal == desired_goal
+
+    def _desired_goal(self):
+        return self.frozen_lake_env.goal

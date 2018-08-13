@@ -373,17 +373,17 @@ class HierarchicalTrainer(HindsightTrainer):
 
     def add_hindsight_trajectories(self, buffer):
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        if self.time_steps() > 0:
-            new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory(buffer))
-            buffer.append(new_trajectory)
-        if self.n_goals - 1 and self.time_steps() > 1:
-            final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
-            assert isinstance(final_indexes, np.ndarray)
-
-            for final_index in final_indexes:
-                traj = self.trajectory(buffer, final_index=final_index)
-                new_traj = self.hindsight_env.recompute_trajectory(traj)
-                buffer.append(new_traj)
+        # if self.time_steps() > 0:
+        #     new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory(buffer))
+        #     buffer.append(new_trajectory)
+        # if self.n_goals - 1 and self.time_steps() > 1:
+        #     final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
+        #     assert isinstance(final_indexes, np.ndarray)
+        #
+        #     for final_index in final_indexes:
+        #         traj = self.trajectory(buffer, final_index=final_index)
+        #         new_traj = self.hindsight_env.recompute_trajectory(traj)
+        #         buffer.append(new_traj)
 
     def reset(self) -> Obs:
         self.add_hindsight_trajectories(self.buffers.boss)

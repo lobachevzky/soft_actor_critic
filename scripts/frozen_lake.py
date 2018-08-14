@@ -47,20 +47,18 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
         grad_clip, map_dims, max_steps, random_map, random_start, random_goal,
         is_slippery, default_reward, boss_freq, n_goals):
-    env = FrozenLakeHindsightWrapper(
-        TimeLimit(
-            env=FrozenLakeEnv(
-                map_dims=map_dims,
-                random_map=random_map,
-                random_start=random_start,
-                random_goal=random_goal,
-                is_slippery=is_slippery,
-                default_reward=default_reward,
-            ),
-            max_episode_steps=max_steps))
+    env = TimeLimit(
+        env=FrozenLakeEnv(
+            map_dims=map_dims,
+            random_map=random_map,
+            random_start=random_start,
+            random_goal=random_goal,
+            is_slippery=is_slippery,
+            default_reward=default_reward,
+        ),
+        max_episode_steps=max_steps)
     kwargs = dict(
         base_agent=MlpAgent,
-        env=env,
         seq_len=0,
         device_num=1,
         seed=seed,
@@ -78,12 +76,13 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         save_path=save_path,
         load_path=load_path,
         render=render,
-        n_goals=n_goals,
     )
     if boss_freq:
-        HierarchicalTrainer(boss_act_freq=boss_freq, **kwargs)
+        HierarchicalTrainer(boss_act_freq=boss_freq,
+                            env=FrozenLakeHindsightWrapper(env)
+                            **kwargs)
     else:
-        Trainer(**kwargs)
+        Trainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

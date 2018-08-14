@@ -299,7 +299,7 @@ class HierarchicalAgents(AbstractAgent):
         return self.boss.seq_len
 
 
-class HierarchicalTrainer(HindsightTrainer):
+class HierarchicalTrainer(Trainer):
     def __init__(self, boss_act_freq, buffer_size, **kwargs):
         self.boss_act_freq = boss_act_freq
         self.last_achieved_goal = None
@@ -370,25 +370,6 @@ class HierarchicalTrainer(HindsightTrainer):
         if buffer.empty:
             return None
         return Step(*buffer[-self.time_steps():final_index])
-
-    def add_hindsight_trajectories(self, buffer):
-        assert isinstance(self.hindsight_env, HindsightWrapper)
-        # if self.time_steps() > 0:
-        #     new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory(buffer))
-        #     buffer.append(new_trajectory)
-        # if self.n_goals - 1 and self.time_steps() > 1:
-        #     final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
-        #     assert isinstance(final_indexes, np.ndarray)
-        #
-        #     for final_index in final_indexes:
-        #         traj = self.trajectory(buffer, final_index=final_index)
-        #         new_traj = self.hindsight_env.recompute_trajectory(traj)
-        #         buffer.append(new_traj)
-
-    def reset(self) -> Obs:
-        self.add_hindsight_trajectories(self.buffers.boss)
-        self.add_hindsight_trajectories(self.buffers.worker)
-        return Trainer.reset(self)
 
 
 DIRECTIONS = np.array([

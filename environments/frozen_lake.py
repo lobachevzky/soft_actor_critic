@@ -62,9 +62,9 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         super().__init__(desc=desc, is_slippery=is_slippery)
 
         if self.random_goal:
-            size_obs = self.observation_space.n * 2
+            size_obs = 4,  # current-coord, goal-coord
         else:
-            size_obs = self.observation_space.n
+            size_obs = 2,  # current-coord
         self.observation_space = Box(low=np.zeros(size_obs), high=np.ones(size_obs))
 
     def inc(self, row, col, a):

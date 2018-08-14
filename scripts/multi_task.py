@@ -47,6 +47,7 @@ def parse_coordinate(ctx, param, string):
 @click.option('--image-dims', type=str, callback=parse_double)
 @click.option('--record', is_flag=True)
 @click.option('--eval', is_flag=True)
+@click.option('--randomize-pose', is_flag=True)
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option('--geofence', default=.25, type=float)
 @click.option('--hindsight-geofence', default=None, type=float)
@@ -65,7 +66,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal):
+        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal, randomize_pose):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(
@@ -79,6 +80,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
             image_dimensions=image_dims,
             fixed_block=fixed_block,
             fixed_goal=fixed_goal,
+            randomize_pose=randomize_pose,
         ))
     kwargs = dict(
         base_agent=agent,

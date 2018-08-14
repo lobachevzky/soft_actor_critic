@@ -5,6 +5,7 @@ from functools import wraps
 from pathlib import Path, PurePath
 from typing import List
 from xml.etree import ElementTree as ET
+import re
 
 import click
 import tensorflow as tf
@@ -23,7 +24,7 @@ def put_in_xml_setter(ctx, param, value: str):
                  for p, v in setters if '_l_' in p] \
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
                    for p, v in setters if '_r_' in p]
-    return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
+    return [s._replace(path=s.path) for s in setters + mirroring]
 
 
 def parse_double(ctx, param, string):
@@ -80,8 +81,6 @@ def env_wrapper(func):
 @click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
 @click.option('--hindsight', is_flag=True)
-@click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
-@click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -98,7 +97,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
-        n_goals, obs_type, block_xrange, block_yrange, agent, seq_len, hindsight,
+        n_goals, block_xrange, block_yrange, agent, seq_len, hindsight,
         temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -108,7 +107,6 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
             fixed_block=fixed_block,
             min_lift_height=min_lift_height,
             xml_filepath=temp_path,
-            obs_type=obs_type,
             block_xrange=block_xrange,
             block_yrange=block_yrange,
             render_freq=render_freq,
@@ -153,10 +151,12 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
     def mutate_tree(tree: ET.ElementTree):
         for change in changes:
-            element_to_change = tree.find(str(change.path.parent))
+            parent = re.sub('/[^/]*$', '', change.path)
+            element_to_change = tree.find(parent)
             if isinstance(element_to_change, ET.Element):
                 print('setting', change.path, 'to', change.value)
-                element_to_change.set(change.path.name, change.value)
+                name = re.search('[^/]*$', change.path)[0]
+                element_to_change.set(name, change.value)
 
         for actuators in tree.iter('actuator'):
             for actuator in list(actuators):

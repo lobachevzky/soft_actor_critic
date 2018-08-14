@@ -81,8 +81,6 @@ def env_wrapper(func):
 @click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
 @click.option('--hindsight', is_flag=True)
-@click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
-@click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -99,7 +97,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
-        n_goals, obs_type, block_xrange, block_yrange, agent, seq_len, hindsight,
+        n_goals, block_xrange, block_yrange, agent, seq_len, hindsight,
         temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -109,7 +107,6 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
             fixed_block=fixed_block,
             min_lift_height=min_lift_height,
             xml_filepath=temp_path,
-            obs_type=obs_type,
             block_xrange=block_xrange,
             block_yrange=block_yrange,
             render_freq=render_freq,

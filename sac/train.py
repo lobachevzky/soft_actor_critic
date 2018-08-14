@@ -300,13 +300,17 @@ class HierarchicalAgents(AbstractAgent):
 
 
 class HierarchicalTrainer(Trainer):
-    def __init__(self, boss_act_freq, buffer_size, **kwargs):
+    def __init__(self, env, boss_act_freq: int, buffer_size: int,
+                 boss_oracle: bool, worker_oracle: bool, **kwargs):
+        self.boss_oracle = boss_oracle
+        self.worker_oracle = worker_oracle
         self.boss_act_freq = boss_act_freq
         self.last_achieved_goal = None
         self.direction = None
         self.buffers = Hierarchical(boss=ReplayBuffer(buffer_size),
                                     worker=ReplayBuffer(buffer_size))
-        super().__init__(buffer_size=buffer_size, **kwargs)
+        self.hindsight_env = unwrap_env(env, lambda e: isinstance(e, HindsightWrapper))
+        super().__init__(env=env, buffer_size=buffer_size, **kwargs)
         del self.buffer
 
     def build_agent(self, name='agent', action_space=None, observation_space=None, **kwargs):
@@ -328,18 +332,22 @@ class HierarchicalTrainer(Trainer):
 
     def get_actions(self, o1, s):
         sample = not self.is_eval_period()
-        boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
         if self.time_steps() % self.boss_act_freq == 0:
-            # self.direction = self.agents.act.boss.get_actions(boss_obs,
-            #                                                   state=s, sample=sample).output
-            self.direction = self.hindsight_env._desired_goal() - self.hindsight_env._achieved_goal()
+            if self.boss_oracle:
+                self.direction = self.hindsight_env._desired_goal() - self.hindsight_env._achieved_goal()
+            else:
+                boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
+                self.direction = self.agents.act.boss.get_actions(boss_obs,
+                                                                  state=s, sample=sample).output
             self.direction = self.direction.astype(float) / np.linalg.norm(self.direction)
             print(self.direction)
-        worker_obs = vectorize([o1.observation, self.direction])
-        oracle = worker_oracle(self.hindsight_env.frozen_lake_env, self.direction)
-        return NetworkOutput(output=oracle, state=0)
-        # return self.agents.act.worker.get_actions(worker_obs,
-        #                                           state=s, sample=sample)
+        if self.worker_oracle:
+            oracle = worker_oracle(self.hindsight_env.frozen_lake_env, self.direction)
+            return NetworkOutput(output=oracle, state=0)
+        else:
+            worker_obs = vectorize([o1.observation, self.direction])
+            return self.agents.act.worker.get_actions(worker_obs,
+                                                      state=s, sample=sample)
 
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
@@ -361,15 +369,6 @@ class HierarchicalTrainer(Trainer):
 
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         return obs
-
-    def trajectory(self, buffer, final_index=None) -> Optional[Step]:
-        if final_index is None:
-            final_index = 0  # points to current time step
-        else:
-            final_index -= self.time_steps()  # relative to start of episode
-        if buffer.empty:
-            return None
-        return Step(*buffer[-self.time_steps():final_index])
 
 
 DIRECTIONS = np.array([

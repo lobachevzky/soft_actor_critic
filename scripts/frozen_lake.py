@@ -41,12 +41,13 @@ def parse_double(ctx, param, string):
 @click.option('--is-slippery', is_flag=True)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
-@click.option('--n-goals', default=1, type=int)
+@click.option('--boss-oracle', is_flag=True)
+@click.option('--worker-oracle', is_flag=True)
 @click.option('--boss-freq', default=None, type=int)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
         grad_clip, map_dims, max_steps, random_map, random_start, random_goal,
-        is_slippery, default_reward, boss_freq, n_goals):
+        is_slippery, default_reward, boss_freq, worker_oracle, boss_oracle):
     env = TimeLimit(
         env=FrozenLakeEnv(
             map_dims=map_dims,
@@ -79,7 +80,9 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
     )
     if boss_freq:
         HierarchicalTrainer(boss_act_freq=boss_freq,
-                            env=FrozenLakeHindsightWrapper(env)
+                            worker_oracle=worker_oracle,
+                            boss_oracle=boss_oracle,
+                            env=FrozenLakeHindsightWrapper(env),
                             **kwargs)
     else:
         Trainer(env=env, **kwargs)

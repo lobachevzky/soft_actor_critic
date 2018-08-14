@@ -9,6 +9,7 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 
 from environments.frozen_lake import FrozenLakeEnv
+from environments.hierarchical_wrapper import HierarchicalWrapper
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
@@ -309,13 +310,13 @@ class HierarchicalTrainer(Trainer):
         self.direction = None
         self.buffers = Hierarchical(boss=ReplayBuffer(buffer_size),
                                     worker=ReplayBuffer(buffer_size))
-        self.hindsight_env = unwrap_env(env, lambda e: isinstance(e, HindsightWrapper))
+        self.hierarchical_env = unwrap_env(env, lambda e: isinstance(e, HierarchicalWrapper))
         super().__init__(env=env, buffer_size=buffer_size, **kwargs)
         del self.buffer
 
     def build_agent(self, name='agent', action_space=None, observation_space=None, **kwargs):
         obs = self.env.reset()  # type: Observation
-        action_space = spaces.Box(low=-1, high=1, shape=np.shape(obs.desired_goal))
+        action_space = self.hierarchical_env.goal_space
         boss_obs_shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
         boss_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=boss_obs_shape)
         boss_agent = super().build_agent(action_space=action_space,
@@ -334,15 +335,16 @@ class HierarchicalTrainer(Trainer):
         sample = not self.is_eval_period()
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
-                self.direction = self.hindsight_env._desired_goal() - self.hindsight_env._achieved_goal()
+                self.direction = self.hierarchical_env._desired_goal() - self.hierarchical_env._achieved_goal()
             else:
                 boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
-                self.direction = self.agents.act.boss.get_actions(boss_obs,
-                                                                  state=s, sample=sample).output
+                boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,
+                                                             state=s, sample=sample).output)
+                self.direction = self.hierarchical_env.get_direction(boss_goal)
             self.direction = self.direction.astype(float) / np.linalg.norm(self.direction)
             print(self.direction)
         if self.worker_oracle:
-            oracle = worker_oracle(self.hindsight_env.frozen_lake_env, self.direction)
+            oracle = worker_oracle(self.hierarchical_env.frozen_lake_env, self.direction)
             return NetworkOutput(output=oracle, state=0)
         else:
             worker_obs = vectorize([o1.observation, self.direction])
@@ -392,5 +394,4 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
             return -np.inf
         return np.dot(d, boss_dir)
 
-    l = list(map(alignment, range(4)))
-    return l
+    return list(map(alignment, range(4)))

@@ -3,7 +3,7 @@ import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hindsight_wrapper import FrozenLakeHindsightWrapper
+from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
 from sac.networks import MlpAgent, MoEAgent
 from sac.train import Trainer, HierarchicalTrainer
 
@@ -82,7 +82,7 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         HierarchicalTrainer(boss_act_freq=boss_freq,
                             worker_oracle=worker_oracle,
                             boss_oracle=boss_oracle,
-                            env=FrozenLakeHindsightWrapper(env),
+                            env=FrozenLakeHierarchicalWrapper(env),
                             **kwargs)
     else:
         Trainer(env=env, **kwargs)

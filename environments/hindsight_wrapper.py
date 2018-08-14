@@ -141,6 +141,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
 
 class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+
     def __init__(self, env, geofence):
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env, geofence)
@@ -169,18 +170,3 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
 
-
-class FrozenLakeHindsightWrapper(HindsightWrapper):
-    def __init__(self, env):
-        self.frozen_lake_env = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))
-        super().__init__(env)
-
-    def _achieved_goal(self):
-        fl_env = self.frozen_lake_env
-        return np.array([fl_env.s // fl_env.nrow, fl_env.s % fl_env.ncol])
-
-    def _is_success(self, achieved_goal, desired_goal):
-        return (achieved_goal == desired_goal).prod(axis=-1)
-
-    def _desired_goal(self):
-        return self.frozen_lake_env.goal_vector()

@@ -117,6 +117,13 @@ def unwrap_env(env: gym.Env, condition: Callable[[gym.Env], bool]):
     return env
 
 
+def create_sess():
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    config.inter_op_parallelism_threads = 1
+    return tf.Session(config=config)
+
+
 Obs = Any
 
 

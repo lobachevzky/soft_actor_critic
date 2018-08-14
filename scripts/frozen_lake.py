@@ -6,6 +6,7 @@ from environments.frozen_lake import FrozenLakeEnv
 from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
 from sac.networks import MlpAgent, MoEAgent
 from sac.train import Trainer, HierarchicalTrainer
+from sac.utils import create_sess
 
 
 def check_probability(ctx, param, value):
@@ -58,7 +59,9 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
             default_reward=default_reward,
         ),
         max_episode_steps=max_steps)
+
     kwargs = dict(
+        sess=create_sess(),
         base_agent=MlpAgent,
         seq_len=0,
         device_num=1,
@@ -73,19 +76,20 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         batch_size=batch_size,
         grad_clip=grad_clip,
         num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=render,
     )
     if boss_freq:
-        HierarchicalTrainer(boss_act_freq=boss_freq,
-                            worker_oracle=worker_oracle,
-                            boss_oracle=boss_oracle,
-                            env=FrozenLakeHierarchicalWrapper(env),
-                            **kwargs)
+        trainer = HierarchicalTrainer(boss_act_freq=boss_freq,
+                                      use_worker_oracle=worker_oracle,
+                                      use_boss_oracle=boss_oracle,
+                                      env=FrozenLakeHierarchicalWrapper(env),
+                                      **kwargs)
     else:
-        Trainer(env=env, **kwargs)
+        trainer = Trainer(env=env, **kwargs)
+
+    trainer.train(load_path=load_path,
+                  logdir=logdir,
+                  render=render,
+                  save_path=save_path)
 
 
 if __name__ == '__main__':

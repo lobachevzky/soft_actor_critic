@@ -83,7 +83,7 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
     if boss_freq:
         HierarchicalTrainer(boss_act_freq=boss_freq, **kwargs)
     else:
-        HierarchicalTrainer(**kwargs)
+        Trainer(**kwargs)
 
 
 if __name__ == '__main__':

@@ -23,7 +23,7 @@ Agents = namedtuple('Agents', 'train act')
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, seq_len: int, num_train_steps: int,
-                 sess: tf.Session = None, **kwargs):
+                 sess: tf.Session = None, preprocess_func=None, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -46,8 +46,8 @@ class Trainer:
         self.episode_count = Counter()
 
         obs = env.reset()
-        self.preprocess_func = None
-        if not isinstance(obs, np.ndarray):
+        self.preprocess_func = preprocess_func
+        if preprocess_func is None and not isinstance(obs, np.ndarray):
             try:
                 self.preprocess_func = unwrap_env(
                     env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
@@ -289,34 +289,44 @@ HierarchicalAgents = namedtuple('HierarchicalAgents', 'boss worker initial_state
 
 class HierarchicalTrainer(Trainer):
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
-                 use_worker_oracle: bool, **kwargs):
+                 use_worker_oracle: bool, sess: tf.Session, **kwargs):
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
         self.last_achieved_goal = None
         self.direction = None
         self.env = env
+        self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-
-
 
         self.hierarchical_env = unwrap_env(env, lambda e: isinstance(e, HierarchicalWrapper))
 
         fl = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))
         obs = env.reset()
 
+        def boss_preprocess_obs(obs, shape):
+            obs = Observation(*obs)
+            return vectorize([obs.achieved_goal, obs.desired_goal], shape)
+
+        def worker_preprocess_obs(obs, shape):
+            obs = Observation(*obs)
+            return vectorize([obs.observation, obs.desired_goal], shape)
+
         shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
+        self.goal_space = spaces.Discrete(4 * (fl.nrow + fl.ncol))
         self.boss_trainer = Trainer(
             observation_space=spaces.Box(low=-np.inf, high=np.inf, shape=shape),
-            action_space=spaces.Discrete(4 * (fl.nrow + fl.ncol)),
-            env=env, name='boss', **kwargs)
+            action_space=self.goal_space,
+            preprocess_func=boss_preprocess_obs,
+            env=env, sess=sess, name='boss', **kwargs)
 
         shape = np.shape(vectorize([obs.observation, obs.desired_goal]))
         self.worker_trainer = Trainer(
             observation_space=spaces.Box(low=-np.inf, high=np.inf, shape=shape),
             action_space=env.action_space,
-            env=env, name='worker', **kwargs)
+            preprocess_func=worker_preprocess_obs,
+            env=env, sess=sess, name='worker', **kwargs)
 
         worker_agents = self.worker_trainer.agents
         boss_agents = self.boss_trainer.agents
@@ -337,8 +347,7 @@ class HierarchicalTrainer(Trainer):
                 boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,
                                                                        state=s, sample=sample).output)
                 self.direction = self.hierarchical_env.get_direction(boss_goal)
-            self.direction = self.direction.astype(float) / np.linalg.norm(self.direction)
-            print(self.direction)
+            self.direction = self.direction.astype(float)
         if self.worker_oracle:
             oracle = worker_oracle(self.hierarchical_env.frozen_lake_env, self.direction)
             return NetworkOutput(output=oracle, state=0)
@@ -360,12 +369,13 @@ class HierarchicalTrainer(Trainer):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
             if self.time_steps() > 0:
                 rel_step = step.o1.achieved_goal - self.last_achieved_goal
-                norm = np.linalg.norm(rel_step)
-                if norm > 0:
-                    rel_step = rel_step.astype(float) / norm
-                else:
-                    rel_step = np.zeros_like(rel_step)
-                self.boss_trainer.buffer.append(step.replace(a=rel_step))
+
+                def alignment(i):
+                    return np.dot(self.hierarchical_env.get_direction(i), rel_step)
+
+                action = np.zeros(self.goal_space.n)
+                action[max(range(self.goal_space.n), key=alignment)] = 1
+                self.boss_trainer.buffer.append(step.replace(a=action))
             self.last_achieved_goal = step.o1.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         self.worker_trainer.buffer.append(step.replace(
@@ -376,7 +386,8 @@ class HierarchicalTrainer(Trainer):
 
 
 def boss_oracle(env: HierarchicalWrapper):
-    return env._desired_goal() - env._achieved_goal()
+    direction = (env._desired_goal() - env._achieved_goal()).astype(float)
+    return direction / np.linalg.norm(direction)
 
 
 DIRECTIONS = np.array([
@@ -400,4 +411,4 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
             return -np.inf
         return np.dot(d, boss_dir)
 
-    return list(map(alignment, range(4)))
+    return np.array(list(map(alignment, range(4))))

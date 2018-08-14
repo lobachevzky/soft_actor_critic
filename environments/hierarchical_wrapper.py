@@ -21,4 +21,5 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         else:  # offset describes row
             row_offset = offset - 2 * fl.ncol - fl.nrow
             col_offset = default_col
-        return np.array([row_offset, col_offset])
+        direction = np.array([row_offset, col_offset], dtype=float)
+        return direction / np.linalg.norm(direction)

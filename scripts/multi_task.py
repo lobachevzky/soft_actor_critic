@@ -53,20 +53,23 @@ def parse_coordinate(ctx, param, string):
 @click.option('--hindsight-geofence', default=None, type=float)
 @click.option('--fixed-block', default=None, callback=parse_coordinate)
 @click.option('--fixed-goal', default=None, callback=parse_coordinate)
+@click.option('--goal-x', default=None, callback=parse_coordinate)
+@click.option('--goal-y', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option(
     '--use-dof',
     multiple=True,
     default=[
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
-        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+        'hand_l_proximal_joint', 'hand_r_proximal_joint', 'goal_x', 'goal_y'
     ])
 @env_wrapper
 def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal, randomize_pose):
+        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal,
+        randomize_pose, goal_x, goal_y):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(
@@ -81,6 +84,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
             fixed_block=fixed_block,
             fixed_goal=fixed_goal,
             randomize_pose=randomize_pose,
+            goal_x=goal_x,
+            goal_y=goal_y,
         ))
     kwargs = dict(
         base_agent=agent,

@@ -50,8 +50,10 @@ class MultiTaskEnv(PickAndPlaceEnv):
             ]:
                 qpos_idx = self.sim.get_jnt_qposadr(joint)
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                self.init_qpos[qpos_idx] = np.random.uniform(
+                self.init_qpos[qpos_idx] = \
+                    np.random.uniform(
                     *self.sim.jnt_range[jnt_range_idx])
+                    # self.sim.jnt_range[jnt_range_idx][1]
 
         r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
@@ -72,10 +74,15 @@ class MultiTaskEnv(PickAndPlaceEnv):
     def reset(self):
         if self.fixed_goal is None:
             self.goal = self.goal_space.sample()
+            self.init_qpos[self.sim.get_jnt_qposadr('goal_x')] = self.goal[0]
+            self.init_qpos[self.sim.get_jnt_qposadr('goal_y')] = self.goal[1]
         return super().reset()
 
     def render(self, labels=None, **kwargs):
         if labels is None:
             labels = dict()
-        labels[tuple(self.goal) + (.412,)] = 'g'
+        # z = (.4,)
+        # labels[tuple(self.goal_space.low) + z] = '['
+        # labels[tuple(self.goal_space.high) + z] = ']'
+        # labels[tuple(self.goal) + z] = '|'
         return super().render(labels=labels, **kwargs)

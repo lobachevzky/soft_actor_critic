@@ -9,13 +9,13 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hierarchical_wrapper import HierarchicalWrapper
+from environments.hierarchical_wrapper import HierarchicalWrapper, Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, normalize, unwrap_env, vectorize, ArrayLike, create_sess
+from sac.utils import Obs, Step, normalize, unwrap_env, vectorize, create_sess
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -23,7 +23,8 @@ Agents = namedtuple('Agents', 'train act')
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, seq_len: int, num_train_steps: int,
-                 sess: tf.Session = None, preprocess_func=None, **kwargs):
+                 sess: tf.Session = None, preprocess_func=None,
+                 action_space=None, observation_space=None, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -35,12 +36,18 @@ class Trainer:
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
+        self.action_space = action_space or env.action_space
+        self.observation_space = observation_space or env.observation_space
 
         self.agents = Agents(
             act=self.build_agent(
-                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
+                sess=sess, batch_size=None, seq_len=1, reuse=False,
+                action_space=action_space, observation_space=observation_space,
+                **kwargs),
             train=self.build_agent(
-                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
+                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True,
+                action_space=action_space, observation_space=observation_space,
+                **kwargs))
         self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
@@ -112,9 +119,9 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
+            o2, r, t, info = self.step(a)
             if render:
                 self.env.render()
-            o2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -149,9 +156,9 @@ class Trainer:
 
     def build_agent(self, base_agent: AbstractAgent, action_space=None, observation_space=None, **kwargs):
         if observation_space is None:
-            observation_space = self.env.observation_space
+            observation_space = self.observation_space
         if action_space is None:
-            action_space = self.env.action_space
+            action_space = self.action_space
         state_shape = observation_space.shape
         if isinstance(action_space, spaces.Discrete):
             action_shape = [action_space.n]
@@ -172,12 +179,12 @@ class Trainer:
 
     def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
-        if type(self.env.action_space) is spaces.Discrete:
+        if type(self.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))
         else:
             action = np.tanh(action)
-            hi, lo = self.env.action_space.high, self.env.action_space.low
+            hi, lo = self.action_space.high, self.action_space.low
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
@@ -186,8 +193,8 @@ class Trainer:
             obs = self.preprocess_func(obs, shape)
         return normalize(
             vector=obs,
-            low=self.env.observation_space.low,
-            high=self.env.observation_space.high)
+            low=self.observation_space.low,
+            high=self.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -284,9 +291,6 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
     pass
 
 
-HierarchicalAgents = namedtuple('HierarchicalAgents', 'boss worker initial_state')
-
-
 class HierarchicalTrainer(Trainer):
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session, **kwargs):
@@ -299,11 +303,7 @@ class HierarchicalTrainer(Trainer):
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-
-        self.hierarchical_env = unwrap_env(env, lambda e: isinstance(e, HierarchicalWrapper))
-
-        fl = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))
-        obs = env.reset()
+        self.action_space = env.action_space.worker
 
         def boss_preprocess_obs(obs, shape):
             obs = Observation(*obs)
@@ -313,43 +313,40 @@ class HierarchicalTrainer(Trainer):
             obs = Observation(*obs)
             return vectorize([obs.observation, obs.desired_goal], shape)
 
-        shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
-        self.goal_space = spaces.Discrete(4 * (fl.nrow + fl.ncol))
-        self.boss_trainer = Trainer(
-            observation_space=spaces.Box(low=-np.inf, high=np.inf, shape=shape),
-            action_space=self.goal_space,
-            preprocess_func=boss_preprocess_obs,
-            env=env, sess=sess, name='boss', **kwargs)
+        self.trainers = Hierarchical(
+            boss=Trainer(
+                observation_space=env.observation_space.boss,
+                action_space=env.action_space.boss,
+                preprocess_func=boss_preprocess_obs,
+                env=env, sess=sess, name='boss', **kwargs),
+            worker=Trainer(
+                observation_space=env.observation_space.worker,
+                action_space=env.action_space.worker,
+                preprocess_func=worker_preprocess_obs,
+                env=env, sess=sess, name='worker', **kwargs)
+        )
 
-        shape = np.shape(vectorize([obs.observation, obs.desired_goal]))
-        self.worker_trainer = Trainer(
-            observation_space=spaces.Box(low=-np.inf, high=np.inf, shape=shape),
-            action_space=env.action_space,
-            preprocess_func=worker_preprocess_obs,
-            env=env, sess=sess, name='worker', **kwargs)
-
-        worker_agents = self.worker_trainer.agents
-        boss_agents = self.boss_trainer.agents
-        self.agents = Agents(act=HierarchicalAgents(boss=boss_agents.act,
-                                                    worker=worker_agents.act,
+        self.agents = Agents(act=HierarchicalAgents(boss=self.trainers.boss.agents.act,
+                                                    worker=self.trainers.worker.agents.act,
                                                     initial_state=0),
-                             train=HierarchicalAgents(boss=boss_agents.train,
-                                                      worker=worker_agents.train,
+                             train=HierarchicalAgents(boss=self.trainers.boss.agents.train,
+                                                      worker=self.trainers.worker.agents.train,
                                                       initial_state=0))
 
     def get_actions(self, o1, s):
         sample = not self.is_eval_period()
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
-                self.direction = boss_oracle(self.hierarchical_env)
+                self.direction = boss_oracle(self.env)
             else:
                 boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
                 boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,
                                                                        state=s, sample=sample).output)
-                self.direction = self.hierarchical_env.get_direction(boss_goal)
+                self.direction = self.env.get_direction(boss_goal)
             self.direction = self.direction.astype(float)
+
         if self.worker_oracle:
-            oracle = worker_oracle(self.hierarchical_env.frozen_lake_env, self.direction)
+            oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
             return NetworkOutput(output=oracle, state=0)
         else:
             worker_obs = vectorize([o1.observation, self.direction])
@@ -358,9 +355,9 @@ class HierarchicalTrainer(Trainer):
 
     def perform_update(self):
         return {**{f'boss_{k}': v for k, v in
-                   (self.boss_trainer.perform_update() or {}).items()},
+                   (self.trainers.boss.perform_update() or {}).items()},
                 **{f'worker_{k}': v for k, v in
-                   (self.worker_trainer.perform_update() or {}).items()}}
+                   (self.trainers.worker.perform_update() or {}).items()}}
 
     def trajectory(self, final_index=None):
         raise NotImplemented
@@ -371,14 +368,15 @@ class HierarchicalTrainer(Trainer):
                 rel_step = step.o1.achieved_goal - self.last_achieved_goal
 
                 def alignment(i):
-                    return np.dot(self.hierarchical_env.get_direction(i), rel_step)
+                    return np.dot(self.env.get_direction(i), rel_step)
 
-                action = np.zeros(self.goal_space.n)
-                action[max(range(self.goal_space.n), key=alignment)] = 1
-                self.boss_trainer.buffer.append(step.replace(a=action))
+                n_actions = self.env.action_space.boss.n
+                action = np.zeros(n_actions)
+                action[max(range(n_actions), key=alignment)] = 1
+                self.trainers.boss.buffer.append(step.replace(a=action))
             self.last_achieved_goal = step.o1.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
-        self.worker_trainer.buffer.append(step.replace(
+        self.trainers.worker.buffer.append(step.replace(
             o1=step.o1.replace(desired_goal=self.direction),
             o2=step.o2.replace(desired_goal=self.direction),
             r=np.dot(self.direction, movement)

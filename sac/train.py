@@ -365,7 +365,7 @@ class HierarchicalTrainer(Trainer):
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
             if self.time_steps() > 0:
-                rel_step = step.o1.achieved_goal - self.last_achieved_goal
+                rel_step = step.o2.achieved_goal - self.last_achieved_goal
 
                 def alignment(i):
                     return np.dot(self.env.get_direction(i), rel_step)
@@ -374,7 +374,7 @@ class HierarchicalTrainer(Trainer):
                 action = np.zeros(n_actions)
                 action[max(range(n_actions), key=alignment)] = 1
                 self.trainers.boss.buffer.append(step.replace(a=action))
-            self.last_achieved_goal = step.o1.achieved_goal
+            self.last_achieved_goal = step.o2.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         self.trainers.worker.buffer.append(step.replace(
             o1=step.o1.replace(desired_goal=self.direction),

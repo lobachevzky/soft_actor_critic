@@ -17,13 +17,14 @@ class MultiTaskEnv(PickAndPlaceEnv):
                  randomize_pose=False,
                  fixed_block=None,
                  fixed_goal=None,
+                 goal_x=(-.11, .09),
+                 goal_y=(-.19, .2),
                  **kwargs):
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
         self.geofence = geofence
-        self.goal_space = spaces.Box(
-            low=np.array([-.11, -.19]), high=np.array([.09, .2]))
+        self.goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))

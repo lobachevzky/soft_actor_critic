@@ -23,8 +23,7 @@ setup(
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',
-        'write-rewards=scripts.write_rewards:main',
-        'sort-runs=scripts.sort_runs:main',
+        'crawl=scripts.crawl_events:main',
     ]),
     scripts=['bin/load', 'bin/filter', 'bin/new-tb'],
     install_requires=[

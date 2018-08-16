@@ -141,7 +141,6 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
 
 class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
-
     def __init__(self, env, geofence):
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env, geofence)

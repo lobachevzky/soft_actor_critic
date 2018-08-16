@@ -9,22 +9,32 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hierarchical_wrapper import HierarchicalWrapper, Hierarchical, HierarchicalAgents
+from environments.hierarchical_wrapper import (Hierarchical,
+                                               HierarchicalAgents,
+                                               HierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, normalize, unwrap_env, vectorize, create_sess
+from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, seq_len: int, num_train_steps: int,
-                 sess: tf.Session = None, preprocess_func=None,
-                 action_space=None, observation_space=None, **kwargs):
+    def __init__(self,
+                 env: gym.Env,
+                 seed: Optional[int],
+                 buffer_size: int,
+                 batch_size: int,
+                 seq_len: int,
+                 num_train_steps: int,
+                 sess: tf.Session = None,
+                 preprocess_func=None,
+                 action_space=None,
+                 observation_space=None,
+                 **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -41,12 +51,20 @@ class Trainer:
 
         self.agents = Agents(
             act=self.build_agent(
-                sess=sess, batch_size=None, seq_len=1, reuse=False,
-                action_space=action_space, observation_space=observation_space,
+                sess=sess,
+                batch_size=None,
+                seq_len=1,
+                reuse=False,
+                action_space=action_space,
+                observation_space=observation_space,
                 **kwargs),
             train=self.build_agent(
-                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True,
-                action_space=action_space, observation_space=observation_space,
+                sess=sess,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                action_space=action_space,
+                observation_space=observation_space,
                 **kwargs))
         self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
@@ -145,16 +163,17 @@ class Trainer:
         if self.buffer_full():
             for i in range(self.num_train_steps):
                 step = self.agents.act.train_step(self.sample_buffer())
-                return {
-                    k.replace(' ', '_'): v
-                    for k, v in step.items() if np.isscalar(v)
-                }
+                return {k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}
 
     def get_actions(self, o1, s):
         return self.agents.act.get_actions(
             self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
 
-    def build_agent(self, base_agent: AbstractAgent, action_space=None, observation_space=None, **kwargs):
+    def build_agent(self,
+                    base_agent: AbstractAgent,
+                    action_space=None,
+                    observation_space=None,
+                    **kwargs):
         if observation_space is None:
             observation_space = self.observation_space
         if action_space is None:
@@ -192,9 +211,7 @@ class Trainer:
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
         return normalize(
-            vector=obs,
-            low=self.observation_space.low,
-            high=self.observation_space.high)
+            vector=obs, low=self.observation_space.low, high=self.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -304,9 +321,9 @@ class HierarchicalTrainer(Trainer):
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
-
         # DEBUG {{
         self.action_space = env.action_space
+
         # self.action_space = env.action_space.worker
         # }}
 
@@ -326,7 +343,10 @@ class HierarchicalTrainer(Trainer):
                 preprocess_func=None,
                 # preprocess_func=boss_preprocess_obs,
                 # }}
-                env=env, sess=sess, name='boss', **kwargs),
+                env=env,
+                sess=sess,
+                name='boss',
+                **kwargs),
             worker=Trainer(
                 # DEBUG {{
                 observation_space=env.observation_space,
@@ -335,15 +355,20 @@ class HierarchicalTrainer(Trainer):
                 # action_space=env.action_space.worker,
                 # }}
                 preprocess_func=worker_preprocess_obs,
-                env=env, sess=sess, name='worker', **kwargs)
-        )
+                env=env,
+                sess=sess,
+                name='worker',
+                **kwargs))
 
-        self.agents = Agents(act=HierarchicalAgents(boss=self.trainers.boss.agents.act,
-                                                    worker=self.trainers.worker.agents.act,
-                                                    initial_state=0),
-                             train=HierarchicalAgents(boss=self.trainers.boss.agents.train,
-                                                      worker=self.trainers.worker.agents.train,
-                                                      initial_state=0))
+        self.agents = Agents(
+            act=HierarchicalAgents(
+                boss=self.trainers.boss.agents.act,
+                worker=self.trainers.worker.agents.act,
+                initial_state=0),
+            train=HierarchicalAgents(
+                boss=self.trainers.boss.agents.train,
+                worker=self.trainers.worker.agents.train,
+                initial_state=0))
 
     def get_actions(self, o1, s):
         sample = not self.is_eval_period()
@@ -358,8 +383,9 @@ class HierarchicalTrainer(Trainer):
                 return self.trainers.boss.get_actions(o1, s)
                 # }}
 
-                boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,
-                                                                       state=s, sample=sample).output)
+                boss_goal = np.argmax(
+                    self.agents.act.boss.get_actions(boss_obs, state=s,
+                                                     sample=sample).output)
                 self.direction = self.env.get_direction(boss_goal)
             self.direction = self.direction.astype(float)
 
@@ -368,14 +394,19 @@ class HierarchicalTrainer(Trainer):
             return NetworkOutput(output=oracle, state=0)
         else:
             worker_obs = vectorize([o1.observation, self.direction])
-            return self.agents.act.worker.get_actions(worker_obs,
-                                                      state=s, sample=sample)
+            return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
 
     def perform_update(self):
-        return {**{f'boss_{k}': v for k, v in
-                   (self.trainers.boss.perform_update() or {}).items()},
-                **{f'worker_{k}': v for k, v in
-                   (self.trainers.worker.perform_update() or {}).items()}}
+        return {
+            **{
+                f'boss_{k}': v
+                for k, v in (self.trainers.boss.perform_update() or {}).items()
+            },
+            **{
+                f'worker_{k}': v
+                for k, v in (self.trainers.worker.perform_update() or {}).items()
+            }
+        }
 
     def trajectory(self, final_index=None):
         raise NotImplemented

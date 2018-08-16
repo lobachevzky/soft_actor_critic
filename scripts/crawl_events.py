@@ -4,7 +4,7 @@ import argparse
 from collections import namedtuple
 from itertools import islice
 from pathlib import Path
-from typing import Optional, List, Tuple
+from typing import List, Optional
 
 import tensorflow as tf
 
@@ -17,11 +17,12 @@ def main():
     parser.add_argument('--cache-file', default=None)
     parser.add_argument('--update-cache', action='store_true')
     args = parser.parse_args()
-    data_points = crawl(dirs=args.dirs,
-                        tag=args.tag,
-                        smoothing=args.smoothing,
-                        cache_file=args.cache_file or args.tag,
-                        update_cache=args.update_cache)
+    data_points = crawl(
+        dirs=args.dirs,
+        tag=args.tag,
+        smoothing=args.smoothing,
+        cache_file=args.cache_file or args.tag,
+        update_cache=args.update_cache)
     print('Sorted lowest to highest:')
     print('*************************')
     for data, event_file in sorted(data_points):
@@ -36,9 +37,7 @@ def crawl(dirs: List[Path], tag: str, smoothing: int, cache_file: Path,
     event_files = collect_events_files(dirs)
     data_points = []
     for event_file_path in event_files:
-        data = collect_data(tag=tag,
-                            event_file_path=event_file_path,
-                            n=smoothing)
+        data = collect_data(tag=tag, event_file_path=event_file_path, n=smoothing)
         if data:
             cache_path = Path(event_file_path.parent, cache_file)
             data_points.append((data, event_file_path))
@@ -67,8 +66,7 @@ def collect_data(tag: str, event_file_path: Path, n: int) -> Optional[float]:
     events = islice(iterator, max(length - n, 0), length)
 
     def get_tag(event):
-        return next((v.simple_value for v in event.summary.value if v.tag == tag),
-                    None)
+        return next((v.simple_value for v in event.summary.value if v.tag == tag), None)
 
     data = (get_tag(e) for e in events)
     data = [d for d in data if d is not None]
@@ -77,7 +75,6 @@ def collect_data(tag: str, event_file_path: Path, n: int) -> Optional[float]:
     except ZeroDivisionError:
         return None
 
+
 if __name__ == '__main__':
     main()
-
-

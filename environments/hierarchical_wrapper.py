@@ -2,10 +2,9 @@ import itertools
 from collections.__init__ import namedtuple
 
 import numpy as np
-from gym import spaces
 
-from environments.hindsight_wrapper import HindsightWrapper, FrozenLakeHindsightWrapper
-from sac.utils import vectorize
+from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
+                                            HindsightWrapper)
 
 
 class HierarchicalWrapper(HindsightWrapper):

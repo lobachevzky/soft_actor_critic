@@ -4,8 +4,8 @@ from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
-from sac.networks import MlpAgent, MoEAgent
-from sac.train import Trainer, HierarchicalTrainer
+from sac.networks import MlpAgent
+from sac.train import HierarchicalTrainer, Trainer
 from sac.utils import create_sess
 
 
@@ -78,18 +78,16 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         num_train_steps=num_train_steps,
     )
     if boss_freq:
-        trainer = HierarchicalTrainer(boss_act_freq=boss_freq,
-                                      use_worker_oracle=worker_oracle,
-                                      use_boss_oracle=boss_oracle,
-                                      env=FrozenLakeHierarchicalWrapper(env),
-                                      **kwargs)
+        trainer = HierarchicalTrainer(
+            boss_act_freq=boss_freq,
+            use_worker_oracle=worker_oracle,
+            use_boss_oracle=boss_oracle,
+            env=FrozenLakeHierarchicalWrapper(env),
+            **kwargs)
     else:
         trainer = Trainer(env=env, **kwargs)
 
-    trainer.train(load_path=load_path,
-                  logdir=logdir,
-                  render=render,
-                  save_path=save_path)
+    trainer.train(load_path=load_path, logdir=logdir, render=render, save_path=save_path)
 
 
 if __name__ == '__main__':

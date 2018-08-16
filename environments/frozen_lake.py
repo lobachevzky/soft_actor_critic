@@ -85,7 +85,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             explored.append(pos)
             next_positions = [
                 self.inc(*pos, d) for d in range(4) if not self.inc(*pos, d) in explored
-                                                       and not self.desc[self.inc(*pos, d)] == b'H'
+                and not self.desc[self.inc(*pos, d)] == b'H'
             ]
             if not next_positions:
                 return pos

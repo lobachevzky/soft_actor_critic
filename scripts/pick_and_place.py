@@ -1,11 +1,11 @@
+import re
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
-import re
 
 import click
 import tensorflow as tf
@@ -97,8 +97,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
-        n_goals, block_xrange, block_yrange, agent, seq_len, hindsight,
-        temp_path):
+        n_goals, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=PickAndPlaceEnv(

@@ -22,8 +22,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
         self.fixed_goal = fixed_goal
         self.randomize_pose = randomize_pose
         self.geofence = geofence
-        self.goal_space = spaces.Box(
-            low=np.array([-.11, -.4]), high=np.array([.09, .4]))
+        self.goal_space = spaces.Box(low=np.array([-.11, -.4]), high=np.array([.09, .4]))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
@@ -34,7 +33,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
             for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
-        self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
+        self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
 
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
@@ -53,7 +52,7 @@ class MultiTaskEnv(PickAndPlaceEnv):
                 self.init_qpos[qpos_idx] = \
                     np.random.uniform(
                     *self.sim.jnt_range[jnt_range_idx])
-                    # self.sim.jnt_range[jnt_range_idx][1]
+                # self.sim.jnt_range[jnt_range_idx][1]
 
         r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')

@@ -1,14 +1,12 @@
 #! /usr/bin/env python
 import argparse
-from pathlib import PurePath, Path
+from pathlib import Path, PurePath
 
-from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np
-from runs.commands.lookup import get_dict
+
 from runs.database import DataBase
 from runs.logger import Logger
-
 from scripts.crawl_events import crawl
 
 
@@ -18,8 +16,7 @@ def main():
     parser.add_argument('-x', required=True)
     parser.add_argument('-y', required=True)
     parser.add_argument('-z', required=True)
-    parser.add_argument('--tensorboard-dir', default=Path('.runs/tensorboard'),
-                        type=Path)
+    parser.add_argument('--tensorboard-dir', default=Path('.runs/tensorboard'), type=Path)
     parser.add_argument('--smoothing', type=int, default=2000)
     parser.add_argument('--tag', default='reward')
     parser.add_argument('--cache-file', default='cache')
@@ -35,11 +32,12 @@ def main():
 
     def get_data_point(directory):
         # assume one data point per directory
-        [data_point] = crawl(dirs=directory,
-                             tag=args.tag,
-                             smoothing=args.smoothing,
-                             cache_file=args.cache_file,
-                             update_cache=args.update_cache)
+        [data_point] = crawl(
+            dirs=directory,
+            tag=args.tag,
+            smoothing=args.smoothing,
+            cache_file=args.cache_file,
+            update_cache=args.update_cache)
         return data_point.data
 
     data_points = {p: get_data_point(d) for p, d in dirs.items()}

@@ -12,21 +12,26 @@ class HierarchicalWrapper(HindsightWrapper):
     pass
 
 
-
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):
     def __init__(self, env):
         super().__init__(env)
         obs = super().reset()
         self.observation_space = Hierarchical(
-            boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
-                np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
+            # DEBUG {
+            boss=env.observation_space,
+            # boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
+            #     np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
+            # }
             worker=spaces.Box(low=-np.inf, high=np.inf, shape=(
                 np.shape(vectorize([obs.observation, obs.desired_goal]))))
         )
         fl = self.frozen_lake_env
         self.action_space = Hierarchical(
-            # boss=spaces.Discrete(2 * (fl.nrow + fl.ncol)),
+
+            # DEBUG{
             boss=spaces.Discrete(4),
+            # boss=spaces.Discrete(2 * (fl.nrow + fl.ncol)),
+            # }
             worker=env.action_space
         )
 
@@ -45,14 +50,15 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
             [-fl.ncol] * fl.nrow,
         )
         direction = list(zip(i, j))[goal]
-        # return direction / np.linalg.norm(direction)
-
+        # DEBUG{
         return np.array([
             [0, -1],  # left
             [1, 0],  # down
             [0, 1],  # right
             [-1, 0],  # up
         ])[goal]
+        # return direction / np.linalg.norm(direction)
+        # }
 
 
 Hierarchical = namedtuple('Hierarchical', 'boss worker')

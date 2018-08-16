@@ -340,6 +340,12 @@ class HierarchicalTrainer(Trainer):
                 self.direction = boss_oracle(self.env)
             else:
                 boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
+
+                # DEBUG {
+                self.direction = np.zeros(2)
+                return self.agents.act.boss.get_actions(boss_obs, state=s, sample=sample)
+                # }
+
                 boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,
                                                                        state=s, sample=sample).output)
                 self.direction = self.env.get_direction(boss_goal)
@@ -373,7 +379,11 @@ class HierarchicalTrainer(Trainer):
                 n_actions = self.env.action_space.boss.n
                 action = np.zeros(n_actions)
                 action[max(range(n_actions), key=alignment)] = 1
-                self.trainers.boss.buffer.append(step.replace(a=action))
+
+                # DEBUG {
+                self.trainers.boss.buffer.append(step)
+                # self.trainers.boss.buffer.append(step.replace(a=action))
+                # }
             self.last_achieved_goal = step.o2.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         self.trainers.worker.buffer.append(step.replace(

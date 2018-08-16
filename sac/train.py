@@ -303,7 +303,12 @@ class HierarchicalTrainer(Trainer):
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-        self.action_space = env.action_space.worker
+
+
+        # DEBUG {{
+        self.action_space = env.action_space
+        # self.action_space = env.action_space.worker
+        # }}
 
         def boss_preprocess_obs(obs, shape):
             obs = Observation(*obs)
@@ -315,13 +320,20 @@ class HierarchicalTrainer(Trainer):
 
         self.trainers = Hierarchical(
             boss=Trainer(
-                observation_space=env.observation_space.boss,
-                action_space=env.action_space.boss,
-                preprocess_func=boss_preprocess_obs,
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                # DEBUG {{
+                preprocess_func=None,
+                # preprocess_func=boss_preprocess_obs,
+                # }}
                 env=env, sess=sess, name='boss', **kwargs),
             worker=Trainer(
-                observation_space=env.observation_space.worker,
-                action_space=env.action_space.worker,
+                # DEBUG {{
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                # observation_space=env.observation_space.worker,
+                # action_space=env.action_space.worker,
+                # }}
                 preprocess_func=worker_preprocess_obs,
                 env=env, sess=sess, name='worker', **kwargs)
         )
@@ -334,6 +346,9 @@ class HierarchicalTrainer(Trainer):
                                                       initial_state=0))
 
     def get_actions(self, o1, s):
+        # DEBUG {{
+        return self.trainers.boss.get_actions(o1, s)
+        # }}
         sample = not self.is_eval_period()
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
@@ -341,10 +356,10 @@ class HierarchicalTrainer(Trainer):
             else:
                 boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
 
-                # DEBUG {
+                # DEBUG {{
                 self.direction = np.zeros(2)
                 return self.agents.act.boss.get_actions(boss_obs, state=s, sample=sample)
-                # }
+                # }}
 
                 boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,
                                                                        state=s, sample=sample).output)
@@ -369,28 +384,32 @@ class HierarchicalTrainer(Trainer):
         raise NotImplemented
 
     def add_to_buffer(self, step: Step):
-        if self.time_steps() % self.boss_act_freq == 0 or step.t:
-            if self.time_steps() > 0:
-                rel_step = step.o2.achieved_goal - self.last_achieved_goal
-
-                def alignment(i):
-                    return np.dot(self.env.get_direction(i), rel_step)
-
-                n_actions = self.env.action_space.boss.n
-                action = np.zeros(n_actions)
-                action[max(range(n_actions), key=alignment)] = 1
-
-                # DEBUG {
-                self.trainers.boss.buffer.append(step)
-                # self.trainers.boss.buffer.append(step.replace(a=action))
-                # }
-            self.last_achieved_goal = step.o2.achieved_goal
-        movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
-        self.trainers.worker.buffer.append(step.replace(
-            o1=step.o1.replace(desired_goal=self.direction),
-            o2=step.o2.replace(desired_goal=self.direction),
-            r=np.dot(self.direction, movement)
-        ))
+        # DEBUG {{
+        self.trainers.boss.add_to_buffer(step)
+        # if self.time_steps() % self.boss_act_freq == 0 or step.t:
+        #     if self.time_steps() > 0:
+        #         rel_step = step.o2.achieved_goal - self.last_achieved_goal
+        #
+        #         def alignment(i):
+        #             return np.dot(self.env.get_direction(i), rel_step)
+        #
+        #         n_actions = self.env.action_space.boss.n
+        #         action = np.zeros(n_actions)
+        #         action[max(range(n_actions), key=alignment)] = 1
+        #
+        #         # DEBUG {{
+        #         self.trainers.boss.buffer.append(step)
+        #         # self.trainers.boss.buffer.append(step.replace(a=action))
+        #         # }}
+        #     self.last_achieved_goal = step.o2.achieved_goal
+        # movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
+        # if not self.worker_oracle:
+        #     self.trainers.worker.buffer.append(step.replace(
+        #         o1=step.o1.replace(desired_goal=self.direction),
+        #         o2=step.o2.replace(desired_goal=self.direction),
+        #         r=np.dot(self.direction, movement)
+        #     ))
+        # }}
 
 
 def boss_oracle(env: HierarchicalWrapper):

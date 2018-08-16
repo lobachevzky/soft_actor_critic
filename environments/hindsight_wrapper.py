@@ -184,3 +184,17 @@ class FrozenLakeHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.frozen_lake_env.goal_vector()
+
+    def step(self, action):
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=np.array(o2.observation),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        return new_o2, r, t, info
+
+    def reset(self):
+        return Observation(
+            observation=np.array(self.env.reset().observation),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())

@@ -9,20 +9,32 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.hierarchical_wrapper import (Hierarchical,
+                                               HierarchicalAgents,
+                                               HierarchicalWrapper)
+from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, normalize, unwrap_env, vectorize
+from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, seq_len: int, num_train_steps: int, logdir: str,
-                 save_path: str, load_path: str, render: bool, **kwargs):
+    def __init__(self,
+                 env: gym.Env,
+                 seed: Optional[int],
+                 buffer_size: int,
+                 batch_size: int,
+                 seq_len: int,
+                 num_train_steps: int,
+                 sess: tf.Session = None,
+                 preprocess_func=None,
+                 action_space=None,
+                 observation_space=None,
+                 **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -33,57 +45,66 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
-        self.save_path = save_path
-
-        config = tf.ConfigProto(allow_soft_placement=True)
-        config.gpu_options.allow_growth = True
-        config.inter_op_parallelism_threads = 1
-        sess = tf.Session(config=config)
+        self.sess = sess or create_sess()
+        self.action_space = action_space or env.action_space
+        self.observation_space = observation_space or env.observation_space
 
         self.agents = Agents(
             act=self.build_agent(
-                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
+                sess=sess,
+                batch_size=None,
+                seq_len=1,
+                reuse=False,
+                action_space=action_space,
+                observation_space=observation_space,
+                **kwargs),
             train=self.build_agent(
-                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
+                sess=sess,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                action_space=action_space,
+                observation_space=observation_space,
+                **kwargs))
         self.seq_len = self.agents.act.seq_len
-        saver = tf.train.Saver()
-        tb_writer = None
-        if load_path:
-            saver.restore(sess, load_path)
-            print("Model restored from", load_path)
-        if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=sess.graph)
-
-        self.count = count = Counter(reward=0, episode=0, time_steps=0)
+        self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
         obs = env.reset()
-        self.preprocess_func = None
-        if not isinstance(obs, np.ndarray):
+        self.preprocess_func = preprocess_func
+        if preprocess_func is None and not isinstance(obs, np.ndarray):
             try:
                 self.preprocess_func = unwrap_env(
                     env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
             except RuntimeError:
                 self.preprocess_func = vectorize
 
-        self.train(count, load_path, logdir, render, save_path, saver, sess, tb_writer)
+        # self.train(load_path, logdir, render, save_path)
 
-    def train(self, count, load_path, logdir, render, save_path, saver, sess, tb_writer):
+    def train(self, load_path, logdir, render, save_path):
+        saver = tf.train.Saver()
+        tb_writer = None
+        if load_path:
+            saver.restore(self.sess, load_path)
+            print("Model restored from", load_path)
+        if logdir:
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.sess.graph)
+
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
-                print("model saved in path:", saver.save(sess, save_path=save_path))
-                saver.save(sess, save_path.replace('<episode>', str(episodes)))
+                print("model saved in path:", saver.save(self.sess, save_path=save_path))
+                saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
-            count.update(
+            self.count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
-                count['time_steps'], episode_reward))
+                self.count['time_steps'], episode_reward))
             if logdir:
                 summary = tf.Summary()
                 if self.is_eval_period():
@@ -91,7 +112,7 @@ class Trainer:
                 else:
                     for k in self.episode_count:
                         summary.value.add(tag=k, simple_value=self.episode_count[k])
-                tb_writer.add_summary(summary, count['time_steps'])
+                tb_writer.add_summary(summary, self.count['time_steps'])
                 tb_writer.flush()
 
     def is_eval_period(self):
@@ -116,9 +137,9 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
+            o2, r, t, info = self.step(a)
             if render:
                 self.env.render()
-            o2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -128,14 +149,8 @@ class Trainer:
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             self.episode_count.update(Counter(reward=r, time_steps=1))
 
-            if self.buffer_full() and perform_updates:
-                for i in range(self.num_train_steps):
-                    step = self.agents.act.train_step(self.sample_buffer())
-                    episode_mean.update(
-                        Counter({
-                            k.replace(' ', '_'): v
-                            for k, v in step.items() if np.isscalar(v)
-                        }))
+            if perform_updates:
+                episode_mean.update(Counter(self.perform_update()))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -143,6 +158,12 @@ class Trainer:
                 for k in episode_mean:
                     self.episode_count[k] = episode_mean[k] / float(time_steps)
                 return self.episode_count
+
+    def perform_update(self):
+        if self.buffer_full():
+            for i in range(self.num_train_steps):
+                step = self.agents.act.train_step(self.sample_buffer())
+                return {k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}
 
     def get_actions(self, o1, s):
         return self.agents.act.get_actions(
@@ -154,9 +175,9 @@ class Trainer:
                     observation_space=None,
                     **kwargs):
         if observation_space is None:
-            observation_space = self.env.observation_space
+            observation_space = self.observation_space
         if action_space is None:
-            action_space = self.env.action_space
+            action_space = self.action_space
         state_shape = observation_space.shape
         if isinstance(action_space, spaces.Discrete):
             action_shape = [action_space.n]
@@ -177,22 +198,20 @@ class Trainer:
 
     def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
-        if type(self.env.action_space) is spaces.Discrete:
+        if type(self.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))
         else:
             action = np.tanh(action)
-            hi, lo = self.env.action_space.high, self.env.action_space.low
+            hi, lo = self.action_space.high, self.action_space.low
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+    def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
         return normalize(
-            vector=obs,
-            low=self.env.observation_space.low,
-            high=self.env.observation_space.high)
+            vector=obs, low=self.observation_space.low, high=self.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -404,5 +423,4 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
             return -np.inf
         return np.dot(d, boss_dir)
 
-    l = list(map(alignment, range(4)))
-    return l
+    return np.array(list(map(alignment, range(4))))

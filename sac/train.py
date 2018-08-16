@@ -346,9 +346,6 @@ class HierarchicalTrainer(Trainer):
                                                       initial_state=0))
 
     def get_actions(self, o1, s):
-        # DEBUG {{
-        return self.trainers.boss.get_actions(o1, s)
-        # }}
         sample = not self.is_eval_period()
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
@@ -358,7 +355,7 @@ class HierarchicalTrainer(Trainer):
 
                 # DEBUG {{
                 self.direction = np.zeros(2)
-                return self.agents.act.boss.get_actions(boss_obs, state=s, sample=sample)
+                return self.trainers.boss.get_actions(o1, s)
                 # }}
 
                 boss_goal = np.argmax(self.agents.act.boss.get_actions(boss_obs,

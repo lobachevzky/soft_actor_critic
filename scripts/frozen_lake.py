@@ -4,8 +4,8 @@ from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hindsight_wrapper import FrozenLakeHindsightWrapper
-from sac.networks import MlpAgent, MoEAgent
-from sac.train import Trainer, HierarchicalTrainer
+from sac.networks import MlpAgent
+from sac.train import HierarchicalTrainer, Trainer
 
 
 def check_probability(ctx, param, value):
@@ -78,9 +78,8 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         render=render,
     )
     if boss_freq:
-        HierarchicalTrainer(boss_act_freq=boss_freq,
-                            env=FrozenLakeHindsightWrapper(env)
-                            **kwargs)
+        HierarchicalTrainer(
+            boss_act_freq=boss_freq, env=FrozenLakeHindsightWrapper(env)**kwargs)
     else:
         Trainer(env=env, **kwargs)
 

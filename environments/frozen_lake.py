@@ -22,6 +22,7 @@ MAPS["10x10"] = [
     'FFFFFFFFFF', 'FFFFFFFFFF', 'FHFFFFFFFF', 'FFFFHFFFFF'
 ]
 
+
 class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
     def __init__(self,
                  map_dims: Tuple[int, int] = (4, 4),

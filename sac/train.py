@@ -9,7 +9,7 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hindsight_wrapper import HindsightWrapper, Observation
+from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -148,7 +148,11 @@ class Trainer:
         return self.agents.act.get_actions(
             self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
 
-    def build_agent(self, base_agent: AbstractAgent, action_space=None, observation_space=None, **kwargs):
+    def build_agent(self,
+                    base_agent: AbstractAgent,
+                    action_space=None,
+                    observation_space=None,
+                    **kwargs):
         if observation_space is None:
             observation_space = self.env.observation_space
         if action_space is None:
@@ -304,26 +308,32 @@ class HierarchicalTrainer(Trainer):
         self.boss_act_freq = boss_act_freq
         self.last_achieved_goal = None
         self.direction = None
-        self.buffers = Hierarchical(boss=ReplayBuffer(buffer_size),
-                                    worker=ReplayBuffer(buffer_size))
+        self.buffers = Hierarchical(
+            boss=ReplayBuffer(buffer_size), worker=ReplayBuffer(buffer_size))
         super().__init__(buffer_size=buffer_size, **kwargs)
         del self.buffer
 
-    def build_agent(self, name='agent', action_space=None, observation_space=None, **kwargs):
+    def build_agent(self,
+                    name='agent',
+                    action_space=None,
+                    observation_space=None,
+                    **kwargs):
         obs = self.env.reset()  # type: Observation
         action_space = spaces.Box(low=-1, high=1, shape=np.shape(obs.desired_goal))
         boss_obs_shape = np.shape(vectorize([obs.achieved_goal, obs.desired_goal]))
         boss_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=boss_obs_shape)
-        boss_agent = super().build_agent(action_space=action_space,
-                                         observation_space=boss_obs_space,
-                                         name='boss_' + name,
-                                         **kwargs)
+        boss_agent = super().build_agent(
+            action_space=action_space,
+            observation_space=boss_obs_space,
+            name='boss_' + name,
+            **kwargs)
         worker_obs_shape = np.shape(vectorize([obs.observation, obs.desired_goal]))
         worker_obs_space = spaces.Box(low=-np.inf, high=np.inf, shape=worker_obs_shape)
-        worker_agent = super().build_agent(action_space=self.env.action_space,
-                                           observation_space=worker_obs_space,
-                                           name='worker_' + name,
-                                           **kwargs)
+        worker_agent = super().build_agent(
+            action_space=self.env.action_space,
+            observation_space=worker_obs_space,
+            name='worker_' + name,
+            **kwargs)
         return HierarchicalAgents(boss=boss_agent, worker=worker_agent)
 
     def get_actions(self, o1, s):
@@ -332,7 +342,8 @@ class HierarchicalTrainer(Trainer):
         if self.time_steps() % self.boss_act_freq == 0:
             # self.direction = self.agents.act.boss.get_actions(boss_obs,
             #                                                   state=s, sample=sample).output
-            self.direction = self.hindsight_env._desired_goal() - self.hindsight_env._achieved_goal()
+            self.direction = self.hindsight_env._desired_goal(
+            ) - self.hindsight_env._achieved_goal()
             self.direction = self.direction.astype(float) / np.linalg.norm(self.direction)
             print(self.direction)
         worker_obs = vectorize([o1.observation, self.direction])
@@ -353,11 +364,11 @@ class HierarchicalTrainer(Trainer):
                 self.buffers.boss.append(step.replace(a=rel_step))
             self.last_achieved_goal = step.o1.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
-        self.buffers.worker.append(step.replace(
-            o1=step.o1.replace(desired_goal=self.direction),
-            o2=step.o2.replace(desired_goal=self.direction),
-            r=np.dot(self.direction, movement)
-        ))
+        self.buffers.worker.append(
+            step.replace(
+                o1=step.o1.replace(desired_goal=self.direction),
+                o2=step.o2.replace(desired_goal=self.direction),
+                r=np.dot(self.direction, movement)))
 
     def preprocess_obs(self, obs, shape: Optional[tuple] = None):
         return obs

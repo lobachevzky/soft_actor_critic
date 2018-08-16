@@ -66,7 +66,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal, randomize_pose):
+        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal,
+        randomize_pose):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(

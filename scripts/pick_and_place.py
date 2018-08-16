@@ -1,11 +1,11 @@
+import re
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
-import re
 
 import click
 import tensorflow as tf

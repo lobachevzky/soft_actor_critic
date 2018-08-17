@@ -320,12 +320,7 @@ class HierarchicalTrainer(Trainer):
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-
-        # DEBUG {{
-        # self.action_space = env.action_space
-
         self.action_space = env.action_space.worker
-        # }}
 
         def boss_preprocess_obs(obs, shape):
             obs = Observation(*obs)
@@ -369,25 +364,17 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
             else:
-                boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
+                action = self.trainers.boss.get_actions(o1, s).output
+                self.direction = self.env.get_direction(np.argmax(action))
+            self.direction = self.direction.astype(float)
 
-        #         # DEBUG {{
-        #         self.direction = np.zeros(2)
-                return self.trainers.boss.get_actions(o1, s)
-        #         # }}
-        #
-        #         boss_goal = np.argmax(
-        #             self.agents.act.boss.get_actions(boss_obs, state=s,
-        #                                              sample=sample).output)
-        #         self.direction = self.env.get_direction(boss_goal)
-        #     self.direction = self.direction.astype(float)
-        #
-        # if self.worker_oracle:
-        #     oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
-        #     return NetworkOutput(output=oracle, state=0)
-        # else:
-        #     worker_obs = vectorize([o1.observation, self.direction])
-        #     return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
+        if self.worker_oracle:
+            oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
+            assert np.array_equal(oracle, action)
+            return NetworkOutput(output=oracle, state=0)
+        else:
+            worker_obs = vectorize([o1.observation, self.direction])
+            return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
 
     def perform_update(self):
         return {

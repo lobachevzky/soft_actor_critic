@@ -370,7 +370,10 @@ class HierarchicalTrainer(Trainer):
 
         if self.worker_oracle:
             oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
-            return NetworkOutput(output=oracle, state=0)
+            ## DEBUG {{
+            return NetworkOutput(output=action, state=0)
+            # return NetworkOutput(output=oracle, state=0)
+            # }}
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -382,10 +385,10 @@ class HierarchicalTrainer(Trainer):
                 f'boss_{k}': v
                 for k, v in (self.trainers.boss.perform_update() or {}).items()
             },
-            # **{
-            #     f'worker_{k}': v
-            #     for k, v in (self.trainers.worker.perform_update() or {}).items()
-            # }
+            **{
+                f'worker_{k}': v
+                for k, v in (self.trainers.worker.perform_update() or {}).items()
+            }
         }
 
     def trajectory(self, final_index=None):

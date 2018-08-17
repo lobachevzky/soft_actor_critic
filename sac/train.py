@@ -370,8 +370,7 @@ class HierarchicalTrainer(Trainer):
 
         if self.worker_oracle:
             self.oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
-            assert np.array_equal(self.oracle_action, action)
-            return NetworkOutput(output=action, state=0)
+            return NetworkOutput(output=self.oracle_action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])

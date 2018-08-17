@@ -445,4 +445,6 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
         #     return -np.inf
         return np.dot(d, boss_dir)
 
-    return np.array(list(map(alignment, range(4))))
+    action = np.zeros(4)
+    action[max(range(4), key=alignment)] = 1
+    return action

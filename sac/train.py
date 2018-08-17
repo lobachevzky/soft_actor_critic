@@ -370,7 +370,6 @@ class HierarchicalTrainer(Trainer):
 
         if self.worker_oracle:
             oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
-            assert np.array_equal(oracle, action)
             return NetworkOutput(output=oracle, state=0)
         else:
             assert False

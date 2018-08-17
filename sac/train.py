@@ -396,23 +396,23 @@ class HierarchicalTrainer(Trainer):
 
     def add_to_buffer(self, step: Step):
         # DEBUG {{
-        self.trainers.boss.add_to_buffer(step)
-        # if self.time_steps() % self.boss_act_freq == 0 or step.t:
-        #     if self.time_steps() > 0:
-        #         rel_step = step.o2.achieved_goal - self.last_achieved_goal
-        #
-        #         def alignment(i):
-        #             return np.dot(self.env.get_direction(i), rel_step)
-        #
-        #         n_actions = self.env.action_space.boss.n
-        #         action = np.zeros(n_actions)
-        #         action[max(range(n_actions), key=alignment)] = 1
-        #
-        #         # DEBUG {{
-        #         self.trainers.boss.buffer.append(step)
-        #         # self.trainers.boss.buffer.append(step.replace(a=action))
-        #         # }}
-        #     self.last_achieved_goal = step.o2.achieved_goal
+        # self.trainers.boss.add_to_buffer(step)
+        if self.time_steps() % self.boss_act_freq == 0 or step.t:
+            if self.time_steps() > 0:
+                rel_step = step.o2.achieved_goal - self.last_achieved_goal
+
+                def alignment(i):
+                    return np.dot(self.env.get_direction(i), rel_step)
+
+                n_actions = self.env.action_space.boss.n
+                action = np.zeros(n_actions)
+                action[max(range(n_actions), key=alignment)] = 1
+
+                # DEBUG {{
+                self.trainers.boss.buffer.append(step)
+                # self.trainers.boss.buffer.append(step.replace(a=action))
+                # }}
+            self.last_achieved_goal = step.o2.achieved_goal
         # movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         # if not self.worker_oracle:
         #     self.trainers.worker.buffer.append(step.replace(

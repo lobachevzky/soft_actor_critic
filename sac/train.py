@@ -339,21 +339,14 @@ class HierarchicalTrainer(Trainer):
             boss=Trainer(
                 observation_space=env.observation_space.boss,
                 action_space=env.action_space.boss,
-                # DEBUG {{
-                preprocess_func=None,
-                # preprocess_func=boss_preprocess_obs,
-                # }}
+                preprocess_func=boss_preprocess_obs,
                 env=env,
                 sess=sess,
                 name='boss',
                 **kwargs),
             worker=Trainer(
-                # DEBUG {{
                 observation_space=env.observation_space.worker,
                 action_space=env.action_space.worker,
-                # observation_space=env.observation_space.worker,
-                # action_space=env.action_space.worker,
-                # }}
                 preprocess_func=worker_preprocess_obs,
                 env=env,
                 sess=sess,

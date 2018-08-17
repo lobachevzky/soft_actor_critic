@@ -322,9 +322,9 @@ class HierarchicalTrainer(Trainer):
         self.episode_count = Counter()
 
         # DEBUG {{
-        self.action_space = env.action_space
+        # self.action_space = env.action_space
 
-        # self.action_space = env.action_space.worker
+        self.action_space = env.action_space.worker
         # }}
 
         def boss_preprocess_obs(obs, shape):
@@ -337,8 +337,8 @@ class HierarchicalTrainer(Trainer):
 
         self.trainers = Hierarchical(
             boss=Trainer(
-                observation_space=env.observation_space,
-                action_space=env.action_space,
+                observation_space=env.observation_space.boss,
+                action_space=env.action_space.boss,
                 # DEBUG {{
                 preprocess_func=None,
                 # preprocess_func=boss_preprocess_obs,
@@ -349,8 +349,8 @@ class HierarchicalTrainer(Trainer):
                 **kwargs),
             worker=Trainer(
                 # DEBUG {{
-                observation_space=env.observation_space,
-                action_space=env.action_space,
+                observation_space=env.observation_space.worker,
+                action_space=env.action_space.worker,
                 # observation_space=env.observation_space.worker,
                 # action_space=env.action_space.worker,
                 # }}

@@ -369,11 +369,8 @@ class HierarchicalTrainer(Trainer):
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
-            oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
-            ## DEBUG {{
-            return NetworkOutput(output=action, state=0)
-            # return NetworkOutput(output=oracle, state=0)
-            # }}
+            self.oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
+            return NetworkOutput(output=self.oracle_action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -407,7 +404,7 @@ class HierarchicalTrainer(Trainer):
                 action[max(range(n_actions), key=alignment)] = 1
 
                 # DEBUG {{
-                self.trainers.boss.buffer.append(step)
+                self.trainers.boss.buffer.append(step.replace(a=self.oracle_action))
                 # self.trainers.boss.buffer.append(step.replace(a=action))
                 # }}
             self.last_achieved_goal = step.o2.achieved_goal

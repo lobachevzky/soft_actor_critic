@@ -373,6 +373,7 @@ class HierarchicalTrainer(Trainer):
             assert np.array_equal(oracle, action)
             return NetworkOutput(output=oracle, state=0)
         else:
+            assert False
             worker_obs = vectorize([o1.observation, self.direction])
             return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
 

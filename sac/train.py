@@ -371,7 +371,7 @@ class HierarchicalTrainer(Trainer):
         if self.worker_oracle:
             self.oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
             assert np.array_equal(self.oracle_action, action)
-            return NetworkOutput(output=self.oracle_action, state=0)
+            return NetworkOutput(output=action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -410,7 +410,7 @@ class HierarchicalTrainer(Trainer):
                     assert np.array_equal(action, self.boss_action)
                 replace = step.replace(a=action)
                 # import ipdb; ipdb.set_trace()
-                self.trainers.boss.buffer.append(replace)
+                self.trainers.boss.buffer.append(step)
                 # self.trainers.boss.buffer.append(step.replace(a=action))
                 # }}
             self.last_achieved_goal = step.o2.achieved_goal

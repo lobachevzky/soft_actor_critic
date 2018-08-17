@@ -441,8 +441,8 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
     def alignment(i):
         d = DIRECTIONS[i]
         new_s = s + d
-        if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
-            return -np.inf
+        # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
+        #     return -np.inf
         return np.dot(d, boss_dir)
 
     return np.array(list(map(alignment, range(4))))

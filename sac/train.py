@@ -409,6 +409,8 @@ class HierarchicalTrainer(Trainer):
                     assert np.array_equal(action, self.oracle_action)
                     assert np.array_equal(action, self.boss_action)
                 replace = step.replace(a=action)
+                if not np.array_equal(rel_step, [0, 0]):
+                    assert np.array_equal(step.a, replace.a)
                 # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(step)
                 # self.trainers.boss.buffer.append(step.replace(a=action))

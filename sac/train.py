@@ -395,8 +395,6 @@ class HierarchicalTrainer(Trainer):
         raise NotImplemented
 
     def add_to_buffer(self, step: Step):
-        # DEBUG {{
-        # self.trainers.boss.add_to_buffer(step)
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
             if self.time_steps() > 0:
                 rel_step = step.o2.achieved_goal - self.last_achieved_goal
@@ -413,14 +411,13 @@ class HierarchicalTrainer(Trainer):
                 # self.trainers.boss.buffer.append(step.replace(a=action))
                 # }}
             self.last_achieved_goal = step.o2.achieved_goal
-        # movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
-        # if not self.worker_oracle:
-        #     self.trainers.worker.buffer.append(step.replace(
-        #         o1=step.o1.replace(desired_goal=self.direction),
-        #         o2=step.o2.replace(desired_goal=self.direction),
-        #         r=np.dot(self.direction, movement)
-        #     ))
-        # }}
+        movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
+        if not self.worker_oracle:
+            self.trainers.worker.buffer.append(step.replace(
+                o1=step.o1.replace(desired_goal=self.direction),
+                o2=step.o2.replace(desired_goal=self.direction),
+                r=np.dot(self.direction, movement)
+            ))
 
 
 def boss_oracle(env: HierarchicalWrapper):

@@ -364,12 +364,13 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
             else:
-                action = self.trainers.boss.get_actions(o1, s).output
+                self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
                 self.direction = self.env.get_direction(np.argmax(action))
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
             self.oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
+            assert np.array_equal(self.oracle_action, action)
             return NetworkOutput(output=self.oracle_action, state=0)
         else:
             assert False
@@ -404,6 +405,9 @@ class HierarchicalTrainer(Trainer):
                 action[max(range(n_actions), key=alignment)] = 1
 
                 # DEBUG {{
+                if not np.array_equal(rel_step, [0, 0]):
+                    assert np.array_equal(action, self.oracle_action)
+                    assert np.array_equal(action, self.boss_action)
                 replace = step.replace(a=action)
                 # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(replace)

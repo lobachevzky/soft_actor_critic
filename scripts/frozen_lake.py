@@ -82,8 +82,7 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
             boss_act_freq=boss_freq,
             use_worker_oracle=worker_oracle,
             use_boss_oracle=boss_oracle,
-            # env=FrozenLakeHierarchicalWrapper(env),
-            env=env,
+            env=FrozenLakeHierarchicalWrapper(env),
             **kwargs)
     else:
         trainer = Trainer(env=env, **kwargs)

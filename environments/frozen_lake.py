@@ -62,11 +62,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         }
         super().__init__(desc=desc, is_slippery=is_slippery)
 
-        if self.random_goal:
-            size_obs = 4,  # current-coord, goal-coord
-        else:
-            size_obs = 2,  # current-coord
-        self.observation_space = Box(low=np.zeros(size_obs), high=np.ones(size_obs))
+        self.observation_space = Box(low=np.zeros(4), high=np.ones(4))
 
     def inc(self, row, col, a):
         if a == 0:  # left
@@ -182,12 +178,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
 
             self.goal = new_goal
 
-        if self.random_goal:
-            observation = Observation(
-                observation=self.preprocess(super().reset()), goal=self.goal_vector())
-            return observation
-        else:
-            return self.preprocess(super().reset())
+        return Observation(
+            observation=self.preprocess(super().reset()), goal=self.goal_vector())
 
     def to_s(self, row, col):
         return row * self.ncol + col
@@ -195,8 +187,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
     def step(self, a):
         s, r, t, i = super().step(a)
         s = self.preprocess(s)
-        if self.random_goal:
-            s = Observation(observation=s, goal=self.goal_vector())
+        s = Observation(observation=s, goal=self.goal_vector())
         if r == 0:
             r = self.default_reward
         i['log count'] = {'successes': float(r > 0)}

@@ -359,7 +359,6 @@ class HierarchicalTrainer(Trainer):
                 initial_state=0))
 
     def get_actions(self, o1, s):
-        sample = not self.is_eval_period()
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
@@ -409,7 +408,9 @@ class HierarchicalTrainer(Trainer):
 
                 # DEBUG {{
                 replace = step.replace(a=action)
-                if not np.allclose(rel_step, 0):
+                if np.allclose(rel_step, 0):
+                    assert np.argmax(replace.a) == 4
+                else:
                     assert np.array_equal(step.a, replace.a)
                 # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(step)

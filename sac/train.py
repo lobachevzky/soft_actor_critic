@@ -331,10 +331,10 @@ class HierarchicalTrainer(Trainer):
         #     obs = Observation(*obs)
         #     return vectorize([obs.achieved_goal, obs.desired_goal], shape)
         #
-        # def worker_preprocess_obs(obs, shape):
-        #     obs = Observation(*obs)
-        #     return vectorize([obs.observation, obs.desired_goal], shape)
-        #
+        def worker_preprocess_obs(obs, shape):
+            obs = Observation(*obs)
+            return vectorize([obs.observation, obs.desired_goal], shape)
+
         self.trainers = Hierarchical(
             boss=Trainer(
                 observation_space=env.observation_space,
@@ -347,21 +347,20 @@ class HierarchicalTrainer(Trainer):
                 sess=sess,
                 name='boss',
                 **kwargs),
-            worker=None)
+            worker=Trainer(
+                # DEBUG {{
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                # observation_space=env.observation_space.worker,
+                # action_space=env.action_space.worker,
+                # }}
+                preprocess_func=worker_preprocess_obs,
+                env=env,
+                sess=sess,
+                name='worker',
+                **kwargs))
+
         self.agents = self.trainers.boss.agents
-        #     worker=Trainer(
-        #         # DEBUG {{
-        #         observation_space=env.observation_space,
-        #         action_space=env.action_space,
-        #         # observation_space=env.observation_space.worker,
-        #         # action_space=env.action_space.worker,
-        #         # }}
-        #         preprocess_func=worker_preprocess_obs,
-        #         env=env,
-        #         sess=sess,
-        #         name='worker',
-        #         **kwargs))
-        #
         # self.agents = Agents(
         #     act=HierarchicalAgents(
         #         boss=self.trainers.boss.agents.act,

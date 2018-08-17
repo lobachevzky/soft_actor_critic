@@ -404,7 +404,8 @@ class HierarchicalTrainer(Trainer):
                 action[max(range(n_actions), key=alignment)] = 1
 
                 # DEBUG {{
-                replace = step.replace(a=self.oracle_action)
+                replace = step.replace(a=action)
+                # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(replace)
                 # self.trainers.boss.buffer.append(step.replace(a=action))
                 # }}

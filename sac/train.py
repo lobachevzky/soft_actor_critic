@@ -371,17 +371,16 @@ class HierarchicalTrainer(Trainer):
                 initial_state=0))
 
     def get_actions(self, o1, s):
-        return self.trainers.boss.get_actions(o1, s)
-        # sample = not self.is_eval_period()
-        # if self.time_steps() % self.boss_act_freq == 0:
-        #     if self.boss_oracle:
-        #         self.direction = boss_oracle(self.env)
-        #     else:
-        #         boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
-        #
+        sample = not self.is_eval_period()
+        if self.time_steps() % self.boss_act_freq == 0:
+            if self.boss_oracle:
+                self.direction = boss_oracle(self.env)
+            else:
+                boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
+
         #         # DEBUG {{
         #         self.direction = np.zeros(2)
-        #         return self.trainers.boss.get_actions(o1, s)
+                return self.trainers.boss.get_actions(o1, s)
         #         # }}
         #
         #         boss_goal = np.argmax(

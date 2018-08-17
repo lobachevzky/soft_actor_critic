@@ -327,14 +327,14 @@ class HierarchicalTrainer(Trainer):
         # self.action_space = env.action_space.worker
         # }}
 
-        def boss_preprocess_obs(obs, shape):
-            obs = Observation(*obs)
-            return vectorize([obs.achieved_goal, obs.desired_goal], shape)
-
-        def worker_preprocess_obs(obs, shape):
-            obs = Observation(*obs)
-            return vectorize([obs.observation, obs.desired_goal], shape)
-
+        # def boss_preprocess_obs(obs, shape):
+        #     obs = Observation(*obs)
+        #     return vectorize([obs.achieved_goal, obs.desired_goal], shape)
+        #
+        # def worker_preprocess_obs(obs, shape):
+        #     obs = Observation(*obs)
+        #     return vectorize([obs.observation, obs.desired_goal], shape)
+        #
         self.trainers = Hierarchical(
             boss=Trainer(
                 observation_space=env.observation_space,
@@ -347,54 +347,57 @@ class HierarchicalTrainer(Trainer):
                 sess=sess,
                 name='boss',
                 **kwargs),
-            worker=Trainer(
-                # DEBUG {{
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                # observation_space=env.observation_space.worker,
-                # action_space=env.action_space.worker,
-                # }}
-                preprocess_func=worker_preprocess_obs,
-                env=env,
-                sess=sess,
-                name='worker',
-                **kwargs))
-
-        self.agents = Agents(
-            act=HierarchicalAgents(
-                boss=self.trainers.boss.agents.act,
-                worker=self.trainers.worker.agents.act,
-                initial_state=0),
-            train=HierarchicalAgents(
-                boss=self.trainers.boss.agents.train,
-                worker=self.trainers.worker.agents.train,
-                initial_state=0))
+            worker=None)
+        self.agents = self.trainers.boss.agents
+        #     worker=Trainer(
+        #         # DEBUG {{
+        #         observation_space=env.observation_space,
+        #         action_space=env.action_space,
+        #         # observation_space=env.observation_space.worker,
+        #         # action_space=env.action_space.worker,
+        #         # }}
+        #         preprocess_func=worker_preprocess_obs,
+        #         env=env,
+        #         sess=sess,
+        #         name='worker',
+        #         **kwargs))
+        #
+        # self.agents = Agents(
+        #     act=HierarchicalAgents(
+        #         boss=self.trainers.boss.agents.act,
+        #         worker=self.trainers.worker.agents.act,
+        #         initial_state=0),
+        #     train=HierarchicalAgents(
+        #         boss=self.trainers.boss.agents.train,
+        #         worker=self.trainers.worker.agents.train,
+        #         initial_state=0))
 
     def get_actions(self, o1, s):
-        sample = not self.is_eval_period()
-        if self.time_steps() % self.boss_act_freq == 0:
-            if self.boss_oracle:
-                self.direction = boss_oracle(self.env)
-            else:
-                boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
-
-                # DEBUG {{
-                self.direction = np.zeros(2)
-                return self.trainers.boss.get_actions(o1, s)
-                # }}
-
-                boss_goal = np.argmax(
-                    self.agents.act.boss.get_actions(boss_obs, state=s,
-                                                     sample=sample).output)
-                self.direction = self.env.get_direction(boss_goal)
-            self.direction = self.direction.astype(float)
-
-        if self.worker_oracle:
-            oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
-            return NetworkOutput(output=oracle, state=0)
-        else:
-            worker_obs = vectorize([o1.observation, self.direction])
-            return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
+        return self.trainers.boss.get_actions(o1, s)
+        # sample = not self.is_eval_period()
+        # if self.time_steps() % self.boss_act_freq == 0:
+        #     if self.boss_oracle:
+        #         self.direction = boss_oracle(self.env)
+        #     else:
+        #         boss_obs = vectorize([o1.achieved_goal, o1.desired_goal])
+        #
+        #         # DEBUG {{
+        #         self.direction = np.zeros(2)
+        #         return self.trainers.boss.get_actions(o1, s)
+        #         # }}
+        #
+        #         boss_goal = np.argmax(
+        #             self.agents.act.boss.get_actions(boss_obs, state=s,
+        #                                              sample=sample).output)
+        #         self.direction = self.env.get_direction(boss_goal)
+        #     self.direction = self.direction.astype(float)
+        #
+        # if self.worker_oracle:
+        #     oracle = worker_oracle(self.env.frozen_lake_env, self.direction)
+        #     return NetworkOutput(output=oracle, state=0)
+        # else:
+        #     worker_obs = vectorize([o1.observation, self.direction])
+        #     return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
 
     def perform_update(self):
         return {
@@ -402,10 +405,10 @@ class HierarchicalTrainer(Trainer):
                 f'boss_{k}': v
                 for k, v in (self.trainers.boss.perform_update() or {}).items()
             },
-            **{
-                f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update() or {}).items()
-            }
+            # **{
+            #     f'worker_{k}': v
+            #     for k, v in (self.trainers.worker.perform_update() or {}).items()
+            # }
         }
 
     def trajectory(self, final_index=None):

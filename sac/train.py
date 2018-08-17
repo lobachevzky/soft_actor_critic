@@ -402,14 +402,15 @@ class HierarchicalTrainer(Trainer):
 
                 n_actions = self.env.action_space.boss.n
                 action = np.zeros(n_actions)
-                action[max(range(n_actions), key=alignment)] = 1
+                if np.allclose(rel_step, 0):
+                    i = 4
+                else:
+                    i = max(range(n_actions), key=alignment)
+                action[i] = 1
 
                 # DEBUG {{
-                if not np.array_equal(rel_step, [0, 0]):
-                    assert np.array_equal(action, self.oracle_action)
-                    assert np.array_equal(action, self.boss_action)
                 replace = step.replace(a=action)
-                if not np.array_equal(rel_step, [0, 0]):
+                if not np.allclose(rel_step, 0):
                     assert np.array_equal(step.a, replace.a)
                 # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(step)
@@ -451,6 +452,10 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
         #     return -np.inf
         return np.dot(d, boss_dir)
 
-    action = np.zeros(4)
-    action[max(range(4), key=alignment)] = 1
+    action = np.zeros(5)
+    if np.allclose(boss_dir, 0):
+        i = 4
+    else:
+        i = max(range(4), key=alignment)
+    action[i] = 1
     return action

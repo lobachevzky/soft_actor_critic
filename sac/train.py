@@ -363,13 +363,13 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
             else:
-                self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
+                action = self.trainers.boss.get_actions(o1, s).output
                 self.direction = self.env.get_direction(np.argmax(action))
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
-            self.oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
-            return NetworkOutput(output=self.oracle_action, state=0)
+            oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
+            return NetworkOutput(output=oracle_action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -396,15 +396,16 @@ class HierarchicalTrainer(Trainer):
                 rel_step = step.o2.achieved_goal - self.last_achieved_goal
 
                 def alignment(i):
-                    return np.dot(self.env.get_direction(i), rel_step)
+                    direction = self.env.get_direction(i)
+                    if np.allclose(direction, 0) and np.allclose(rel_step, 0):
+                        return 1
+                    return np.dot(direction, rel_step)
 
-                if not np.allclose(rel_step, 0):
-                    n_actions = self.env.action_space.boss.n
-                    action = np.zeros(n_actions)
-                    i = max(range(n_actions), key=alignment)
-                    action[i] = 1
-                    assert np.array_equal(action, step.a)
-                    step = step.replace(a=action)
+                n_actions = self.env.action_space.boss.n
+                action = np.zeros(n_actions)
+                i = max(range(n_actions), key=alignment)
+                action[i] = 1
+                step = step.replace(a=action)
 
                 # DEBUG {{
                 # import ipdb; ipdb.set_trace()
@@ -449,10 +450,10 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
             return -np.inf
         return np.dot(d, boss_dir)
 
-    action = np.zeros(4)
+    action = np.zeros(5)
     if np.allclose(boss_dir, 0):
-        i = np.random.randint(4)
+        i = 0
     else:
-        i = max(range(4), key=alignment)
+        i = 1 + max(range(4), key=alignment)
     action[i] = 1
     return action

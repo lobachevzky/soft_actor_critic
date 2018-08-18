@@ -5,7 +5,7 @@ import numpy as np
 from gym import spaces
 
 from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
-                                            HindsightWrapper)
+                                            HindsightWrapper, Observation)
 from sac.utils import vectorize
 
 
@@ -17,8 +17,8 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
     def __init__(self, env):
         super().__init__(env)
         fl = self.frozen_lake_env
-        self._step = fl.s, fl.default_reward, False, {}
         obs = super().reset()
+        self._step = obs, fl.default_reward, False, {}
 
         self.observation_space = Hierarchical(
             # DEBUG {{
@@ -33,11 +33,16 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         self.action_space = Hierarchical(
 
             #     # DEBUG {{
-            boss=spaces.Discrete(4),
+            boss=spaces.Discrete(5),
             #     # boss=spaces.Discrete(2 * (fl.nrow + fl.ncol)),
             #     # }}
-            worker=spaces.Discrete(4)
+            worker=spaces.Discrete(5)
         )
+
+    def step(self, action: int):
+        if action != 0:
+            self._step = super().step(action - 1)
+        return self._step
 
     def get_direction(self, goal: int):
         fl = self.frozen_lake_env
@@ -57,11 +62,11 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
 
         # DEBUG {{
         return np.array([
+            [0, 0],  # freeze
             [0, -1],  # left
             [1, 0],  # down
             [0, 1],  # right
             [-1, 0],  # up
-            [0, 0],  # freeze
         ])[goal]
         # return direction / np.linalg.norm(direction)
         # }}

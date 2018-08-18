@@ -445,6 +445,8 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
         new_s = s + d
         # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
         #     return -np.inf
+        if in_bounds(new_s) and env.desc[tuple(new_s)] == b'H':
+            return -np.inf
         return np.dot(d, boss_dir)
 
     action = np.zeros(5)

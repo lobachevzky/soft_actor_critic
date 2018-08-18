@@ -404,6 +404,7 @@ class HierarchicalTrainer(Trainer):
                     i = max(range(n_actions), key=alignment)
                     action[i] = 1
                     assert np.array_equal(action, step.a)
+                    step = step.replace(a=action)
 
                 # DEBUG {{
                 # import ipdb; ipdb.set_trace()

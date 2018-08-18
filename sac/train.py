@@ -398,20 +398,14 @@ class HierarchicalTrainer(Trainer):
                 def alignment(i):
                     return np.dot(self.env.get_direction(i), rel_step)
 
-                n_actions = self.env.action_space.boss.n
-                action = np.zeros(n_actions)
-                if np.allclose(rel_step, 0):
-                    i = 4
-                else:
+                if not np.allclose(rel_step, 0):
+                    n_actions = self.env.action_space.boss.n
+                    action = np.zeros(n_actions)
                     i = max(range(n_actions), key=alignment)
-                action[i] = 1
+                    action[i] = 1
+                    assert np.array_equal(action, step.a)
 
                 # DEBUG {{
-                replace = step.replace(a=action)
-                if np.allclose(rel_step, 0):
-                    assert np.argmax(replace.a) == 4
-                else:
-                    assert np.array_equal(step.a, replace.a)
                 # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(step)
                 # self.trainers.boss.buffer.append(step.replace(a=action))

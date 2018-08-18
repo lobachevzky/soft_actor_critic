@@ -20,8 +20,6 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         self._step = fl.s, fl.default_reward, False, {}
         obs = super().reset()
 
-        # DEBUG {{
-        # self.observation_space = env.observation_space
         self.observation_space = Hierarchical(
             # DEBUG {{
             boss=env.observation_space,
@@ -31,24 +29,15 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
             worker=spaces.Box(low=-np.inf, high=np.inf, shape=(
                 np.shape(vectorize([obs.observation, obs.desired_goal]))))
         )
-        # }}
 
-        # DEBUG {{
-        # self.action_space = env.action_space
         self.action_space = Hierarchical(
 
             #     # DEBUG {{
-            boss=spaces.Discrete(5),
+            boss=spaces.Discrete(4),
             #     # boss=spaces.Discrete(2 * (fl.nrow + fl.ncol)),
             #     # }}
-            worker=spaces.Discrete(5)
+            worker=spaces.Discrete(4)
         )
-        # }}
-
-    def step(self, action):
-        if action != 4:
-            self._step = super().step(action)
-        return self._step
 
     def get_direction(self, goal: int):
         fl = self.frozen_lake_env

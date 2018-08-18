@@ -21,11 +21,8 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         self._step = obs, fl.default_reward, False, {}
 
         self.observation_space = Hierarchical(
-            # DEBUG {{
-            boss=env.observation_space,
-            # boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
-            #     np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
-            # }}
+            boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
+                np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
             worker=spaces.Box(low=-np.inf, high=np.inf, shape=(
                 np.shape(vectorize([obs.observation, obs.desired_goal]))))
         )

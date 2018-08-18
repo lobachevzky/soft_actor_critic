@@ -28,9 +28,8 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         )
 
         self.action_space = Hierarchical(
-
             #     # DEBUG {{
-            boss=spaces.Discrete(5),
+            boss=spaces.Discrete(9),
             #     # boss=spaces.Discrete(2 * (fl.nrow + fl.ncol)),
             #     # }}
             worker=spaces.Discrete(5)
@@ -55,18 +54,32 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
             range(fl.ncol),
             [-fl.ncol] * fl.nrow,
         )
-        direction = list(zip(i, j))[goal]
 
-        # DEBUG {{
-        return np.array([
-            [0, 0],  # freeze
-            [0, -1],  # left
-            [1, 0],  # down
-            [0, 1],  # right
-            [-1, 0],  # up
-        ])[goal]
-        # return direction / np.linalg.norm(direction)
-        # }}
+        i = itertools.chain(
+            [0],
+            [-1] * 2,
+            range(-1, 1),
+            [1] * 2,
+            range(1, -1, -1),
+            )
+
+        j = itertools.chain(
+            [0],
+            range(-1, 1),
+            [1] * 2,
+            range(1, -1, -1),
+            [-1] * 2,
+            )
+        direction = list(zip(i, j))[goal]
+        return direction / np.linalg.norm(direction)
+
+        # return np.array([
+        #     [0, 0],  # freeze
+        #     [0, -1],  # left
+        #     [1, 0],  # down
+        #     [0, 1],  # right
+        #     [-1, 0],  # up
+        # ])[goal]
 
 
 Hierarchical = namedtuple('Hierarchical', 'boss worker')

@@ -70,8 +70,10 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
             range(1, -1, -1),
             [-1] * 2,
             )
-        direction = list(zip(i, j))[goal]
-        return direction / np.linalg.norm(direction)
+        direction = np.array(list(zip(i, j))[goal], dtype=float)
+        if not np.allclose(direction, 0):
+            direction /= np.linalg.norm(direction)
+        return direction
 
         # return np.array([
         #     [0, 0],  # freeze

@@ -135,6 +135,8 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
+        if render:
+            self.env.render()
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
             o2, r, t, info = self.step(a)
@@ -365,6 +367,22 @@ class HierarchicalTrainer(Trainer):
             else:
                 action = self.trainers.boss.get_actions(o1, s).output
                 self.direction = self.env.get_direction(np.argmax(action))
+                i, j = self.direction
+                if i > 0:
+                    i_string = 'down'
+                elif i < 0:
+                    i_string = 'up'
+                else:
+                    i_string = ''
+
+                if j < 0:
+                    j_string = 'left'
+                elif j > 0:
+                    j_string = 'right'
+                else:
+                    j_string = ''
+
+                print(i_string, j_string)
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
@@ -454,6 +472,9 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
     if np.allclose(boss_dir, 0):
         i = 0
     else:
-        i = 1 + max(range(4), key=alignment)
+        alignments = list(map(alignment, range(4)))
+        best_alignments = [i for i in range(4)
+                           if alignments[i] == max(alignments)]
+        i = 1 + np.random.choice(best_alignments)
     action[i] = 1
     return action

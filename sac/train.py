@@ -323,6 +323,7 @@ class HierarchicalTrainer(Trainer):
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
         self.action_space = env.action_space.worker
+        self.worker_goal = None
 
         def boss_preprocess_obs(obs, shape):
             obs = Observation(*obs)
@@ -367,6 +368,9 @@ class HierarchicalTrainer(Trainer):
             else:
                 action = self.trainers.boss.get_actions(o1, s).output
                 self.direction = self.env.get_direction(np.argmax(action))
+                # DEBUG {{
+                self.worker_goal = o1.achieved_goal + self.direction
+                # }}
                 i, j = self.direction
                 if i > 0:
                     i_string = 'down'
@@ -386,7 +390,7 @@ class HierarchicalTrainer(Trainer):
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
-            oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
+            oracle_action = worker_oracle(self.env.frozen_lake_env, self.worker_goal)
             return NetworkOutput(output=oracle_action, state=0)
         else:
             assert False
@@ -453,7 +457,7 @@ DIRECTIONS = np.array([
 ])
 
 
-def worker_oracle(env: FrozenLakeEnv, boss_dir):
+def worker_oracle(env: FrozenLakeEnv, goal):
     def in_bounds(s):
         return np.all(np.zeros(2) <= s) and np.all(s < np.array([env.nrow, env.ncol]))
 
@@ -466,10 +470,10 @@ def worker_oracle(env: FrozenLakeEnv, boss_dir):
         #     return -np.inf
         if in_bounds(new_s) and env.desc[tuple(new_s)] == b'H':
             return -np.inf
-        return np.dot(d, boss_dir)
+        return np.linalg.norm(new_s - goal)
 
     action = np.zeros(5)
-    if np.allclose(boss_dir, 0):
+    if np.array_equal(s, goal):
         i = 0
     else:
         alignments = list(map(alignment, range(4)))

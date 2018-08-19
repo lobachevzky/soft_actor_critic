@@ -181,13 +181,17 @@ class Trainer:
             observation_space = self.observation_space
         if action_space is None:
             action_space = self.action_space
-        state_shape = observation_space.shape
         if isinstance(action_space, spaces.Discrete):
             action_shape = [action_space.n]
             policy_type = CategoricalPolicy
         else:
             action_shape = action_space.shape
             policy_type = GaussianPolicy
+
+        if isinstance(observation_space, spaces.Discrete):
+            state_shape = [observation_space.n]
+        else:
+            state_shape = observation_space.shape
 
         class Agent(policy_type, base_agent):
             def __init__(self):
@@ -371,13 +375,16 @@ class HierarchicalTrainer(Trainer):
                 self.direction = boss_oracle(self.env)
             else:
                 self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
+                print('boss direction:', direction.reshape(3, 3), sep='\n')
                 self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
+                # if np.argmax(direction) == 4:
+                #     import ipdb; ipdb.set_trace()
 
             self.direction = self.goal_state - o1.achieved_goal
             assert np.array_equal(self.direction, self.env.boss_action_to_goal_space(direction))
 
         if self.worker_oracle:
-            oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
+            oracle_action = worker_oracle(self.env, self.direction)
             return NetworkOutput(output=oracle_action, state=0)
         else:
             assert False
@@ -430,6 +437,7 @@ def boss_oracle(env: HierarchicalWrapper):
 
 
 DIRECTIONS = np.array([
+    [0, 0],  # stay
     [0, -1],  # left
     [1, 0],  # down
     [0, 1],  # right
@@ -437,31 +445,38 @@ DIRECTIONS = np.array([
 ])
 
 
-def worker_oracle(env: FrozenLakeEnv, direction):
-    desired_state = env.preprocess(env.s) + direction
-    desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
-    s = np.minimum(desired_state, np.array([env.nrow, env.ncol], dtype=int) - 1)
-    action = np.zeros(env.nS)
-    action[int(env.to_s(*s))] = 1
-    return action
 
-    # def alignment(i):
-    #     d = DIRECTIONS[i]
-    #     new_s = s + d
-    #     # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
-    #     #     return -np.inf
-    #     if in_bounds(new_s) and env.desc[tuple(new_s)] == b'H':
-    #         return -np.inf
-    #     return np.linalg.norm(new_s - goal)
-    #
-    # action = np.zeros(env.action_space.worker.n)
-    # if np.array_equal(s, goal):
-    #     i = 0
-    # else:
-    #     alignments = list(map(alignment, range(4)))
-    #     best_alignments = [i for i in range(4)
-    #                        if alignments[i] == max(alignments)]
-    #     i = 1 + np.random.choice(best_alignments)
-    # action[i] = 1
+def worker_oracle(env: FrozenLakeHierarchicalWrapper, direction: np.ndarray):
+
+    # desired_state = env.preprocess(env.s) + direction
+    # desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
+    # s = np.minimum(desired_state, np.array([env.nrow, env.ncol], dtype=int) - 1)
+    # action = np.zeros(env.nS)
+    # action[int(env.to_s(*s))] = 1
     # return action
-    # }}
+
+    fl = env.frozen_lake_env
+    s = fl.from_s(fl.s)
+
+    def in_bounds(new_s):
+        return np.all(np.zeros(2) <= new_s) and np.all(new_s < np.array([fl.nrow, fl.ncol]))
+
+    def alignment(i):
+        d = DIRECTIONS[i]
+        new_s = s + d
+        # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
+        #     return -np.inf
+        if np.allclose(direction, 0) and np.allclose(d, 0):
+            return 1
+        # if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
+        #     return -np.inf
+        return np.dot(new_s, direction)
+
+    n = env.action_space.worker.n
+    action = np.zeros(n)
+    alignments = list(map(alignment, range(n)))
+    best_alignments = [i for i in range(n)
+                       if alignments[i] == max(alignments)]
+    i = np.random.choice(best_alignments)
+    action[i] = 1
+    return action

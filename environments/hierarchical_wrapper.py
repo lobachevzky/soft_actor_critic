@@ -40,35 +40,25 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
             boss=spaces.Discrete(9),
             # boss=spaces.Discrete(1 + 2 * (fl.nrow + fl.ncol)),
             # }}
-            worker=spaces.Discrete(16)
+            worker=spaces.Discrete(env.action_space.n)
         )
 
-    # DEBUG {{
-    def step(self, direction: int):
-        s, r, t, i = super().step(direction)
-        new_s = Observation(
-            observation=s.observation,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-        return new_s, r, t, i
-    # }}
-
-    def render(self, mode='human'):
-        outfile = StringIO() if mode == 'ansi' else sys.stdout
-
-        fl = self.frozen_lake_env
-        row, col = fl.s // fl.ncol, fl.s % fl.ncol
-        desc = fl.desc.tolist()
-        desc = [[c.decode('utf-8') for c in line] for line in desc]
-        desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
-        if fl.lastaction is not None:
-            print('last action:', fl.lastaction)
-        else:
-            outfile.write("\n")
-        outfile.write("\n".join(''.join(line) for line in desc) + "\n")
-
-        if mode != 'human':
-            return outfile
+    # def render(self, mode='human'):
+    #     outfile = StringIO() if mode == 'ansi' else sys.stdout
+    #
+    #     fl = self.frozen_lake_env
+    #     row, col = fl.s // fl.ncol, fl.s % fl.ncol
+    #     desc = fl.desc.tolist()
+    #     desc = [[c.decode('utf-8') for c in line] for line in desc]
+    #     desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
+    #     if fl.lastaction is not None:
+    #         print('last action:', fl.lastaction)
+    #     else:
+    #         outfile.write("\n")
+    #     outfile.write("\n".join(''.join(line) for line in desc) + "\n")
+    #
+    #     if mode != 'human':
+    #         return outfile
 
     def goal_to_boss_action_space(self, goal: np.array):
         i, j = goal

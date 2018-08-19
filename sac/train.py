@@ -371,27 +371,12 @@ class HierarchicalTrainer(Trainer):
                 # DEBUG {{
                 self.worker_goal = o1.achieved_goal + self.direction
                 # }}
-                i, j = self.direction
-                if i > 0:
-                    i_string = 'down'
-                elif i < 0:
-                    i_string = 'up'
-                else:
-                    i_string = ''
 
-                if j < 0:
-                    j_string = 'left'
-                elif j > 0:
-                    j_string = 'right'
-                else:
-                    j_string = ''
-
-                print(i_string, j_string)
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
-            oracle_action = worker_oracle(self.env.frozen_lake_env, self.worker_goal)
-            return NetworkOutput(output=oracle_action, state=0)
+            # oracle_action = worker_oracle(self.env.frozen_lake_env, self.worker_goal)
+            return NetworkOutput(output=action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -427,10 +412,11 @@ class HierarchicalTrainer(Trainer):
                 action = np.zeros(n_actions)
                 i = max(range(n_actions), key=alignment)
                 action[i] = 1
-                step = step.replace(a=action)
+                # DEBUG {{
+                # step = step.replace(a=action)
+                # }}
 
                 # DEBUG {{
-                # import ipdb; ipdb.set_trace()
                 self.trainers.boss.buffer.append(step)
                 # self.trainers.boss.buffer.append(step.replace(a=action))
                 # }}
@@ -472,7 +458,7 @@ def worker_oracle(env: FrozenLakeEnv, goal):
             return -np.inf
         return np.linalg.norm(new_s - goal)
 
-    action = np.zeros(5)
+    action = np.zeros(env.action_space.worker.n)
     if np.array_equal(s, goal):
         i = 0
     else:

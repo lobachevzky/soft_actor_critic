@@ -376,8 +376,6 @@ class HierarchicalTrainer(Trainer):
                 self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
                 print('boss direction:', direction.reshape(3, 3), sep='\n')
                 self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
-                # if np.argmax(direction) == 4:
-                #     import ipdb; ipdb.set_trace()
 
             self.direction = self.goal_state - o1.achieved_goal
             assert np.array_equal(self.direction, self.env.boss_action_to_goal_space(direction))
@@ -467,9 +465,10 @@ def worker_oracle(env: FrozenLakeHierarchicalWrapper, direction: np.ndarray):
         #     return -np.inf
         if np.allclose(direction, 0) and np.allclose(d, 0):
             return 1
-        # if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
-        #     return -np.inf
+        if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
+            return -np.inf
         return np.dot(new_s, direction)
+        # if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
 
     n = env.action_space.worker.n
     action = np.zeros(n)

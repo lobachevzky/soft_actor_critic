@@ -7,11 +7,12 @@ import gym
 import numpy as np
 import tensorflow as tf
 from gym import Wrapper, spaces
+from gym.spaces import Discrete, Box
 
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hierarchical_wrapper import (Hierarchical,
                                                HierarchicalAgents,
-                                               HierarchicalWrapper)
+                                               HierarchicalWrapper, FrozenLakeHierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
@@ -311,12 +312,14 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 
 
 class HierarchicalTrainer(Trainer):
+    # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session, **kwargs):
         assert isinstance(env, HierarchicalWrapper)
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
+        self.goal_state = None
         self.last_achieved_goal = None
         self.direction = None
         self.env = env
@@ -403,26 +406,12 @@ class HierarchicalTrainer(Trainer):
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
             # rel_step = step.o2.achieved_goal - self.last_achieved_goal
-            #
-            # def alignment(i):
-            #     direction = self.env.get_direction(i)
-            #     if np.allclose(direction, 0) and np.allclose(rel_step, 0):
-            #         return 1
-            #     return np.dot(direction, rel_step)
-            #
-            # n_actions = self.env.action_space.boss.n
-            # action = np.zeros(n_actions)
-            # i = max(range(n_actions), key=alignment)
-            # action[i] = 1
-            # # DEBUG {{
-            # # step = step.replace(a=action)
-            # step = step.replace(a=self.boss_action)
-            # }}
+            # if isinstance(self.action_space, Box):
+            #     raise NotImplemented
+            # else:
+            #     step = step.replace(a=self.env.goal_to_boss_action_space(rel_step))
 
-            # DEBUG {{
             self.trainers.boss.buffer.append(step)
-            # self.trainers.boss.buffer.append(step.replace(a=action))
-            # }}
         self.last_achieved_goal = step.o2.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
@@ -446,28 +435,31 @@ DIRECTIONS = np.array([
 ])
 
 
-def worker_oracle(env: FrozenLakeEnv, goal):
+def worker_oracle(env: FrozenLakeEnv, direction):
     def in_bounds(s):
         return np.all(np.zeros(2) <= s) and np.all(s < np.array([env.nrow, env.ncol]))
 
     s = np.array([env.s // env.nrow, env.s % env.ncol])
+    # DEBUG {{
+    return s + direction
 
-    def alignment(i):
-        d = DIRECTIONS[i]
-        new_s = s + d
-        # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
-        #     return -np.inf
-        if in_bounds(new_s) and env.desc[tuple(new_s)] == b'H':
-            return -np.inf
-        return np.linalg.norm(new_s - goal)
-
-    action = np.zeros(env.action_space.worker.n)
-    if np.array_equal(s, goal):
-        i = 0
-    else:
-        alignments = list(map(alignment, range(4)))
-        best_alignments = [i for i in range(4)
-                           if alignments[i] == max(alignments)]
-        i = 1 + np.random.choice(best_alignments)
-    action[i] = 1
-    return action
+    # def alignment(i):
+    #     d = DIRECTIONS[i]
+    #     new_s = s + d
+    #     # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
+    #     #     return -np.inf
+    #     if in_bounds(new_s) and env.desc[tuple(new_s)] == b'H':
+    #         return -np.inf
+    #     return np.linalg.norm(new_s - goal)
+    #
+    # action = np.zeros(env.action_space.worker.n)
+    # if np.array_equal(s, goal):
+    #     i = 0
+    # else:
+    #     alignments = list(map(alignment, range(4)))
+    #     best_alignments = [i for i in range(4)
+    #                        if alignments[i] == max(alignments)]
+    #     i = 1 + np.random.choice(best_alignments)
+    # action[i] = 1
+    # return action
+    # }}

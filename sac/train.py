@@ -370,14 +370,15 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
             else:
-                self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
-                self.direction = self.env.boss_action_to_goal_space(action)
+                self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
+                self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
 
-            self.direction = self.direction.astype(float)
+            self.direction = self.goal_state - o1.achieved_goal
+            assert np.array_equal(self.direction, self.env.boss_action_to_goal_space(direction))
 
         if self.worker_oracle:
-            # oracle_action = worker_oracle(self.env.frozen_lake_env, self.worker_goal)
-            return NetworkOutput(output=self.boss_action, state=0)
+            oracle_action = worker_oracle(self.env.frozen_lake_env, self.direction)
+            return NetworkOutput(output=oracle_action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -405,11 +406,12 @@ class HierarchicalTrainer(Trainer):
 
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
-            # rel_step = step.o2.achieved_goal - self.last_achieved_goal
-            # if isinstance(self.action_space, Box):
-            #     raise NotImplemented
-            # else:
-            #     step = step.replace(a=self.env.goal_to_boss_action_space(rel_step))
+            rel_step = step.o2.achieved_goal - self.last_achieved_goal
+            if isinstance(self.action_space, Box):
+                raise NotImplemented
+            else:
+                # step = step.replace(a=self.env.goal_to_boss_action_space(rel_step))
+                step = step.replace(a=self.boss_action)
 
             self.trainers.boss.buffer.append(step)
         self.last_achieved_goal = step.o2.achieved_goal
@@ -436,12 +438,12 @@ DIRECTIONS = np.array([
 
 
 def worker_oracle(env: FrozenLakeEnv, direction):
-    def in_bounds(s):
-        return np.all(np.zeros(2) <= s) and np.all(s < np.array([env.nrow, env.ncol]))
-
-    s = np.array([env.s // env.nrow, env.s % env.ncol])
-    # DEBUG {{
-    return s + direction
+    desired_state = env.preprocess(env.s) + direction
+    desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
+    s = np.minimum(desired_state, np.array([env.nrow, env.ncol], dtype=int) - 1)
+    action = np.zeros(env.nS)
+    action[int(env.to_s(*s))] = 1
+    return action
 
     # def alignment(i):
     #     d = DIRECTIONS[i]

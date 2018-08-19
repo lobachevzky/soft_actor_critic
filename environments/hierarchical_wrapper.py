@@ -33,23 +33,26 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
 
         self.action_space = Hierarchical(
             #     # DEBUG {{
-            boss=spaces.Discrete(16),
+            boss=spaces.Discrete(9),
             # boss=spaces.Discrete(1 + 2 * (fl.nrow + fl.ncol)),
             # }}
             worker=spaces.Discrete(5)
         )
 
     # DEBUG {{
-    def step(self, s: int):
+    def step(self, direction: int):
         fl = self.frozen_lake_env
-        fl.s = s
-        fl.lastaction = s
-        o = fl.preprocess(s)
-        newletter = fl.desc[o]
+        direction_vector = np.array([direction // 3, direction % 3]) - 1
+        desired_state = fl.preprocess(fl.s) + direction_vector
+        desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
+        desired_state = np.minimum(desired_state, np.array([fl.nrow, fl.ncol]) - 1)
+        fl.s = fl.to_s(*desired_state)
+        fl.lastaction = direction_vector
+        newletter = fl.desc[tuple(desired_state)]
         r = float(newletter == b'G')
         d = bytes(newletter) in b'GH'
         new_s = Observation(
-            observation=np.array(o),
+            observation=desired_state,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
         return new_s, r, d, {}
@@ -64,7 +67,7 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         desc = [[c.decode('utf-8') for c in line] for line in desc]
         desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
         if fl.lastaction is not None:
-            print(fl.preprocess(fl.lastaction))
+            print('last action:', fl.lastaction)
         else:
             outfile.write("\n")
         outfile.write("\n".join(''.join(line) for line in desc)+"\n")
@@ -104,11 +107,12 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         #     range(1, -1, -1),
         #     [-1] * 2,
         #     )
-        l = list(zip(i, j))
-        direction = np.array(l[goal], dtype=float)
-        if not np.allclose(direction, 0):
-            direction /= np.linalg.norm(direction)
-        return direction
+        return np.array([(goal // 3) - 1, (goal % 3) - 1])
+        # l = list(zip(i, j))
+        # direction = np.array(l[goal], dtype=float)
+        # if not np.allclose(direction, 0):
+        #     direction /= np.linalg.norm(direction)
+        # return direction
 
         # return np.array([
         #     [0, 0],  # freeze

@@ -148,8 +148,8 @@ class Trainer:
                 self.episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             self.episode_count.update(Counter(reward=r, time_steps=1))
+            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
 
             if perform_updates:
                 episode_mean.update(Counter(self.perform_update()))
@@ -366,17 +366,14 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
             else:
-                action = self.trainers.boss.get_actions(o1, s).output
+                self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
                 self.direction = self.env.get_direction(np.argmax(action))
-                # DEBUG {{
-                self.worker_goal = o1.achieved_goal + self.direction
-                # }}
 
             self.direction = self.direction.astype(float)
 
         if self.worker_oracle:
             # oracle_action = worker_oracle(self.env.frozen_lake_env, self.worker_goal)
-            return NetworkOutput(output=action, state=0)
+            return NetworkOutput(output=self.boss_action, state=0)
         else:
             assert False
             worker_obs = vectorize([o1.observation, self.direction])
@@ -397,30 +394,35 @@ class HierarchicalTrainer(Trainer):
     def trajectory(self, final_index=None):
         raise NotImplemented
 
+    def reset(self):
+        o = super().reset()
+        self.last_achieved_goal = o.achieved_goal
+        return o
+
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
-            if self.time_steps() > 0:
-                rel_step = step.o2.achieved_goal - self.last_achieved_goal
+            rel_step = step.o2.achieved_goal - self.last_achieved_goal
 
-                def alignment(i):
-                    direction = self.env.get_direction(i)
-                    if np.allclose(direction, 0) and np.allclose(rel_step, 0):
-                        return 1
-                    return np.dot(direction, rel_step)
+            def alignment(i):
+                direction = self.env.get_direction(i)
+                if np.allclose(direction, 0) and np.allclose(rel_step, 0):
+                    return 1
+                return np.dot(direction, rel_step)
 
-                n_actions = self.env.action_space.boss.n
-                action = np.zeros(n_actions)
-                i = max(range(n_actions), key=alignment)
-                action[i] = 1
-                # DEBUG {{
-                # step = step.replace(a=action)
-                # }}
+            n_actions = self.env.action_space.boss.n
+            action = np.zeros(n_actions)
+            i = max(range(n_actions), key=alignment)
+            action[i] = 1
+            # DEBUG {{
+            # step = step.replace(a=action)
+            step = step.replace(a=self.boss_action)
+            # }}
 
-                # DEBUG {{
-                self.trainers.boss.buffer.append(step)
-                # self.trainers.boss.buffer.append(step.replace(a=action))
-                # }}
-            self.last_achieved_goal = step.o2.achieved_goal
+            # DEBUG {{
+            self.trainers.boss.buffer.append(step)
+            # self.trainers.boss.buffer.append(step.replace(a=action))
+            # }}
+        self.last_achieved_goal = step.o2.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             self.trainers.worker.buffer.append(step.replace(

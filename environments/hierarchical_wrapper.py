@@ -65,57 +65,22 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
             print('last action:', fl.lastaction)
         else:
             outfile.write("\n")
-        outfile.write("\n".join(''.join(line) for line in desc)+"\n")
+        outfile.write("\n".join(''.join(line) for line in desc) + "\n")
 
         if mode != 'human':
             return outfile
 
-    def get_direction(self, goal: int):
-        fl = self.frozen_lake_env
-        i = itertools.chain(
-            [0],
-            [-fl.nrow + 1] * (fl.ncol * 2 - 2),
-            range(-fl.nrow + 1, fl.nrow - 1),
-            [fl.nrow - 1] * (fl.ncol * 2 - 2),
-            range(fl.nrow - 1, -fl.nrow + 1, -1),
-        )
-        j = itertools.chain(
-            [0],
-            range(-fl.ncol + 1, fl.ncol - 1),
-            [fl.ncol - 1] * (fl.nrow * 2 - 2),
-            range(fl.ncol - 1, -fl.ncol + 1, -1),
-            [-fl.ncol + 1] * (fl.nrow * 2 - 2),
-        )
+    def goal_to_boss_action_space(self, goal: np.array):
+        i, j = goal
+        n = self.action_space.boss.n
+        action = np.zeros(n)
+        action[i * int(np.sqrt(n)) + j] = 1
+        return action
 
-        # i = itertools.chain(
-        #     [0],
-        #     [-1] * 2,
-        #     range(-1, 1),
-        #     [1] * 2,
-        #     range(1, -1, -1),
-        #     )
-        #
-        # j = itertools.chain(
-        #     [0],
-        #     range(-1, 1),
-        #     [1] * 2,
-        #     range(1, -1, -1),
-        #     [-1] * 2,
-        #     )
-        return np.array([(goal // 3) - 1, (goal % 3) - 1])
-        # l = list(zip(i, j))
-        # direction = np.array(l[goal], dtype=float)
-        # if not np.allclose(direction, 0):
-        #     direction /= np.linalg.norm(direction)
-        # return direction
-
-        # return np.array([
-        #     [0, 0],  # freeze
-        #     [0, -1],  # left
-        #     [1, 0],  # down
-        #     [0, 1],  # right
-        #     [-1, 0],  # up
-        # ])[goal]
+    def boss_action_to_goal_space(self, action: np.array):
+        action = np.argmax(action)
+        n = np.sqrt(self.action_space.boss.n)
+        return np.array([action // n, action % n])
 
 
 Hierarchical = namedtuple('Hierarchical', 'boss worker')

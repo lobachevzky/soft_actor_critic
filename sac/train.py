@@ -313,6 +313,7 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 class HierarchicalTrainer(Trainer):
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session, **kwargs):
+        assert isinstance(env, HierarchicalWrapper)
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
@@ -367,7 +368,7 @@ class HierarchicalTrainer(Trainer):
                 self.direction = boss_oracle(self.env)
             else:
                 self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
-                self.direction = self.env.get_direction(np.argmax(action))
+                self.direction = self.env.boss_action_to_goal_space(action)
 
             self.direction = self.direction.astype(float)
 
@@ -401,21 +402,21 @@ class HierarchicalTrainer(Trainer):
 
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
-            rel_step = step.o2.achieved_goal - self.last_achieved_goal
-
-            def alignment(i):
-                direction = self.env.get_direction(i)
-                if np.allclose(direction, 0) and np.allclose(rel_step, 0):
-                    return 1
-                return np.dot(direction, rel_step)
-
-            n_actions = self.env.action_space.boss.n
-            action = np.zeros(n_actions)
-            i = max(range(n_actions), key=alignment)
-            action[i] = 1
-            # DEBUG {{
-            # step = step.replace(a=action)
-            step = step.replace(a=self.boss_action)
+            # rel_step = step.o2.achieved_goal - self.last_achieved_goal
+            #
+            # def alignment(i):
+            #     direction = self.env.get_direction(i)
+            #     if np.allclose(direction, 0) and np.allclose(rel_step, 0):
+            #         return 1
+            #     return np.dot(direction, rel_step)
+            #
+            # n_actions = self.env.action_space.boss.n
+            # action = np.zeros(n_actions)
+            # i = max(range(n_actions), key=alignment)
+            # action[i] = 1
+            # # DEBUG {{
+            # # step = step.replace(a=action)
+            # step = step.replace(a=self.boss_action)
             # }}
 
             # DEBUG {{

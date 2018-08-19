@@ -184,10 +184,18 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
     def to_s(self, row, col):
         return row * self.ncol + col
 
-    def step(self, a):
-        s, r, t, i = super().step(a)
-        s = self.preprocess(s)
-        s = Observation(observation=s, goal=self.goal_vector())
+    def step(self, direction):
+        direction_vector = np.array([direction // 3, direction % 3]) - 1
+        desired_state = self.preprocess(self.s) + direction_vector
+        desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
+        desired_state = np.minimum(desired_state, np.array([self.nrow, self.ncol]) - 1)
+        self.s = self.to_s(*desired_state)
+        self.lastaction = direction_vector
+        newletter = self.desc[tuple(desired_state)]
+        s = Observation(observation=desired_state, goal=self.goal_vector())
+        r = float(newletter == b'G')
+        t = bytes(newletter) in b'GH'
+        i = {}
         if r == 0:
             r = self.default_reward
         i['log count'] = {'successes': float(r > 0)}

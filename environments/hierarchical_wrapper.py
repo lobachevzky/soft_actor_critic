@@ -14,7 +14,11 @@ from six import StringIO, b
 
 
 class HierarchicalWrapper(HindsightWrapper):
-    pass
+    def goal_to_boss_action_space(self, goal: np.array):
+        raise NotImplemented
+
+    def boss_action_to_goal_space(self, goal: np.array):
+        raise NotImplemented
 
 
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):
@@ -32,7 +36,7 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         )
 
         self.action_space = Hierarchical(
-            #     # DEBUG {{
+            # DEBUG {{
             boss=spaces.Discrete(9),
             # boss=spaces.Discrete(1 + 2 * (fl.nrow + fl.ncol)),
             # }}
@@ -41,21 +45,12 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
 
     # DEBUG {{
     def step(self, direction: int):
-        fl = self.frozen_lake_env
-        direction_vector = np.array([direction // 3, direction % 3]) - 1
-        desired_state = fl.preprocess(fl.s) + direction_vector
-        desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
-        desired_state = np.minimum(desired_state, np.array([fl.nrow, fl.ncol]) - 1)
-        fl.s = fl.to_s(*desired_state)
-        fl.lastaction = direction_vector
-        newletter = fl.desc[tuple(desired_state)]
-        r = float(newletter == b'G')
-        d = bytes(newletter) in b'GH'
+        s, r, t, i = super().step(direction)
         new_s = Observation(
-            observation=desired_state,
+            observation=s.observation,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        return new_s, r, d, {}
+        return new_s, r, t, i
     # }}
 
     def render(self, mode='human'):

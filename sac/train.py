@@ -318,12 +318,14 @@ class HierarchicalTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session,
-                 worker_kwargs, boss_kwargs, **kwargs):
+                 worker_kwargs, boss_kwargs, correct_boss_action, **kwargs):
         assert isinstance(env, HierarchicalWrapper)
+        self.correct_boss_action = correct_boss_action
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
         self.goal_state = None
+        self.boss_action = None
         self.direction = None
         self.last_boss_obs = None
         self.env = env
@@ -415,11 +417,10 @@ class HierarchicalTrainer(Trainer):
             if isinstance(self.action_space, Box):
                 raise NotImplemented
             else:
-                boss_step = step.replace(
-                    o1=self.last_boss_obs,
-                    # a=self.env.goal_to_boss_action_space(rel_step))
-                    a=self.boss_action)
-            self.episode_count.update(Counter(boss_reward=boss_step.r))
+                boss_step = step.replace(o1=self.last_boss_obs)
+                if self.correct_boss_action:
+                    self.boss_action = self.env.goal_to_boss_action_space(rel_step)
+                boss_step = boss_step.replace(a=self.boss_action)
 
             self.trainers.boss.buffer.append(boss_step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)

@@ -1,5 +1,6 @@
 import itertools
 import sys
+from abc import abstractmethod
 
 from collections.__init__ import namedtuple
 from typing import Tuple
@@ -14,10 +15,16 @@ from six import StringIO, b
 
 
 class HierarchicalWrapper(HindsightWrapper):
+    @property
+    def reward_space(self) -> spaces.Box:
+        raise NotImplemented
+
+    @abstractmethod
     def goal_to_boss_action_space(self, goal: np.array):
         raise NotImplemented
 
-    def boss_action_to_goal_space(self, goal: np.array):
+    @abstractmethod
+    def boss_action_to_goal_space(self, goal: np.array) -> np.ndarray:
         raise NotImplemented
 
 
@@ -38,27 +45,20 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         self.action_space = Hierarchical(
             # DEBUG {{
             boss=spaces.Discrete(n_boss_actions),
-            # boss=spaces.Discrete(1 + 2 * (fl.nrow + fl.ncol)),
-            # }}
             worker=spaces.Discrete(env.action_space.n)
         )
 
-    # def render(self, mode='human'):
-    #     outfile = StringIO() if mode == 'ansi' else sys.stdout
-    #
-    #     fl = self.frozen_lake_env
-    #     row, col = fl.s // fl.ncol, fl.s % fl.ncol
-    #     desc = fl.desc.tolist()
-    #     desc = [[c.decode('utf-8') for c in line] for line in desc]
-    #     desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
-    #     if fl.lastaction is not None:
-    #         print('last action:', fl.lastaction)
-    #     else:
-    #         outfile.write("\n")
-    #     outfile.write("\n".join(''.join(line) for line in desc) + "\n")
-    #
-    #     if mode != 'human':
-    #         return outfile
+    @property
+    def boss_diameter(self):
+        return int(np.sqrt(self.action_space.boss.n))
+
+    @property
+    def boss_radius(self):
+        return self.boss_diameter // 2
+
+    @property
+    def reward_space(self):
+        return spaces.Box(low=0, high=1, shape=())
 
     def goal_to_boss_action_space(self, goal: np.array):
         side = int(np.sqrt(self.action_space.boss.n))
@@ -73,7 +73,7 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
 
     def _boss_action_to_goal_space(self, action: int):
         n = np.sqrt(self.action_space.boss.n)
-        return np.array([action // n, action % n]) - 1
+        return np.array([action // n, action % n]) - self.boss_radius
 
     def boss_action_to_goal_space(self, action: np.array):
         return self._boss_action_to_goal_space(np.argmax(action))

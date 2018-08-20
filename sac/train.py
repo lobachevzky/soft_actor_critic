@@ -378,7 +378,7 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 direction = boss_oracle(self.env)
             else:
-                direction = self.trainers.boss.get_actions(o1, s).output
+                self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
                 self.last_boss_obs = o1
             self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
         self.direction = self.goal_state - o1.achieved_goal
@@ -417,7 +417,8 @@ class HierarchicalTrainer(Trainer):
             else:
                 boss_step = step.replace(
                     o1=self.last_boss_obs,
-                    a=self.env.goal_to_boss_action_space(rel_step))
+                    # a=self.env.goal_to_boss_action_space(rel_step))
+                    a=self.boss_action)
             self.episode_count.update(Counter(boss_reward=boss_step.r))
 
             self.trainers.boss.buffer.append(boss_step)

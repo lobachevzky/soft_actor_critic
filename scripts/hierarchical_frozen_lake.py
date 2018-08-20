@@ -52,6 +52,7 @@ def parse_double(ctx, param, string):
 @click.option('--boss-oracle', is_flag=True)
 @click.option('--worker-oracle', is_flag=True)
 @click.option('--boss-freq', default=None, type=int)
+@click.option('--n-boss-actions', default=None, type=int)
 def cli(seed, buffer_size,
         worker_n_layers,
         worker_layer_size,
@@ -82,6 +83,7 @@ def cli(seed, buffer_size,
         is_slippery,
         default_reward,
         boss_freq,
+        n_boss_actions,
         worker_oracle,
         boss_oracle):
 
@@ -126,7 +128,7 @@ def cli(seed, buffer_size,
         num_train_steps=boss_num_train_steps,
     )
 
-    n_boss_actions = (1 + 2 * boss_freq) ** 2
+    # n_boss_actions = (1 + 2 * boss_freq) ** 2
     HierarchicalTrainer(
         boss_act_freq=boss_freq,
         use_worker_oracle=worker_oracle,

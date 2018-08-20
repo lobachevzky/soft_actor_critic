@@ -26,12 +26,16 @@ def main():
     parser.add_argument('path')
     args = parser.parse_args()
 
+    tb(args.port, args.path)
+
+
+def tb(port, path):
     active_sessions = cmd('tmux ls -F #{session_name}'.split())
-    session_name = f'tensorboard{args.port}'
-    logdir = Path(os.getcwd(), '.runs', 'tensorboard', args.path)
+    session_name = f'tensorboard{port}'
+    logdir = Path(os.getcwd(), '.runs', 'tensorboard', path)
     if not logdir.exists():
         raise RuntimeError(f'Path {logdir} does not exist.')
-    command = f'tensorboard --logdir={logdir} --port={args.port}'
+    command = f'tensorboard --logdir={logdir} --port={port}'
     if session_name in active_sessions:
         window_name = f'{session_name}:0'
         cmd(['tmux', 'respawn-window', '-t', window_name, '-k', command])

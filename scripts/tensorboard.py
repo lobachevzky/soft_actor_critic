@@ -21,7 +21,6 @@ def cmd(args, fail_ok=False, cwd=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('dirs', nargs='*', type=Path)
     parser.add_argument('port', type=int)
     parser.add_argument('path')
     args = parser.parse_args()

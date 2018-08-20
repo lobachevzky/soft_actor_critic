@@ -417,12 +417,13 @@ class HierarchicalTrainer(Trainer):
             self.trainers.boss.buffer.append(step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
-            import ipdb; ipdb.set_trace()
+            if not step.t:
+                step = step.replace(r=np.dot(self.direction, movement))
             self.trainers.worker.buffer.append(step.replace(
                 o1=step.o1.replace(desired_goal=self.direction),
                 o2=step.o2.replace(desired_goal=self.direction),
-                r=np.dot(self.direction, movement)
             ))
+            self.episode_count.update(Counter(worker_reward=step.r))
 
 
 def boss_oracle(env: HierarchicalWrapper):

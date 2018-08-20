@@ -414,8 +414,8 @@ class HierarchicalTrainer(Trainer):
             if isinstance(self.action_space, Box):
                 raise NotImplemented
             else:
-                # step = step.replace(a=self.env.goal_to_boss_action_space(rel_step))
-                step = step.replace(a=self.boss_action)
+                step = step.replace(a=self.env.goal_to_boss_action_space(rel_step))
+                # step = step.replace(a=self.boss_action)
 
             self.trainers.boss.buffer.append(step)
         self.last_achieved_goal = step.o2.achieved_goal

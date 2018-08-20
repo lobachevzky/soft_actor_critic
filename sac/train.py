@@ -317,7 +317,8 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 class HierarchicalTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
-                 use_worker_oracle: bool, sess: tf.Session, **kwargs):
+                 use_worker_oracle: bool, sess: tf.Session,
+                 worker_kwargs, boss_kwargs, **kwargs):
         assert isinstance(env, HierarchicalWrapper)
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
@@ -348,7 +349,9 @@ class HierarchicalTrainer(Trainer):
                 env=env,
                 sess=sess,
                 name='boss',
-                **kwargs),
+                **boss_kwargs,
+                **kwargs,
+            ),
             worker=Trainer(
                 observation_space=env.observation_space.worker,
                 action_space=env.action_space.worker,
@@ -356,7 +359,9 @@ class HierarchicalTrainer(Trainer):
                 env=env,
                 sess=sess,
                 name='worker',
-                **kwargs))
+                **worker_kwargs,
+                **kwargs,
+            ))
 
         self.agents = Agents(
             act=HierarchicalAgents(
@@ -371,12 +376,12 @@ class HierarchicalTrainer(Trainer):
     def get_actions(self, o1, s):
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
-                self.direction = boss_oracle(self.env)
+                direction = boss_oracle(self.env)
             else:
                 direction = self.trainers.boss.get_actions(o1, s).output
                 self.last_boss_obs = o1
-                self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
-                self.direction = self.goal_state - o1.achieved_goal
+            self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
+        self.direction = self.goal_state - o1.achieved_goal
 
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, self.direction)

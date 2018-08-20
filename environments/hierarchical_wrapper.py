@@ -22,7 +22,7 @@ class HierarchicalWrapper(HindsightWrapper):
 
 
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):
-    def __init__(self, env):
+    def __init__(self, env, n_boss_actions):
         super().__init__(env)
         fl = self.frozen_lake_env
         obs = super().reset()
@@ -37,7 +37,7 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
 
         self.action_space = Hierarchical(
             # DEBUG {{
-            boss=spaces.Discrete(9),
+            boss=spaces.Discrete(n_boss_actions),
             # boss=spaces.Discrete(1 + 2 * (fl.nrow + fl.ncol)),
             # }}
             worker=spaces.Discrete(env.action_space.n)
@@ -61,10 +61,11 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
     #         return outfile
 
     def goal_to_boss_action_space(self, goal: np.array):
-        goal = np.minimum(goal, np.ones(2, dtype=int))
-        goal = np.maximum(goal, -np.ones(2, dtype=int))
         side = int(np.sqrt(self.action_space.boss.n))
-        min_goal = np.array([-(side // 2), -(side // 2)])
+        half_side = side // 2
+        goal = np.minimum(goal, half_side * np.ones(2, dtype=int))
+        goal = np.maximum(goal, half_side * -np.ones(2, dtype=int))
+        min_goal = np.array([-half_side, -half_side])
         i, j = goal - min_goal
         action = np.zeros(self.action_space.boss.n)
         action[i * side + j] = 1

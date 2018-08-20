@@ -376,16 +376,13 @@ class HierarchicalTrainer(Trainer):
                 direction = self.trainers.boss.get_actions(o1, s).output
                 self.last_boss_obs = o1
                 self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
-
-            self.direction = self.goal_state - o1.achieved_goal
+                self.direction = self.goal_state - o1.achieved_goal
 
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, self.direction)
             return NetworkOutput(output=oracle_action, state=0)
         else:
-            assert False
-            worker_obs = vectorize([o1.observation, self.direction])
-            return self.agents.act.worker.get_actions(worker_obs, state=s, sample=sample)
+            return self.trainers.worker.get_actions(o1.replace(desired_goal=self.direction), s)
 
     def perform_update(self):
         return {
@@ -408,7 +405,7 @@ class HierarchicalTrainer(Trainer):
         return o
 
     def add_to_buffer(self, step: Step):
-        if self.time_steps() % self.boss_act_freq == 0 or step.t:
+        if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0 or step.t):
             rel_step = step.o2.achieved_goal - self.last_boss_obs.achieved_goal
             if isinstance(self.action_space, Box):
                 raise NotImplemented
@@ -420,6 +417,7 @@ class HierarchicalTrainer(Trainer):
             self.trainers.boss.buffer.append(step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
+            import ipdb; ipdb.set_trace()
             self.trainers.worker.buffer.append(step.replace(
                 o1=step.o1.replace(desired_goal=self.direction),
                 o2=step.o2.replace(desired_goal=self.direction),
@@ -428,8 +426,17 @@ class HierarchicalTrainer(Trainer):
 
 
 def boss_oracle(env: HierarchicalWrapper):
-    direction = (env._desired_goal() - env._achieved_goal()).astype(float)
-    return direction / np.linalg.norm(direction)
+    def alignment(a):
+        goal_dir = env._boss_action_to_goal_space(a)
+        norm = np.linalg.norm(goal_dir)
+        if not np.allclose(norm, 0):
+            goal_dir /= norm
+        return np.dot(goal_dir, direction)
+
+    direction = env._desired_goal() - env._achieved_goal()
+    actions = list(range(env.action_space.boss.n))
+    # alignments = list(map(alignment, actions))
+    return env._boss_action_to_goal_space(max(actions, key=alignment))
 
 
 DIRECTIONS = np.array([
@@ -441,16 +448,7 @@ DIRECTIONS = np.array([
 ])
 
 
-
 def worker_oracle(env: FrozenLakeHierarchicalWrapper, direction: np.ndarray):
-
-    # desired_state = env.preprocess(env.s) + direction
-    # desired_state = np.maximum(desired_state, np.zeros(2, dtype=int))
-    # s = np.minimum(desired_state, np.array([env.nrow, env.ncol], dtype=int) - 1)
-    # action = np.zeros(env.nS)
-    # action[int(env.to_s(*s))] = 1
-    # return action
-
     fl = env.frozen_lake_env
     s = fl.from_s(fl.s)
 
@@ -460,20 +458,16 @@ def worker_oracle(env: FrozenLakeHierarchicalWrapper, direction: np.ndarray):
     def alignment(i):
         d = DIRECTIONS[i]
         new_s = s + d
-        # if not in_bounds(new_s) or env.desc[tuple(new_s)] == b'H':
-        #     return -np.inf
         if np.allclose(direction, 0) and np.allclose(d, 0):
             return 1
         if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
             return -np.inf
         return np.dot(new_s, direction)
-        # if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
 
-    n = env.action_space.worker.n
-    action = np.zeros(n)
-    alignments = list(map(alignment, range(n)))
-    best_alignments = [i for i in range(n)
-                       if alignments[i] == max(alignments)]
+    actions = list(range(env.action_space.worker.n))
+    alignments = list(map(alignment, actions))
+    action = np.zeros(env.action_space.worker.n)
+    best_alignments = [i for i in actions if alignments[i] == max(alignments)]
     i = np.random.choice(best_alignments)
     action[i] = 1
     return action

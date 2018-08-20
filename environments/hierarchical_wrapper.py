@@ -70,10 +70,12 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         action[i * side + j] = 1
         return action
 
-    def boss_action_to_goal_space(self, action: np.array):
-        action = np.argmax(action)
+    def _boss_action_to_goal_space(self, action: int):
         n = np.sqrt(self.action_space.boss.n)
         return np.array([action // n, action % n]) - 1
+
+    def boss_action_to_goal_space(self, action: np.array):
+        return self._boss_action_to_goal_space(np.argmax(action))
 
 
 Hierarchical = namedtuple('Hierarchical', 'boss worker')

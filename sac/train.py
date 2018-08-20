@@ -323,8 +323,8 @@ class HierarchicalTrainer(Trainer):
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
         self.goal_state = None
-        self.last_achieved_goal = None
         self.direction = None
+        self.last_boss_obs = None
         self.env = env
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
@@ -373,12 +373,11 @@ class HierarchicalTrainer(Trainer):
             if self.boss_oracle:
                 self.direction = boss_oracle(self.env)
             else:
-                self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
-                print('boss direction:', direction.reshape(3, 3), sep='\n')
+                direction = self.trainers.boss.get_actions(o1, s).output
+                self.last_boss_obs = o1
                 self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
 
             self.direction = self.goal_state - o1.achieved_goal
-            assert np.array_equal(self.direction, self.env.boss_action_to_goal_space(direction))
 
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, self.direction)
@@ -410,15 +409,15 @@ class HierarchicalTrainer(Trainer):
 
     def add_to_buffer(self, step: Step):
         if self.time_steps() % self.boss_act_freq == 0 or step.t:
-            rel_step = step.o2.achieved_goal - self.last_achieved_goal
+            rel_step = step.o2.achieved_goal - self.last_boss_obs.achieved_goal
             if isinstance(self.action_space, Box):
                 raise NotImplemented
             else:
-                step = step.replace(a=self.env.goal_to_boss_action_space(rel_step))
-                # step = step.replace(a=self.boss_action)
+                step = step.replace(
+                    o1=self.last_boss_obs,
+                    a=self.env.goal_to_boss_action_space(rel_step))
 
             self.trainers.boss.buffer.append(step)
-        self.last_achieved_goal = step.o2.achieved_goal
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             self.trainers.worker.buffer.append(step.replace(

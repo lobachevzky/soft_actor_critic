@@ -415,20 +415,22 @@ class HierarchicalTrainer(Trainer):
             if isinstance(self.action_space, Box):
                 raise NotImplemented
             else:
-                step = step.replace(
+                boss_step = step.replace(
                     o1=self.last_boss_obs,
                     a=self.env.goal_to_boss_action_space(rel_step))
+            self.episode_count.update(Counter(boss_reward=boss_step.r))
 
-            self.trainers.boss.buffer.append(step)
+            self.trainers.boss.buffer.append(boss_step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
+            worker_step = step
             if not step.t:
-                step = step.replace(r=np.dot(self.direction, movement))
-            self.trainers.worker.buffer.append(step.replace(
+                worker_step = step.replace(r=np.dot(self.direction, movement))
+            worker_step = worker_step.replace(
                 o1=step.o1.replace(desired_goal=self.direction),
-                o2=step.o2.replace(desired_goal=self.direction),
-            ))
-            self.episode_count.update(Counter(worker_reward=step.r))
+                o2=step.o2.replace(desired_goal=self.direction), )
+            self.trainers.worker.buffer.append(worker_step)
+            self.episode_count.update(Counter(worker_reward=worker_step.r))
 
 
 def boss_oracle(env: HierarchicalWrapper):

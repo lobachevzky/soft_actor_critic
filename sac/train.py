@@ -315,7 +315,7 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 
 
 BossState = namedtuple('BossState', 'goal action o1')
-WorkerState = namedtuple('WorkerState', 'o1 o2 g1 g2 ')
+WorkerState = namedtuple('WorkerState', 'o1 o2')
 
 
 class HierarchicalTrainer(Trainer):
@@ -388,11 +388,8 @@ class HierarchicalTrainer(Trainer):
         direction = self.boss_state.goal - o1.achieved_goal
         worker_o1 = o1.replace(desired_goal=direction)
 
-        self.worker_state = WorkerState(
-                                        o1=worker_o1,
-                                        o2=None,
-                                        g1=self.boss_state.goal,
-                                        g2=None)
+        self.worker_state = WorkerState(o1=worker_o1,
+                                        o2=None,)
 
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, direction)
@@ -449,10 +446,8 @@ class HierarchicalTrainer(Trainer):
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             direction = self.worker_state.o1.desired_goal
-            np.array_equal(direction, self.worker_state.o1.desired_goal)
             self.worker_state = self.worker_state._replace(
                 o2=step.o2.replace(desired_goal=self.boss_state.goal - step.o2.achieved_goal),
-                g2=self.boss_state.goal
             )
 
             worker_step = step

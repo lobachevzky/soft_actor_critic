@@ -314,14 +314,7 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
     pass
 
 
-class WorkerStep:
-    def __init__(self, s=0, o1=None, a=None, r=None, o2=None, t=None):
-        self.s = s
-        self.o1 = o1
-        self.a = a
-        self.r = r
-        self.o2 = o2
-        self.t = t
+BossState = namedtuple('State', 'goal action direction prev_direction o1')
 
 
 class HierarchicalTrainer(Trainer):
@@ -334,10 +327,16 @@ class HierarchicalTrainer(Trainer):
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
+
         self.goal_state = None
         self.boss_action = None
         self.direction = None
         self.last_boss_obs = None
+
+        self.boss_state = None
+        self.worker_o1 = None
+        self.worker_o2 = None
+
         self.env = env
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
@@ -407,11 +406,23 @@ class HierarchicalTrainer(Trainer):
     def get_boss_action(self, o1, s):
         if self.time_steps() % self.boss_act_freq == 0:
             if self.boss_oracle:
-                direction = boss_oracle(self.env)
+                action = boss_oracle(self.env)
             else:
-                self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
+                self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
                 self.last_boss_obs = o1
-            self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
+            direction = self.env.boss_action_to_goal_space(action)
+            self.goal_state = goal = o1.achieved_goal + direction
+            prev_direction=None
+            if self.boss_state is not None:
+                prev_direction = self.boss_state.direction
+            self.boss_state = BossState(
+                goal=goal,
+                action=action,
+                direction=direction,
+                prev_direction=prev_direction,
+                o1=o1
+            )
+
 
     def perform_update(self):
         return {

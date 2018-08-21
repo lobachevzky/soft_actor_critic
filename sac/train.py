@@ -138,9 +138,11 @@ class Trainer:
         s = self.agents.act.initial_state
         if render:
             self.env.render()
+        self.get_boss_action(o1, s)
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
             o2, r, t, info = self.step(a)
+            self.get_boss_action(o2, s)
             if render:
                 self.env.render()
             if 'print' in info:
@@ -386,7 +388,6 @@ class HierarchicalTrainer(Trainer):
                 initial_state=0))
 
     def get_actions(self, o1, s):
-        self.get_boss_action(o1, s)
         self.direction = self.goal_state - o1.achieved_goal
 
         if self.worker_oracle:

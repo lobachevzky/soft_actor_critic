@@ -329,11 +329,6 @@ class HierarchicalTrainer(Trainer):
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
 
-        self.goal_state = None
-        self.boss_action = None
-        self.direction = None
-        self.last_boss_obs = None
-
         self.boss_state = None
         self.worker_state = None
 
@@ -342,7 +337,6 @@ class HierarchicalTrainer(Trainer):
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
         self.action_space = env.action_space.worker
-        self.goal_state = None
 
         def boss_preprocess_obs(obs, shape=None):
             obs = Observation(*obs)
@@ -390,15 +384,14 @@ class HierarchicalTrainer(Trainer):
         return o
 
     def get_actions(self, o1, s):
-        assert np.array_equal(self.goal_state, self.boss_state.goal)
-        self.direction = direction = self.boss_state.goal - o1.achieved_goal
+        direction = self.boss_state.goal - o1.achieved_goal
         worker_o1 = o1.replace(desired_goal=direction)
 
         self.worker_state = WorkerState(direction1=direction,
                                         direction2=None,
                                         o1=worker_o1)
         if self.worker_oracle:
-            oracle_action = worker_oracle(self.env, self.direction)
+            oracle_action = worker_oracle(self.env, direction)
             return NetworkOutput(output=oracle_action, state=0)
         else:
             return self.trainers.worker.get_actions(worker_o1, s)
@@ -415,9 +408,8 @@ class HierarchicalTrainer(Trainer):
         if self.boss_oracle:
             action = boss_oracle(self.env)
         else:
-            self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
-            self.last_boss_obs = o1
-        self.goal_state = goal = o1.achieved_goal + self.env.boss_action_to_goal_space(action)
+            action = self.trainers.boss.get_actions(o1, s).output
+        goal = o1.achieved_goal + self.env.boss_action_to_goal_space(action)
         return BossState(
             goal=goal,
             action=action,
@@ -441,26 +433,26 @@ class HierarchicalTrainer(Trainer):
 
     def add_to_buffer(self, step: Step):
         if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0 or step.t):
-            rel_step = step.o2.achieved_goal - self.last_boss_obs.achieved_goal
+            rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
             if isinstance(self.action_space, Box):
                 raise NotImplemented
             else:
-                boss_step = step.replace(o1=self.last_boss_obs)
+                boss_step = step.replace(o1=self.boss_state.o1)
+                boss_action = self.boss_state.action
                 if self.correct_boss_action:
-                    assert np.array_equal(self.boss_action, self.boss_state.action)
-                    self.boss_action = self.env.goal_to_boss_action_space(rel_step)
-                boss_step = boss_step.replace(a=self.boss_action)
+                    boss_action = self.env.goal_to_boss_action_space(rel_step)
+                boss_step = boss_step.replace(a=boss_action)
 
             self.trainers.boss.buffer.append(boss_step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
-            assert np.array_equal(self.direction, self.worker_state.direction1)
+            direction = self.worker_state.direction1
             worker_step = step
             if not step.t:
-                worker_step = step.replace(r=np.dot(self.direction, movement))
+                worker_step = step.replace(r=np.dot(direction, movement))
             worker_step = worker_step.replace(
-                o1=step.o1.replace(desired_goal=self.direction),
-                o2=step.o2.replace(desired_goal=self.direction), )
+                o1=step.o1.replace(desired_goal=direction),
+                o2=step.o2.replace(desired_goal=direction), )
             self.trainers.worker.buffer.append(worker_step)
             self.episode_count.update(Counter(worker_reward=worker_step.r))
 

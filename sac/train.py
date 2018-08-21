@@ -315,7 +315,7 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
 
 
 BossState = namedtuple('BossState', 'goal action o1')
-WorkerState = namedtuple('WorkerState', 'o1 direction1 direction2')
+WorkerState = namedtuple('WorkerState', 'o1 o2 g1 g2 direction1 direction2')
 
 
 class HierarchicalTrainer(Trainer):
@@ -381,6 +381,7 @@ class HierarchicalTrainer(Trainer):
     def reset(self):
         o = super().reset()
         self.boss_state = self.get_boss_state(o, 0)
+        self.worker_state = None
         return o
 
     def get_actions(self, o1, s):
@@ -389,7 +390,11 @@ class HierarchicalTrainer(Trainer):
 
         self.worker_state = WorkerState(direction1=direction,
                                         direction2=None,
-                                        o1=worker_o1)
+                                        o1=worker_o1,
+                                        o2=None,
+                                        g1=self.boss_state.goal,
+                                        g2=None)
+
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, direction)
             return NetworkOutput(output=oracle_action, state=0)
@@ -447,6 +452,11 @@ class HierarchicalTrainer(Trainer):
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             direction = self.worker_state.direction1
+            self.worker_state = self.worker_state._replace(
+                o2=step.o2.replace(desired_goal=self.boss_state.goal - step.o2.achieved_goal),
+                g2=self.boss_state.goal
+            )
+
             worker_step = step
             if not step.t:
                 worker_step = step.replace(r=np.dot(direction, movement))

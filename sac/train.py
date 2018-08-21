@@ -314,6 +314,16 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
     pass
 
 
+class WorkerStep:
+    def __init__(self, s=0, o1=None, a=None, r=None, o2=None, t=None):
+        self.s = s
+        self.o1 = o1
+        self.a = a
+        self.r = r
+        self.o2 = o2
+        self.t = t
+
+
 class HierarchicalTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
@@ -333,13 +343,13 @@ class HierarchicalTrainer(Trainer):
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
         self.action_space = env.action_space.worker
-        self.worker_goal = None
+        self.goal_state = None
 
-        def boss_preprocess_obs(obs, shape):
+        def boss_preprocess_obs(obs, shape=None):
             obs = Observation(*obs)
             return vectorize([obs.achieved_goal, obs.desired_goal], shape)
 
-        def worker_preprocess_obs(obs, shape):
+        def worker_preprocess_obs(obs, shape=None):
             obs = Observation(*obs)
             return vectorize([obs.observation, obs.desired_goal], shape)
 
@@ -406,11 +416,6 @@ class HierarchicalTrainer(Trainer):
     def trajectory(self, final_index=None):
         raise NotImplemented
 
-    def reset(self):
-        o = super().reset()
-        self.last_achieved_goal = o.achieved_goal
-        return o
-
     def add_to_buffer(self, step: Step):
         if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0 or step.t):
             rel_step = step.o2.achieved_goal - self.last_boss_obs.achieved_goal
@@ -458,26 +463,24 @@ DIRECTIONS = np.array([
 ])
 
 
-def worker_oracle(env: FrozenLakeHierarchicalWrapper, direction: np.ndarray):
+def worker_oracle(env: FrozenLakeHierarchicalWrapper, relative_goal: np.ndarray):
     fl = env.frozen_lake_env
     s = fl.from_s(fl.s)
+    goal = s + relative_goal
 
     def in_bounds(new_s):
         return np.all(np.zeros(2) <= new_s) and np.all(new_s < np.array([fl.nrow, fl.ncol]))
 
-    def alignment(i):
-        d = DIRECTIONS[i]
-        new_s = s + d
-        if np.allclose(direction, 0) and np.allclose(d, 0):
-            return 1
+    def distance_from_goal(i):
+        new_s = s + DIRECTIONS[i]
         if in_bounds(new_s) and fl.desc[tuple(new_s)] == b'H':
-            return -np.inf
-        return np.dot(new_s, direction)
+            return np.inf
+        return np.linalg.norm(new_s - goal)
 
     actions = list(range(env.action_space.worker.n))
-    alignments = list(map(alignment, actions))
+    distances = list(map(distance_from_goal, actions))
     action = np.zeros(env.action_space.worker.n)
-    best_alignments = [i for i in actions if alignments[i] == max(alignments)]
-    i = np.random.choice(best_alignments)
+    best_distances = [i for i in actions if distances[i] == min(distances)]
+    i = np.random.choice(best_distances)
     action[i] = 1
     return action

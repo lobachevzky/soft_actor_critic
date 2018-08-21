@@ -25,6 +25,7 @@ setup(
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',
         'crawl=scripts.crawl_events:main',
+        'tb=scripts.tensorboard:main',
     ]),
     scripts=['bin/load', 'bin/filter', 'bin/new-tb'],
     install_requires=[

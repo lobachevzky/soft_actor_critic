@@ -314,7 +314,8 @@ class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
     pass
 
 
-BossState = namedtuple('State', 'goal action direction prev_direction o1')
+BossState = namedtuple('BossState', 'goal action o1')
+WorkerState = namedtuple('WorkerState', 'o1 direction1 direction2')
 
 
 class HierarchicalTrainer(Trainer):
@@ -334,8 +335,7 @@ class HierarchicalTrainer(Trainer):
         self.last_boss_obs = None
 
         self.boss_state = None
-        self.worker_o1 = None
-        self.worker_o2 = None
+        self.worker_state = None
 
         self.env = env
         self.sess = sess
@@ -390,13 +390,17 @@ class HierarchicalTrainer(Trainer):
         return o
 
     def get_actions(self, o1, s):
-        self.direction = self.goal_state - o1.achieved_goal
+        self.direction = direction = self.goal_state - o1.achieved_goal
+        worker_o1 = o1.replace(desired_goal=direction)
 
+        self.worker_state = WorkerState(direction1=direction,
+                                        direction2=None,
+                                        o1=worker_o1)
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, self.direction)
             return NetworkOutput(output=oracle_action, state=0)
         else:
-            return self.trainers.worker.get_actions(o1.replace(desired_goal=self.direction), s)
+            return self.trainers.worker.get_actions(worker_o1, s)
 
     def step(self, action: np.ndarray):
         o, r, t, i = super().step(action)
@@ -412,14 +416,9 @@ class HierarchicalTrainer(Trainer):
                 self.last_boss_obs = o1
             direction = self.env.boss_action_to_goal_space(action)
             self.goal_state = goal = o1.achieved_goal + direction
-            prev_direction=None
-            if self.boss_state is not None:
-                prev_direction = self.boss_state.direction
             self.boss_state = BossState(
                 goal=goal,
                 action=action,
-                direction=direction,
-                prev_direction=prev_direction,
                 o1=o1
             )
 

@@ -138,11 +138,9 @@ class Trainer:
         s = self.agents.act.initial_state
         if render:
             self.env.render()
-        self.get_boss_action(o1, s)
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
             o2, r, t, info = self.step(a)
-            self.get_boss_action(o2, s)
             if render:
                 self.env.render()
             if 'print' in info:
@@ -387,6 +385,11 @@ class HierarchicalTrainer(Trainer):
                 worker=self.trainers.worker.agents.train,
                 initial_state=0))
 
+    def reset(self):
+        o = super().reset()
+        self.get_boss_action(o, 0)
+        return o
+
     def get_actions(self, o1, s):
         self.direction = self.goal_state - o1.achieved_goal
 
@@ -395,6 +398,11 @@ class HierarchicalTrainer(Trainer):
             return NetworkOutput(output=oracle_action, state=0)
         else:
             return self.trainers.worker.get_actions(o1.replace(desired_goal=self.direction), s)
+
+    def step(self, action: np.ndarray):
+        o, r, t, i = super().step(action)
+        self.get_boss_action(o, 0)
+        return o, r, t, i
 
     def get_boss_action(self, o1, s):
         if self.time_steps() % self.boss_act_freq == 0:

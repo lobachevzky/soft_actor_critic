@@ -322,7 +322,9 @@ class HierarchicalTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session,
-                 worker_kwargs, boss_kwargs, correct_boss_action, **kwargs):
+                 worker_kwargs, boss_kwargs, correct_boss_action,
+                 repeat_direction, **kwargs):
+        self.repeat_direction = repeat_direction
         assert isinstance(env, HierarchicalWrapper)
         self.correct_boss_action = correct_boss_action
         self.boss_oracle = use_boss_oracle
@@ -445,8 +447,13 @@ class HierarchicalTrainer(Trainer):
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             direction = self.worker_state.o1.desired_goal
+            if self.repeat_direction:
+                desired_goal = direction
+            else:
+                desired_goal = self.boss_state.goal - step.o2.achieved_goal
+
             self.worker_state = self.worker_state._replace(o2=step.o2.replace(
-                desired_goal=self.boss_state.goal - step.o2.achieved_goal))
+                desired_goal=desired_goal))
 
             worker_step = step
             if not step.t:
@@ -454,8 +461,9 @@ class HierarchicalTrainer(Trainer):
             worker_step = worker_step.replace(
                 o1=self.worker_state.o1,
                 o2=self.worker_state.o2)
-            assert np.array_equal(vectorize(worker_step.o2),
-                                  vectorize(self.worker_state.o2))
+            if not self.repeat_direction:
+                assert np.array_equal(vectorize(worker_step.o2),
+                                      vectorize(self.worker_state.o2))
             self.trainers.worker.buffer.append(worker_step)
             self.episode_count.update(Counter(worker_reward=worker_step.r))
 

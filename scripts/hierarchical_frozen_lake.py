@@ -50,6 +50,7 @@ def parse_double(ctx, param, string):
 @click.option('--max-steps', default=12, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--correct-boss-action', is_flag=True)
+@click.option('--repeat-direction', is_flag=True)
 @click.option('--boss-oracle', is_flag=True)
 @click.option('--worker-oracle', is_flag=True)
 @click.option('--boss-freq', default=None, type=int)
@@ -88,6 +89,7 @@ def cli(seed, buffer_size,
         worker_oracle,
         boss_oracle,
         correct_boss_action,
+        repeat_direction,
         ):
 
     env = TimeLimit(
@@ -133,11 +135,12 @@ def cli(seed, buffer_size,
 
     # n_boss_actions = (1 + 2 * boss_freq) ** 2
     HierarchicalTrainer(
+        env=FrozenLakeHierarchicalWrapper(env, n_boss_actions=n_boss_actions),
         boss_act_freq=boss_freq,
         use_worker_oracle=worker_oracle,
         use_boss_oracle=boss_oracle,
         correct_boss_action=correct_boss_action,
-        env=FrozenLakeHierarchicalWrapper(env, n_boss_actions=n_boss_actions),
+        repeat_direction=repeat_direction,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs,
         **kwargs).train(load_path=load_path, logdir=logdir, render=render, save_path=save_path)

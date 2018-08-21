@@ -386,7 +386,8 @@ class HierarchicalTrainer(Trainer):
 
     def reset(self):
         o = super().reset()
-        self.boss_state = self.get_boss_state(o, 0)
+        if self.time_steps() % self.boss_act_freq == 0:
+            self.boss_state = self.get_boss_state(o, 0)
         return o
 
     def get_actions(self, o1, s):
@@ -404,23 +405,23 @@ class HierarchicalTrainer(Trainer):
 
     def step(self, action: np.ndarray):
         o, r, t, i = super().step(action)
-        self.boss_state = self.get_boss_state(o, 0)
+        if self.time_steps() % self.boss_act_freq == 0:
+            self.boss_state = self.get_boss_state(o, 0)
         return o, r, t, i
 
     def get_boss_state(self, o1, s):
-        if self.time_steps() % self.boss_act_freq == 0:
-            if self.boss_oracle:
-                action = boss_oracle(self.env)
-            else:
-                self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
-                self.last_boss_obs = o1
-            direction = self.env.boss_action_to_goal_space(action)
-            self.goal_state = goal = o1.achieved_goal + direction
-            return BossState(
-                goal=goal,
-                action=action,
-                o1=o1
-            )
+        if self.boss_oracle:
+            action = boss_oracle(self.env)
+        else:
+            self.boss_action = action = self.trainers.boss.get_actions(o1, s).output
+            self.last_boss_obs = o1
+        direction = self.env.boss_action_to_goal_space(action)
+        self.goal_state = goal = o1.achieved_goal + direction
+        return BossState(
+            goal=goal,
+            action=action,
+            o1=o1
+        )
 
 
     def perform_update(self):

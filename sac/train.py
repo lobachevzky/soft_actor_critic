@@ -386,13 +386,7 @@ class HierarchicalTrainer(Trainer):
                 initial_state=0))
 
     def get_actions(self, o1, s):
-        if self.time_steps() % self.boss_act_freq == 0:
-            if self.boss_oracle:
-                direction = boss_oracle(self.env)
-            else:
-                self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
-                self.last_boss_obs = o1
-            self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
+        self.get_boss_action(o1, s)
         self.direction = self.goal_state - o1.achieved_goal
 
         if self.worker_oracle:
@@ -400,6 +394,15 @@ class HierarchicalTrainer(Trainer):
             return NetworkOutput(output=oracle_action, state=0)
         else:
             return self.trainers.worker.get_actions(o1.replace(desired_goal=self.direction), s)
+
+    def get_boss_action(self, o1, s):
+        if self.time_steps() % self.boss_act_freq == 0:
+            if self.boss_oracle:
+                direction = boss_oracle(self.env)
+            else:
+                self.boss_action = direction = self.trainers.boss.get_actions(o1, s).output
+                self.last_boss_obs = o1
+            self.goal_state = o1.achieved_goal + self.env.boss_action_to_goal_space(direction)
 
     def perform_update(self):
         return {

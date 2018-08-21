@@ -441,16 +441,17 @@ class HierarchicalTrainer(Trainer):
             self.trainers.boss.buffer.append(boss_step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
-            o2 = step.o2.replace(desired_goal=self.boss_state.goal - step.o2.achieved_goal)
-            self.worker_state = self.worker_state._replace(o2=o2)
+            direction = self.worker_state.o1.desired_goal
+            self.worker_state = self.worker_state._replace(o2=step.o2.replace(
+                    desired_goal=direction))
+            # desired_goal=self.boss_state.goal - step.o2.achieved_goal))  #TODO
 
             worker_step = step
-            direction = self.worker_state.o1.desired_goal
             if not step.t:
                 worker_step = step.replace(r=np.dot(direction, movement))
             worker_step = worker_step.replace(
                 o1=self.worker_state.o1,
-                o2=step.o2.replace(desired_goal=direction))
+                o2=self.worker_state.o2)
             # assert np.array(vectorize(worker_step.o2),
             #                 vectorize(self.worker_state.o2))
             self.trainers.worker.buffer.append(worker_step)

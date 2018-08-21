@@ -387,8 +387,7 @@ class HierarchicalTrainer(Trainer):
     def reset(self):
         o = super().reset()
         assert self.time_steps() % self.boss_act_freq == 0
-        if self.time_steps() % self.boss_act_freq == 0:
-            self.boss_state = self.get_boss_state(o, 0)
+        self.boss_state = self.get_boss_state(o, 0)
         return o
 
     def get_actions(self, o1, s):

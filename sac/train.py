@@ -390,7 +390,8 @@ class HierarchicalTrainer(Trainer):
         return o
 
     def get_actions(self, o1, s):
-        self.direction = direction = self.goal_state - o1.achieved_goal
+        assert np.array_equal(self.goal_state, self.boss_state.goal)
+        self.direction = direction = self.boss_state.goal - o1.achieved_goal
         worker_o1 = o1.replace(desired_goal=direction)
 
         self.worker_state = WorkerState(direction1=direction,
@@ -446,6 +447,7 @@ class HierarchicalTrainer(Trainer):
             else:
                 boss_step = step.replace(o1=self.last_boss_obs)
                 if self.correct_boss_action:
+                    assert np.array_equal(self.boss_action, self.boss_state.action)
                     self.boss_action = self.env.goal_to_boss_action_space(rel_step)
                 boss_step = boss_step.replace(a=self.boss_action)
 

@@ -389,7 +389,7 @@ class HierarchicalTrainer(Trainer):
     def get_actions(self, o1, s):
         direction = self.boss_state.goal - o1.achieved_goal
         worker_o1 = o1.replace(desired_goal=direction)
-        if self.worker_state is not None:
+        if self.worker_state is not None and not self.repeat_direction:
             assert np.array_equal(vectorize(worker_o1),
                                   vectorize(self.worker_state.o2))
 

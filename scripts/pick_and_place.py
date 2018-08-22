@@ -71,6 +71,7 @@ def env_wrapper(func):
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
+@click.option('--randomize-pose', is_flag=True)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
@@ -98,13 +99,14 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
         n_goals, block_xrange, block_yrange, agent, seq_len, hindsight,
-        temp_path):
+        temp_path, randomize_pose):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=PickAndPlaceEnv(
             cheat_prob=cheat_prob,
             steps_per_action=steps_per_action,
             fixed_block=fixed_block,
+            randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,
             xml_filepath=temp_path,
             block_xrange=block_xrange,

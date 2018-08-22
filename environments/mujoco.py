@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
+from mujoco import ObjType
 
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -12,6 +13,7 @@ class MujocoEnv:
     def __init__(self,
                  xml_filepath: Path,
                  steps_per_action: int,
+                 randomize_pose=False,
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
                  record_freq: int = 0,
@@ -54,6 +56,7 @@ class MujocoEnv:
 
         self.sim = mujoco.Sim(str(xml_filepath), *image_dimensions, n_substeps=1)
 
+        self.randomize_pose = randomize_pose
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._image_dimensions = image_dimensions
@@ -96,6 +99,23 @@ class MujocoEnv:
             if self._record_video:
                 self.video_recorder.capture_frame()
         self.sim.reset()
+
+        if self.randomize_pose:
+            for joint in [
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
+            ]:
+                qpos_idx = self.sim.get_jnt_qposadr(joint)
+                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
+                self.init_qpos[qpos_idx] = \
+                    np.random.uniform(
+                    *self.sim.jnt_range[jnt_range_idx])
+                    # self.sim.jnt_range[jnt_range_idx][1]
+
+        r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
+        l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
+        self.init_qpos[r] = self.init_qpos[l]
+
         qpos = self._reset_qpos()
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()

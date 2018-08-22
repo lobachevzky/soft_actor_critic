@@ -108,15 +108,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         render=False,  # because render is handled inside env
         evaluation=eval,
     )
-    if n_networks:
-        kwargs['base_agent'] = MoEAgent
-        kwargs['n_networks'] = n_networks
 
-    if hindsight_geofence:
-        env = MultiTaskHindsightWrapper(env=env, geofence=hindsight_geofence)
-        MultiTaskHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
-    else:
-        MultiTaskTrainer(env=env, **kwargs)
+    MultiTaskTrainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

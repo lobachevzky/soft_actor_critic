@@ -1,31 +1,44 @@
-import itertools
-import sys
-from abc import abstractmethod
-
 from collections.__init__ import namedtuple
-from typing import Tuple
 
 import numpy as np
-from gym import spaces, utils
+from gym import spaces
 
 from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
-                                            HindsightWrapper, Observation)
+                                            HindsightWrapper, MultiTaskHindsightWrapper)
 from sac.utils import vectorize
-from six import StringIO, b
 
 
 class HierarchicalWrapper(HindsightWrapper):
-    @property
-    def reward_space(self) -> spaces.Box:
-        raise NotImplemented
-
-    @abstractmethod
     def goal_to_boss_action_space(self, goal: np.array):
-        raise NotImplemented
+        return goal
 
-    @abstractmethod
     def boss_action_to_goal_space(self, goal: np.array) -> np.ndarray:
-        raise NotImplemented
+        return goal
+
+
+class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrapper):
+    def __init__(self, env, **kwargs):
+        super().__init__(env,  **kwargs)
+        obs = super().reset()
+
+        self.observation_space = Hierarchical(
+            boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
+                np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
+            worker=spaces.Box(low=-np.inf, high=np.inf, shape=(
+                np.shape(vectorize([obs.observation, obs.desired_goal]))))
+        )
+
+        self.action_space = Hierarchical(
+            boss=self.multi_task_env.goal_space,
+            worker=self.multi_task_env.action_space,
+        )
+
+    def _achieved_goal(self):
+        return self.pap_env.block_pos()[:2]
+
+    def _desired_goal(self):
+        return self.multi_task_env.goal
+
 
 
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):
@@ -55,10 +68,6 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
     @property
     def boss_radius(self):
         return self.boss_diameter // 2
-
-    @property
-    def reward_space(self):
-        return spaces.Box(low=0, high=1, shape=())
 
     def goal_to_boss_action_space(self, goal: np.array):
         goal = np.minimum(goal, self.boss_radius * np.ones(2, dtype=int))

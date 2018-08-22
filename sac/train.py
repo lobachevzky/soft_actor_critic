@@ -434,14 +434,11 @@ class HierarchicalTrainer(Trainer):
     def add_to_buffer(self, step: Step):
         if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0 or step.t):
             rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
-            if isinstance(self.action_space, Box):
-                raise NotImplemented
-            else:
-                boss_step = step.replace(o1=self.boss_state.o1)
-                boss_action = self.boss_state.action
-                if self.correct_boss_action:
-                    boss_action = self.env.goal_to_boss_action_space(rel_step)
-                boss_step = boss_step.replace(a=boss_action)
+            boss_step = step.replace(o1=self.boss_state.o1)
+            boss_action = self.boss_state.action
+            if self.correct_boss_action:
+                boss_action = self.env.goal_to_boss_action_space(rel_step)
+            boss_step = boss_step.replace(a=boss_action)
 
             self.trainers.boss.buffer.append(boss_step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
@@ -477,6 +474,8 @@ def boss_oracle(env: HierarchicalWrapper):
         return np.dot(goal_dir, direction)
 
     direction = env._desired_goal() - env._achieved_goal()
+    if isinstance(env.action_space.boss, Box):
+        return direction / max(np.linalg.norm(direction), 1e-6)
     actions = list(range(env.action_space.boss.n))
     # alignments = list(map(alignment, actions))
     return env._boss_action_to_goal_space(max(actions, key=alignment))

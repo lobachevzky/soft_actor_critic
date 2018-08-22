@@ -18,7 +18,8 @@ setup(
     entry_points=dict(console_scripts=[
         'gym-env=scripts.gym_env:cli',
         'frozen-lake=scripts.frozen_lake:cli',
-        'hierarchical=scripts.hierarchical_frozen_lake:cli',
+        'hierarchical-fl=scripts.hierarchical_frozen_lake:cli',
+        'hierarchical-mt=scripts.hierarchical_multi_task:cli',
         'pick-and-place=scripts.pick_and_place:cli',
         'multi-task=scripts.multi_task:cli',
         'mountaincar=scripts.mountaincar:cli',

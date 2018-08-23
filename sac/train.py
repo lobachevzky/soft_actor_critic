@@ -322,9 +322,10 @@ class HierarchicalTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session, worker_kwargs, boss_kwargs,
-                 correct_boss_action, **kwargs):
+                 correct_boss_action: bool, worker_gets_term_r: bool, **kwargs):
         assert isinstance(env, HierarchicalWrapper)
         self.correct_boss_action = correct_boss_action
+        self.worker_gets_term_r = worker_gets_term_r
         self.boss_oracle = use_boss_oracle
         self.worker_oracle = use_worker_oracle
         self.boss_act_freq = boss_act_freq
@@ -430,7 +431,7 @@ class HierarchicalTrainer(Trainer):
         # worker
         if not self.worker_oracle:
             direction = self.worker_o1.desired_goal
-            if not step.t:
+            if not (step.t and self.worker_gets_term_r):
                 movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
                 step = step.replace(r=np.dot(direction, movement))
 

@@ -65,11 +65,9 @@ def parse_double(ctx, param, string):
 @click.option('--goal-y', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--correct-boss-action', is_flag=True)
-@click.option('--repeat-direction', is_flag=True)
 @click.option('--boss-oracle', is_flag=True)
 @click.option('--worker-oracle', is_flag=True)
 @click.option('--boss-freq', default=None, type=int)
-@click.option('--n-boss-actions', default=None, type=int)
 @click.option(
     '--use-dof',
     multiple=True,
@@ -103,11 +101,9 @@ def cli(
         max_steps,
         steps_per_action,
         boss_freq,
-        n_boss_actions,
         worker_oracle,
         boss_oracle,
         correct_boss_action,
-        repeat_direction,
         record,
         record_freq,
         record_path,
@@ -175,7 +171,6 @@ def cli(
         use_worker_oracle=worker_oracle,
         use_boss_oracle=boss_oracle,
         correct_boss_action=correct_boss_action,
-        repeat_direction=repeat_direction,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs,
         **kwargs).train(

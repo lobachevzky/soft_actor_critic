@@ -433,6 +433,7 @@ class HierarchicalTrainer(Trainer):
             if not step.t:
                 movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
                 step = step.replace(r=np.dot(direction, movement))
+
             step = step.replace(
                 o1=self.worker_o1,
                 o2=step.o2.replace(desired_goal=direction))

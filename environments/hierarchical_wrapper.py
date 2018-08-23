@@ -4,7 +4,8 @@ import numpy as np
 from gym import spaces
 
 from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
-                                            HindsightWrapper, MultiTaskHindsightWrapper)
+                                            HindsightWrapper,
+                                            MultiTaskHindsightWrapper)
 from sac.utils import vectorize
 
 
@@ -18,15 +19,18 @@ class HierarchicalWrapper(HindsightWrapper):
 
 class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrapper):
     def __init__(self, env, **kwargs):
-        super().__init__(env,  **kwargs)
+        super().__init__(env, **kwargs)
         obs = super().reset()
 
         self.observation_space = Hierarchical(
-            boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
-                np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
-            worker=spaces.Box(low=-np.inf, high=np.inf, shape=(
-                np.shape(vectorize([obs.observation, obs.desired_goal]))))
-        )
+            boss=spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=(np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
+            worker=spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=(np.shape(vectorize([obs.observation, obs.desired_goal])))))
 
         self.action_space = Hierarchical(
             boss=self.multi_task_env.goal_space,
@@ -40,7 +44,6 @@ class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrappe
         return self.multi_task_env.goal
 
 
-
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):
     def __init__(self, env, n_boss_actions):
         super().__init__(env)
@@ -49,17 +52,19 @@ class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrap
         self._step = obs, fl.default_reward, False, {}
 
         self.observation_space = Hierarchical(
-            boss=spaces.Box(low=-np.inf, high=np.inf, shape=(
-                np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
-            worker=spaces.Box(low=-np.inf, high=np.inf, shape=(
-                np.shape(vectorize([obs.observation, obs.desired_goal]))))
-        )
+            boss=spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=(np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
+            worker=spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=(np.shape(vectorize([obs.observation, obs.desired_goal])))))
 
         self.action_space = Hierarchical(
             # DEBUG {{
             boss=spaces.Discrete(n_boss_actions),
-            worker=spaces.Discrete(env.action_space.n)
-        )
+            worker=spaces.Discrete(env.action_space.n))
 
     @property
     def boss_diameter(self):

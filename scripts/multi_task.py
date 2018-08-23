@@ -5,10 +5,9 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import MultiTaskHindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac.networks import MlpAgent, MoEAgent, SACXAgent
-from sac.train import MultiTaskHindsightTrainer, MultiTaskTrainer
+from sac.networks import MlpAgent, SACXAgent
+from sac.train import MultiTaskTrainer
 from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 
 

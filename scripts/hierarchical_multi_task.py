@@ -4,15 +4,15 @@ import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.frozen_lake import FrozenLakeEnv
-from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper, HierarchicalWrapper, \
-    MultiTaskHierarchicalWrapper
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
+                                               HierarchicalWrapper,
+                                               MultiTaskHierarchicalWrapper)
 from environments.multi_task import MultiTaskEnv
 from sac.networks import MlpAgent
-from sac.train import HierarchicalTrainer, Trainer
+from sac.train import HierarchicalTrainer
 from sac.utils import create_sess
 from scripts.multi_task import parse_coordinate
-from scripts.pick_and_place import put_in_xml_setter, env_wrapper
+from scripts.pick_and_place import env_wrapper, put_in_xml_setter
 
 
 def check_probability(ctx, param, value):
@@ -78,7 +78,49 @@ def parse_double(ctx, param, string):
         'hand_l_proximal_joint', 'hand_r_proximal_joint', 'goal_x', 'goal_y'
     ])
 @env_wrapper
-def cli(seed, buffer_size, worker_n_layers, worker_layer_size, worker_learning_rate, worker_entropy_scale, worker_reward_scale, worker_num_train_steps, worker_grad_clip, boss_n_layers, boss_layer_size, boss_learning_rate, boss_entropy_scale, boss_reward_scale, boss_num_train_steps, boss_grad_clip, batch_size, logdir, save_path, load_path, render_freq, max_steps, steps_per_action, boss_freq, n_boss_actions, worker_oracle, boss_oracle, correct_boss_action, repeat_direction, record, record_freq, record_path, image_dims, randomize_pose, geofence, hindsight_geofence, fixed_block, fixed_goal, goal_x, goal_y, temp_path, ):
+def cli(
+        seed,
+        buffer_size,
+        worker_n_layers,
+        worker_layer_size,
+        worker_learning_rate,
+        worker_entropy_scale,
+        worker_reward_scale,
+        worker_num_train_steps,
+        worker_grad_clip,
+        boss_n_layers,
+        boss_layer_size,
+        boss_learning_rate,
+        boss_entropy_scale,
+        boss_reward_scale,
+        boss_num_train_steps,
+        boss_grad_clip,
+        batch_size,
+        logdir,
+        save_path,
+        load_path,
+        render_freq,
+        max_steps,
+        steps_per_action,
+        boss_freq,
+        n_boss_actions,
+        worker_oracle,
+        boss_oracle,
+        correct_boss_action,
+        repeat_direction,
+        record,
+        record_freq,
+        record_path,
+        image_dims,
+        randomize_pose,
+        geofence,
+        hindsight_geofence,
+        fixed_block,
+        fixed_goal,
+        goal_x,
+        goal_y,
+        temp_path,
+):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=MultiTaskEnv(
@@ -137,10 +179,7 @@ def cli(seed, buffer_size, worker_n_layers, worker_layer_size, worker_learning_r
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs,
         **kwargs).train(
-            load_path=load_path,
-            logdir=logdir,
-            render=False,
-            save_path=save_path)
+            load_path=load_path, logdir=logdir, render=False, save_path=save_path)
 
 
 if __name__ == '__main__':

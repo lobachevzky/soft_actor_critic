@@ -7,18 +7,18 @@ import gym
 import numpy as np
 import tensorflow as tf
 from gym import Wrapper, spaces
-from gym.spaces import Discrete, Box
+from gym.spaces import Box
 
-from environments.frozen_lake import FrozenLakeEnv
-from environments.hierarchical_wrapper import (Hierarchical,
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
+                                               Hierarchical,
                                                HierarchicalAgents,
-                                               HierarchicalWrapper, FrozenLakeHierarchicalWrapper)
+                                               HierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize
+from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -321,9 +321,8 @@ WorkerState = namedtuple('WorkerState', 'o1 o2')
 class HierarchicalTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
-                 use_worker_oracle: bool, sess: tf.Session,
-                 worker_kwargs, boss_kwargs, correct_boss_action,
-                 repeat_direction, **kwargs):
+                 use_worker_oracle: bool, sess: tf.Session, worker_kwargs, boss_kwargs,
+                 correct_boss_action, repeat_direction, **kwargs):
         self.repeat_direction = repeat_direction
         assert isinstance(env, HierarchicalWrapper)
         self.correct_boss_action = correct_boss_action
@@ -390,11 +389,12 @@ class HierarchicalTrainer(Trainer):
         direction = self.boss_state.goal - o1.achieved_goal
         worker_o1 = o1.replace(desired_goal=direction)
         if self.worker_state is not None and not self.repeat_direction:
-            assert np.array_equal(vectorize(worker_o1),
-                                  vectorize(self.worker_state.o2))
+            assert np.array_equal(vectorize(worker_o1), vectorize(self.worker_state.o2))
 
-        self.worker_state = WorkerState(o1=worker_o1,
-                                        o2=None, )
+        self.worker_state = WorkerState(
+            o1=worker_o1,
+            o2=None,
+        )
 
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, direction)
@@ -432,7 +432,8 @@ class HierarchicalTrainer(Trainer):
         raise NotImplemented
 
     def add_to_buffer(self, step: Step):
-        if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0 or step.t):
+        if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0
+                                     or step.t):
             rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
             boss_step = step.replace(o1=self.boss_state.o1)
             boss_action = self.boss_state.action
@@ -449,18 +450,17 @@ class HierarchicalTrainer(Trainer):
             else:
                 desired_goal = self.boss_state.goal - step.o2.achieved_goal
 
-            self.worker_state = self.worker_state._replace(o2=step.o2.replace(
-                desired_goal=desired_goal))
+            self.worker_state = self.worker_state._replace(
+                o2=step.o2.replace(desired_goal=desired_goal))
 
             worker_step = step
             if not step.t:
                 worker_step = step.replace(r=np.dot(direction, movement))
             worker_step = worker_step.replace(
-                o1=self.worker_state.o1,
-                o2=self.worker_state.o2)
+                o1=self.worker_state.o1, o2=self.worker_state.o2)
             if not self.repeat_direction:
-                assert np.array_equal(vectorize(worker_step.o2),
-                                      vectorize(self.worker_state.o2))
+                assert np.array_equal(
+                    vectorize(worker_step.o2), vectorize(self.worker_state.o2))
             self.trainers.worker.buffer.append(worker_step)
             self.episode_count.update(Counter(worker_reward=worker_step.r))
 
@@ -496,7 +496,8 @@ def worker_oracle(env: FrozenLakeHierarchicalWrapper, relative_goal: np.ndarray)
     goal = s + relative_goal
 
     def in_bounds(new_s):
-        return np.all(np.zeros(2) <= new_s) and np.all(new_s < np.array([fl.nrow, fl.ncol]))
+        return np.all(np.zeros(2) <= new_s) and np.all(
+            new_s < np.array([fl.nrow, fl.ncol]))
 
     def distance_from_goal(i):
         new_s = s + DIRECTIONS[i]

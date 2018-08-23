@@ -5,7 +5,7 @@ from gym.wrappers import TimeLimit
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
 from sac.networks import MlpAgent
-from sac.train import HierarchicalTrainer, Trainer
+from sac.train import HierarchicalTrainer
 from sac.utils import create_sess
 
 
@@ -55,7 +55,9 @@ def parse_double(ctx, param, string):
 @click.option('--worker-oracle', is_flag=True)
 @click.option('--boss-freq', default=None, type=int)
 @click.option('--n-boss-actions', default=None, type=int)
-def cli(seed, buffer_size,
+def cli(
+        seed,
+        buffer_size,
         worker_n_layers,
         worker_layer_size,
         worker_learning_rate,
@@ -63,7 +65,6 @@ def cli(seed, buffer_size,
         worker_reward_scale,
         worker_num_train_steps,
         worker_grad_clip,
-
         boss_n_layers,
         boss_layer_size,
         boss_learning_rate,
@@ -71,7 +72,6 @@ def cli(seed, buffer_size,
         boss_reward_scale,
         boss_num_train_steps,
         boss_grad_clip,
-
         batch_size,
         logdir,
         save_path,
@@ -90,7 +90,7 @@ def cli(seed, buffer_size,
         boss_oracle,
         correct_boss_action,
         repeat_direction,
-        ):
+):
 
     env = TimeLimit(
         env=FrozenLakeEnv(
@@ -143,7 +143,8 @@ def cli(seed, buffer_size,
         repeat_direction=repeat_direction,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs,
-        **kwargs).train(load_path=load_path, logdir=logdir, render=render, save_path=save_path)
+        **kwargs).train(
+            load_path=load_path, logdir=logdir, render=render, save_path=save_path)
 
 
 if __name__ == '__main__':

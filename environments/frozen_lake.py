@@ -4,12 +4,11 @@ from typing import Iterable, Tuple, Union
 
 import gym.envs.toy_text.frozen_lake
 import numpy as np
-from gym.spaces import Box, Discrete
+from gym import utils
+from gym.spaces import Discrete
+from six import StringIO
 
 from environments.multi_task import Observation
-
-from gym import utils
-from six import StringIO, b
 
 MAPS = gym.envs.toy_text.frozen_lake.MAPS
 MAPS["2x2"] = ["FF"] * 2
@@ -89,7 +88,7 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
             explored.append(pos)
             next_positions = [
                 self.inc(*pos, d) for d in range(5) if not self.inc(*pos, d) in explored
-                                                       and not self.desc[self.inc(*pos, d)] == b'H'
+                and not self.desc[self.inc(*pos, d)] == b'H'
             ]
             if not next_positions:
                 return pos
@@ -230,7 +229,8 @@ class FrozenLakeEnv(gym.envs.toy_text.frozen_lake.FrozenLakeEnv):
         desc = [[c.decode('utf-8') for c in line] for line in desc]
         desc[row][col] = utils.colorize(desc[row][col], "red", highlight=True)
         if self.lastaction is not None:
-            outfile.write("  ({})\n".format(["Stay", "Left", "Down", "Right", "Up"][self.lastaction]))
+            outfile.write("  ({})\n".format(["Stay", "Left", "Down", "Right",
+                                             "Up"][self.lastaction]))
         else:
             outfile.write("\n")
         outfile.write("\n".join(''.join(line) for line in desc) + "\n")

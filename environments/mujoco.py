@@ -1,12 +1,12 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
-from mujoco import ObjType, MujocoError
 
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
+from mujoco import MujocoError, ObjType
 
 
 class MujocoEnv:
@@ -109,8 +109,7 @@ class MujocoEnv:
                 try:
                     qpos_idx = self.sim.get_jnt_qposadr(joint)
                     jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                    qpos[qpos_idx] = np.random.uniform(
-                        *self.sim.jnt_range[jnt_range_idx])
+                    qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
                     # self.sim.jnt_range[jnt_range_idx][1]
                 except MujocoError:
                     pass  # joint does not exist

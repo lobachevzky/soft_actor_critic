@@ -166,7 +166,7 @@ class Trainer:
         if self.buffer_full():
             for i in range(self.num_train_steps):
                 step = self.agents.act.train_step(self.sample_buffer())
-                return {k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}
+            return {k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}
 
     def get_actions(self, o1, s):
         return self.agents.act.get_actions(

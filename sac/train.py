@@ -430,15 +430,14 @@ class HierarchicalTrainer(Trainer):
         # worker
         if not self.worker_oracle:
             direction = self.worker_o1.desired_goal
-            worker_step = step
             if not step.t:
                 movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
-                worker_step = step.replace(r=np.dot(direction, movement))
-            worker_step = worker_step.replace(
+                step = step.replace(r=np.dot(direction, movement))
+            step = step.replace(
                 o1=self.worker_o1,
                 o2=step.o2.replace(desired_goal=direction))
-            self.trainers.worker.buffer.append(worker_step)
-            self.episode_count.update(Counter(worker_reward=worker_step.r))
+            self.trainers.worker.buffer.append(step)
+            self.episode_count.update(Counter(worker_reward=step.r))
 
 
 def boss_oracle(env: HierarchicalWrapper):

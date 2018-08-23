@@ -379,17 +379,13 @@ class HierarchicalTrainer(Trainer):
                 worker=self.trainers.worker.agents.train,
                 initial_state=0))
 
-    def reset(self):
-        o = super().reset()
-        self.boss_state = self.get_boss_state(o, 0)
-        self.worker_state = None
-        return o
-
     def get_actions(self, o1, s):
+        if self.time_steps() % self.boss_act_freq == 0:
+            self.boss_state = self.get_boss_state(o1, 0)
         direction = self.boss_state.goal - o1.achieved_goal
         worker_o1 = o1.replace(desired_goal=direction)
-        if self.worker_state is not None and not self.repeat_direction:
-            assert np.array_equal(vectorize(worker_o1), vectorize(self.worker_state.o2))
+        # if self.worker_state is not None and not self.repeat_direction:
+        #     assert np.array_equal(vectorize(worker_o1), vectorize(self.worker_state.o2))
 
         self.worker_state = WorkerState(
             o1=worker_o1,
@@ -401,12 +397,6 @@ class HierarchicalTrainer(Trainer):
             return NetworkOutput(output=oracle_action, state=0)
         else:
             return self.trainers.worker.get_actions(worker_o1, s)
-
-    def step(self, action: np.ndarray):
-        o, r, t, i = super().step(action)
-        if self.time_steps() % self.boss_act_freq == 0:
-            self.boss_state = self.get_boss_state(o, 0)
-        return o, r, t, i
 
     def get_boss_state(self, o1, s):
         if self.boss_oracle:
@@ -445,10 +435,10 @@ class HierarchicalTrainer(Trainer):
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             direction = self.worker_state.o1.desired_goal
-            if self.repeat_direction:
-                desired_goal = direction
-            else:
-                desired_goal = self.boss_state.goal - step.o2.achieved_goal
+            # if self.repeat_direction:
+            desired_goal = direction
+            # else:
+            #     desired_goal = self.boss_state.goal - step.o2.achieved_goal
 
             self.worker_state = self.worker_state._replace(
                 o2=step.o2.replace(desired_goal=desired_goal))
@@ -458,9 +448,9 @@ class HierarchicalTrainer(Trainer):
                 worker_step = step.replace(r=np.dot(direction, movement))
             worker_step = worker_step.replace(
                 o1=self.worker_state.o1, o2=self.worker_state.o2)
-            if not self.repeat_direction:
-                assert np.array_equal(
-                    vectorize(worker_step.o2), vectorize(self.worker_state.o2))
+            # if not self.repeat_direction:
+            #     assert np.array_equal(
+            #         vectorize(worker_step.o2), vectorize(self.worker_state.o2))
             self.trainers.worker.buffer.append(worker_step)
             self.episode_count.update(Counter(worker_reward=worker_step.r))
 

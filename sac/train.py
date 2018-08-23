@@ -426,16 +426,17 @@ class HierarchicalTrainer(Trainer):
             self.trainers.boss.buffer.append(step.replace(
                 o1=self.boss_state.o1,
                 a=boss_action))
-        movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
+
+        # worker
         if not self.worker_oracle:
             direction = self.worker_o1.desired_goal
-            desired_goal = direction
-
             worker_step = step
             if not step.t:
+                movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
                 worker_step = step.replace(r=np.dot(direction, movement))
             worker_step = worker_step.replace(
-                o1=self.worker_o1, o2=step.o2.replace(desired_goal=desired_goal))
+                o1=self.worker_o1,
+                o2=step.o2.replace(desired_goal=direction))
             self.trainers.worker.buffer.append(worker_step)
             self.episode_count.update(Counter(worker_reward=worker_step.r))
 

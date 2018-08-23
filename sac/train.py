@@ -417,15 +417,15 @@ class HierarchicalTrainer(Trainer):
         raise NotImplemented
 
     def add_to_buffer(self, step: Step):
+        # boss
         if not self.boss_oracle and (self.boss_turn() or step.t):
-            rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
-            boss_step = step.replace(o1=self.boss_state.o1)
             boss_action = self.boss_state.action
             if self.correct_boss_action:
+                rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
                 boss_action = self.env.goal_to_boss_action_space(rel_step)
-            boss_step = boss_step.replace(a=boss_action)
-
-            self.trainers.boss.buffer.append(boss_step)
+            self.trainers.boss.buffer.append(step.replace(
+                o1=self.boss_state.o1,
+                a=boss_action))
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
             direction = self.worker_o1.desired_goal

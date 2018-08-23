@@ -330,7 +330,7 @@ class HierarchicalTrainer(Trainer):
         self.boss_act_freq = boss_act_freq
 
         self.boss_state = None
-        self.worker_state = None
+        self.worker_o1 = None
 
         self.env = env
         self.sess = sess
@@ -382,11 +382,7 @@ class HierarchicalTrainer(Trainer):
         if self.time_steps() % self.boss_act_freq == 0:
             self.boss_state = self.get_boss_state(o1, 0)
         direction = self.boss_state.goal - o1.achieved_goal
-        worker_o1 = o1.replace(desired_goal=direction)
-        self.worker_state = WorkerState(
-            o1=worker_o1,
-            o2=None,
-        )
+        self.worker_o1 = worker_o1 = o1.replace(desired_goal=direction)
 
         if self.worker_oracle:
             oracle_action = worker_oracle(self.env, direction)
@@ -430,17 +426,14 @@ class HierarchicalTrainer(Trainer):
             self.trainers.boss.buffer.append(boss_step)
         movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
         if not self.worker_oracle:
-            direction = self.worker_state.o1.desired_goal
+            direction = self.worker_o1.desired_goal
             desired_goal = direction
-
-            self.worker_state = self.worker_state._replace(
-                o2=step.o2.replace(desired_goal=desired_goal))
 
             worker_step = step
             if not step.t:
                 worker_step = step.replace(r=np.dot(direction, movement))
             worker_step = worker_step.replace(
-                o1=self.worker_state.o1, o2=self.worker_state.o2)
+                o1=self.worker_o1, o2=step.o2.replace(desired_goal=desired_goal))
             self.trainers.worker.buffer.append(worker_step)
             self.episode_count.update(Counter(worker_reward=worker_step.r))
 

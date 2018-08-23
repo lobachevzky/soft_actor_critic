@@ -47,7 +47,7 @@ def parse_double(ctx, param, string):
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
-@click.option('--max-steps', default=12, type=int)
+@click.option('--max-steps', default=100, type=int)
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--render', is_flag=True)
 @click.option('--render-freq', default=0, type=int)

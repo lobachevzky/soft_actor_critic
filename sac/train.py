@@ -378,8 +378,11 @@ class HierarchicalTrainer(Trainer):
                 worker=self.trainers.worker.agents.train,
                 initial_state=0))
 
+    def boss_turn(self):
+        return self.time_steps() % self.boss_act_freq == 0
+
     def get_actions(self, o1, s):
-        if self.time_steps() % self.boss_act_freq == 0:
+        if self.boss_turn():
             if self.boss_oracle:
                 action = boss_oracle(self.env)
             else:
@@ -411,8 +414,7 @@ class HierarchicalTrainer(Trainer):
         raise NotImplemented
 
     def add_to_buffer(self, step: Step):
-        if not self.boss_oracle and (self.time_steps() % self.boss_act_freq == 0
-                                     or step.t):
+        if not self.boss_oracle and (self.boss_turn() or step.t):
             rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
             boss_step = step.replace(o1=self.boss_state.o1)
             boss_action = self.boss_state.action

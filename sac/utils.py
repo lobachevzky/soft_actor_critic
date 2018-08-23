@@ -1,6 +1,4 @@
 from collections import namedtuple
-from itertools import islice
-from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
 import gym
@@ -119,31 +117,11 @@ def unwrap_env(env: gym.Env, condition: Callable[[gym.Env], bool]):
     return env
 
 
-def collect_reward(event_file_path: Path, n_rewards: int) -> Optional[float]:
-    """
-    :param event_file_path: path to events file
-    :param n_rewards: number of rewards to average
-    :return: average of last `n_rewards` in events file or None if events file is empty
-    """
-    length = sum(1 for _ in tf.train.summary_iterator(str(event_file_path)))
-    iterator = tf.train.summary_iterator(str(event_file_path))
-    events = islice(iterator, max(length - n_rewards, 0), length)
-
-    def get_reward(event):
-        return next((v.simple_value for v in event.summary.value if v.tag == 'reward'),
-                    None)
-
-    rewards = (get_reward(e) for e in events)
-    rewards = [r for r in rewards if r is not None]
-    try:
-        return sum(rewards) / len(rewards)
-    except ZeroDivisionError:
-        return None
-
-
-def collect_events_files(dirs):
-    pattern = '**/events*'
-    return [path for d in dirs for path in d.glob(pattern)]
+def create_sess():
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    config.inter_op_parallelism_threads = 1
+    return tf.Session(config=config)
 
 
 Obs = Any

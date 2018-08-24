@@ -52,7 +52,7 @@ class Trainer:
 
         self.agents = Agents(
             act=self.build_agent(
-                sess=sess,
+                sess=self.sess,
                 batch_size=None,
                 seq_len=1,
                 reuse=False,
@@ -60,7 +60,7 @@ class Trainer:
                 observation_space=observation_space,
                 **kwargs),
             train=self.build_agent(
-                sess=sess,
+                sess=self.sess,
                 batch_size=batch_size,
                 seq_len=seq_len,
                 reuse=True,

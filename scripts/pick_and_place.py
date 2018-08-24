@@ -132,15 +132,17 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=False)  # because render is handled inside env
+        )
     if hindsight:
         env = PickAndPlaceHindsightWrapper(env=env, geofence=geofence)
         HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
-        Trainer(env=env, **kwargs)
+        Trainer(env=env, **kwargs).train(
+            load_path=load_path,
+            logdir=logdir,
+            save_path=save_path,
+            render=False,  # because render is handled inside env
+        )
 
 
 XMLSetter = namedtuple('XMLSetter', 'path value')

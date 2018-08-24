@@ -153,7 +153,7 @@ class Trainer:
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
 
             if perform_updates:
-                episode_mean.update(Counter(self.perform_update()))
+                self.perform_update(episode_mean)
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
@@ -162,11 +162,11 @@ class Trainer:
                     self.episode_count[k] = episode_mean[k] / float(time_steps)
                 return self.episode_count
 
-    def perform_update(self):
+    def perform_update(self, episode_mean):
         if self.buffer_full():
             for i in range(self.num_train_steps):
                 step = self.agents.act.train_step(self.sample_buffer())
-            return {k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}
+                episode_mean.update(Counter({k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}))
 
     def get_actions(self, o1, s):
         return self.agents.act.get_actions(

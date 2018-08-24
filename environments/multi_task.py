@@ -5,12 +5,12 @@ import numpy as np
 from gym import spaces
 
 from environments.mujoco import distance_between
-from environments.pick_and_place import PickAndPlaceEnv
+from environments.lift import LiftEnv
 
 Observation = namedtuple('Obs', 'observation goal')
 
 
-class MultiTaskEnv(PickAndPlaceEnv):
+class MultiTaskEnv(LiftEnv):
     def __init__(self,
                  geofence: float,
                  fixed_block=None,

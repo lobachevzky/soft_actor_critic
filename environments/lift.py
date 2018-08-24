@@ -39,7 +39,7 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-class PickAndPlaceEnv(MujocoEnv):
+class LiftEnv(MujocoEnv):
     def __init__(self,
                  block_xrange=None,
                  block_yrange=None,

@@ -10,7 +10,7 @@ from gym.spaces import Box
 from environments.frozen_lake import FrozenLakeEnv
 from environments.mujoco import distance_between
 from environments.multi_task import MultiTaskEnv
-from environments.pick_and_place import PickAndPlaceEnv
+from environments.lift import LiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -101,10 +101,10 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return achieved_goal >= desired_goal
 
 
-class PickAndPlaceHindsightWrapper(HindsightWrapper):
+class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.pap_env = unwrap_env(env, lambda e: isinstance(e, PickAndPlaceEnv))
+        self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self._geofence = geofence
         self.observation_space = Box(
             low=vectorize(
@@ -134,13 +134,13 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
 
     def _desired_goal(self):
-        assert isinstance(self.pap_env, PickAndPlaceEnv)
+        assert isinstance(self.pap_env, LiftEnv)
         goal = self.pap_env.initial_block_pos.copy()
         goal[2] += self.pap_env.min_lift_height
         return Goal(gripper=goal, block=goal)
 
 
-class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+class MultiTaskHindsightWrapper(LiftHindsightWrapper):
     def __init__(self, env, geofence):
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env, geofence)

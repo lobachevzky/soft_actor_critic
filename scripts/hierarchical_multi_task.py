@@ -12,7 +12,7 @@ from sac.networks import MlpAgent
 from sac.train import HierarchicalTrainer
 from sac.utils import create_sess
 from scripts.multi_task import parse_coordinate
-from scripts.pick_and_place import env_wrapper, put_in_xml_setter
+from scripts.lift import env_wrapper, put_in_xml_setter
 
 
 def check_probability(ctx, param, value):

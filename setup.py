@@ -20,7 +20,7 @@ setup(
         'frozen-lake=scripts.frozen_lake:cli',
         'hfl=scripts.hierarchical_frozen_lake:cli',
         'hmt=scripts.hierarchical_multi_task:cli',
-        'pick-and-place=scripts.pick_and_place:cli',
+        'lift=scripts.lift:cli',
         'multi-task=scripts.multi_task:cli',
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',

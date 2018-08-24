@@ -11,8 +11,8 @@ import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environments.pick_and_place import PickAndPlaceEnv
+from environments.hindsight_wrapper import LiftHindsightWrapper
+from environments.lift import LiftEnv
 from sac.networks import LstmAgent, MlpAgent
 from sac.train import HindsightTrainer, Trainer
 from scripts.gym_env import check_probability
@@ -102,7 +102,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         randomize_pose):
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=PickAndPlaceEnv(
+        env=LiftEnv(
             cheat_prob=cheat_prob,
             steps_per_action=steps_per_action,
             fixed_block=fixed_block,
@@ -134,7 +134,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         num_train_steps=num_train_steps,
         )
     if hindsight:
-        env = PickAndPlaceHindsightWrapper(env=env, geofence=geofence)
+        env = LiftHindsightWrapper(env=env, geofence=geofence)
         HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
         Trainer(env=env, **kwargs).train(

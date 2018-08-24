@@ -216,13 +216,3 @@ class AbstractAgent:
     @abstractmethod
     def entropy_from_params(self, params: tf.Tensor) -> tf.Tensor:
         pass
-
-
-class HierarchicalAgents(AbstractAgent):
-    def __init__(self, **kwargs):
-        self.boss = super().__init__(**kwargs)
-        self.worker = super().__init__(**kwargs)
-
-    @property
-    def seq_len(self):
-        return self._seq_len

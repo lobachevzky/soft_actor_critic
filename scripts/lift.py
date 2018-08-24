@@ -135,9 +135,10 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         )
     if hindsight:
         env = LiftHindsightWrapper(env=env, geofence=geofence)
-        HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+        trainer = HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
-        Trainer(env=env, **kwargs).train(
+        trainer = Trainer(env=env, **kwargs)
+    trainer.train(
             load_path=load_path,
             logdir=logdir,
             save_path=save_path,

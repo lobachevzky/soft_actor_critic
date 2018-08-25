@@ -2,15 +2,9 @@
 import argparse
 import csv
 import itertools
-from pathlib import Path, PurePath
+from pathlib import PurePath
 
 import matplotlib.pyplot as plt
-import numpy as np
-
-from runs.database import DataBase
-from runs.database import RunEntry
-from runs.logger import Logger
-from scripts.crawl_events import crawl
 
 
 def main():
@@ -34,8 +28,7 @@ def main():
     for path, color in zip(csv_files, colors):
         with path.open() as csv_file:
             table = csv.DictReader(csv_file)
-            components = [[row[c] for row in table]
-                          for c in args.components]
+            components = [[row[c] for row in table] for c in args.components]
             ax.scatter(*components, c=color)
 
     ax.set_xlabel(args.components[0])

@@ -17,10 +17,7 @@ def main():
     parser.add_argument('--use-cache', action='store_true')
     args = parser.parse_args()
     data_points = crawl(
-        dirs=args.dirs,
-        tag=args.tag,
-        smoothing=args.smoothing,
-        use_cache=args.use_cache)
+        dirs=args.dirs, tag=args.tag, smoothing=args.smoothing, use_cache=args.use_cache)
     print('Sorted lowest to highest:')
     print('*************************')
     for data, event_file in sorted(data_points):

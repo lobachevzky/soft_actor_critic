@@ -167,7 +167,11 @@ class Trainer:
         if self.buffer_full():
             for i in range(self.num_train_steps):
                 step = self.agents.act.train_step(self.sample_buffer())
-                counter.update(Counter({k.replace(' ', '_'): v for k, v in step.items() if np.isscalar(v)}))
+                counter.update(
+                    Counter({
+                        k.replace(' ', '_'): v
+                        for k, v in step.items() if np.isscalar(v)
+                    }))
         return counter
 
     def get_actions(self, o1, s):
@@ -426,20 +430,19 @@ class HierarchicalTrainer(Trainer):
             if self.correct_boss_action:
                 rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
                 boss_action = self.env.goal_to_boss_action_space(rel_step)
-            self.trainers.boss.buffer.append(step.replace(
-                o1=self.boss_state.o1,
-                a=boss_action))
+            self.trainers.boss.buffer.append(
+                step.replace(o1=self.boss_state.o1, a=boss_action))
 
         # worker
         if not self.worker_oracle:
             direction = self.worker_o1.desired_goal
             if not (step.t and self.worker_gets_term_r):
-                movement = vectorize(step.o2.achieved_goal) - vectorize(step.o1.achieved_goal)
+                movement = vectorize(step.o2.achieved_goal) - vectorize(
+                    step.o1.achieved_goal)
                 step = step.replace(r=np.dot(direction, movement))
 
             step = step.replace(
-                o1=self.worker_o1,
-                o2=step.o2.replace(desired_goal=direction))
+                o1=self.worker_o1, o2=step.o2.replace(desired_goal=direction))
             self.trainers.worker.buffer.append(step)
             self.episode_count.update(Counter(worker_reward=step.r))
 

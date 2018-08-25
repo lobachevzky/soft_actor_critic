@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('csv-dir', nargs='*', type=PurePath)
+    parser.add_argument('csv_dir', type=PurePath)
     parser.add_argument('--components', default=None, nargs='+')
     args = parser.parse_args()
 
@@ -43,11 +43,12 @@ def main():
 
 def plot(csv_dir,
          component_names=None, plot_path=Path('tmp', 'fig.png')):
+    import  ipdb; ipdb.set_trace()
     if component_names is None:
         component_names = ['learning_rate', 'reward_scale', 'reward']
-    if len(component_names) == 1:
+    if len(component_names) == 2:
         projection = '2d'
-    elif len(component_names) == 2:
+    elif len(component_names) == 3:
         projection = '3d'
     else:
         raise RuntimeError('Must have 2 or 3 components')

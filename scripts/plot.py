@@ -54,19 +54,20 @@ def plot(csv_dir,
         component_names = ['learning_rate', 'reward_scale', 'reward']
     if len(component_names) == 2:
         projection = '2d'
-    elif len(component_names) == 3:
+    elif len(component_names) > 2:
         projection = '3d'
     else:
         raise RuntimeError('Must have 2 or 3 components')
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection=projection)
-    csv_files = csv_dir.glob('*.csv')
+    csv_paths = csv_dir.glob('*.csv')
     colors = itertools.cycle('bgrcmkw')
-    for plot_path, color in zip(csv_files, colors):
-        with plot_path.open() as csv_file:
+    for csv_path, color in zip(csv_paths, colors):
+        with csv_path.open() as csv_file:
             table = csv.DictReader(csv_file, delimiter=delimiter)
-            components = [[row[c] for row in table] for c in component_names]
+            components = zip(*[[float(row[c]) for c in component_names]
+                               for row in table])
             ax.scatter(*components, c=color)
     ax.set_xlabel(component_names[0])
     ax.set_ylabel(component_names[1])

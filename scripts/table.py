@@ -61,7 +61,7 @@ def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
         entry = entries[path]  # type: RunEntry
         flags = parse_flags([entry.command], delimiter='=')
         flags = {format_flag_name(k): v.pop() for k, v in flags.items()}
-        entry_dict = {str(k): json.dumps(str(v))
+        entry_dict = {str(k): str(v)
                       for k, v in entry.asdict().items()}
         return Row(reward=rewards[path],
                    **entry_dict,

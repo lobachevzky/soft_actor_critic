@@ -27,10 +27,10 @@ def main():
         smoothing=args.smoothing,
         tensorboard_dir=args.tensorboard_dir,
         use_cache=not args.update_cache)
-    print(*header, sep=',')
+    print(*header, sep='|')
     for row in rows:
         assert len(header) == len(row)
-        print(*row, sep=',')
+        print(*row, sep='|')
 
 
 def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
@@ -60,7 +60,7 @@ def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
         entry = entries[path]  # type: RunEntry
         flags = parse_flags([entry.command], delimiter='=')
         flags = {format_flag_name(k): v.pop() for k, v in flags.items()}
-        entry_dict = {str(k): json.dumps(str(v))
+        entry_dict = {str(k): str(v)
                       for k, v in entry.asdict().items()}
         return Row(reward=rewards[path],
                    **entry_dict,

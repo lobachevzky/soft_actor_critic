@@ -1,8 +1,10 @@
 #! /usr/bin/env python
 import argparse
 import json
+from collections import defaultdict
 from pathlib import Path, PurePath
 
+from runs.commands.flags import parse_flags
 from runs.database import DataBase, RunEntry
 from runs.logger import Logger
 from scripts.crawl_events import crawl
@@ -42,21 +44,36 @@ def table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
         for data, event_file in data_points
     }
 
-    header = list(RunEntry.fields()) + ['rewards']
+    table = defaultdict(list)
+    flag_names = set(parse_flags([e.command for e in entries.values()],
+                                  delimiter='=').values())
 
-    def get_run_attr(path, field):
-        attr = getattr(entries[path], field)
-        if ',' in str(attr):
-            return json.dumps(attr)
-        return attr
+    for path, reward in rewards.items():
+        table[path].append(reward)
+        entry = entries[path]  # type: RunEntry
+        flags = parse_flags([entry.command], delimiter='=')
+        missing_flags = flag_names - set(flags.values())
+        if missing_flags:
+            raise RuntimeError(f"{path} with command {entry.command} "
+                               f"is missing the following flags:"
+                               + '\n'.join(missing_flags))
 
-    def get_row(path, reward):
-        row = [get_run_attr(path, field) for field in RunEntry.fields()]
-        row += [reward]
-        return row
+        for flag, value in flags.items():
+            table[flag].append(value)
+        for field, attr in entry.asdict():
+            if ',' in str(attr):
+                attr = json.dumps(attr)
+            table[field].append(attr)
 
-    rows = [get_row(path, reward) for path, reward in rewards.items()]
-    return header, rows
+    for k, v in table.items():
+        if len(v) != len(rewards):
+            raise RuntimeError(f'Field {k} of table has only '
+                               f'{len(v)} entries but should '
+                               f'have {len(rewards)}.')
+
+    return table
+
+
 
 
 if __name__ == '__main__':

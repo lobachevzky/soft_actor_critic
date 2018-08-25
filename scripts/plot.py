@@ -4,17 +4,22 @@ import csv
 import itertools
 from pathlib import PurePath, Path
 
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('csv_dir', type=PurePath)
+    parser.add_argument('csv_dir', type=Path)
     parser.add_argument('--components', default=None, nargs='+')
+    parser.add_argument('--delimiter', default='|')
+    parser.add_argument('--plot-path', default=Path('/tmp', 'plot.png'))
     args = parser.parse_args()
 
     plot(component_names=args.components,
-         csv_dir=args.csv_dir)
+         delimiter=args.delimiter,
+         csv_dir=args.csv_dir,
+         plot_path=args.plot_path)
 
     # # goal-space=-.4to.4
     # # rldl7: sort-runs .runs/tensorboard/multi-task-2d/goal_space=-.4to.4/ --smoothing=50
@@ -42,8 +47,9 @@ def main():
 
 
 def plot(csv_dir,
-         component_names=None, plot_path=Path('tmp', 'fig.png')):
-    import  ipdb; ipdb.set_trace()
+         delimiter,
+         component_names,
+         plot_path):
     if component_names is None:
         component_names = ['learning_rate', 'reward_scale', 'reward']
     if len(component_names) == 2:
@@ -59,7 +65,7 @@ def plot(csv_dir,
     colors = itertools.cycle('bgrcmkw')
     for plot_path, color in zip(csv_files, colors):
         with plot_path.open() as csv_file:
-            table = csv.DictReader(csv_file)
+            table = csv.DictReader(csv_file, delimiter=delimiter)
             components = [[row[c] for row in table] for c in component_names]
             ax.scatter(*components, c=color)
     ax.set_xlabel(component_names[0])

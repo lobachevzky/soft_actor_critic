@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--tag', default='reward')
     parser.add_argument('--db-path', default='runs.db')
     parser.add_argument('--update-cache', action='store_true')
+    parser.add_argument('--delimiter', default='|')
     args = parser.parse_args()
 
     header, rows = get_table(
@@ -27,10 +28,10 @@ def main():
         smoothing=args.smoothing,
         tensorboard_dir=args.tensorboard_dir,
         use_cache=not args.update_cache)
-    print(*header, sep=',')
+    print(*header, sep=args.delimiter)
     for row in rows:
         assert len(header) == len(row)
-        print(*row, sep=',')
+        print(*row, sep=args.delimiter)
 
 
 def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):

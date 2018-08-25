@@ -11,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('patterns', nargs='*', type=PurePath)
     parser.add_argument('--tensorboard-dir', default=Path('.runs/tensorboard'), type=Path)
-    parser.add_argument('--smoothing', type=int, default=2000)
+    parser.add_argument('--smoothing', type=int, default=20000)
     parser.add_argument('--tag', default='reward')
     parser.add_argument('--db-path', default='runs.db')
     parser.add_argument('--update-cache', action='store_true')

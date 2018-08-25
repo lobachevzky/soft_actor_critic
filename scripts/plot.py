@@ -2,7 +2,7 @@
 import argparse
 import csv
 import itertools
-from pathlib import PurePath
+from pathlib import PurePath, Path
 
 import matplotlib.pyplot as plt
 
@@ -13,32 +13,8 @@ def main():
     parser.add_argument('--components', default=None, nargs='+')
     args = parser.parse_args()
 
-    fig = plt.figure()
-    if len(args.components) == 1:
-        projection = '2d'
-    elif len(args.components) == 2:
-        projection = '3d'
-    else:
-        raise RuntimeError('Must have 2 or 3 components')
-
-    ax = fig.add_subplot(111, projection=projection)
-
-    csv_files = args.csv_dir.glob('*.csv')
-    colors = itertools.cycle('bgrcmkw')
-    for path, color in zip(csv_files, colors):
-        with path.open() as csv_file:
-            table = csv.DictReader(csv_file)
-            components = [[row[c] for row in table] for c in args.components]
-            ax.scatter(*components, c=color)
-
-    ax.set_xlabel(args.components[0])
-    ax.set_ylabel(args.components[1])
-    try:
-        ax.set_zlabel(args.components[2])
-    except IndexError:
-        pass
-
-    plt.show()
+    plot(component_names=args.components,
+         csv_dir=args.csv_dir)
 
     # # goal-space=-.4to.4
     # # rldl7: sort-runs .runs/tensorboard/multi-task-2d/goal_space=-.4to.4/ --smoothing=50
@@ -63,6 +39,35 @@ def main():
     #
     # # plt.save('best-params')
     # plt.show()
+
+
+def plot(csv_dir,
+         component_names=None, plot_path=Path('tmp', 'fig.png')):
+    if component_names is None:
+        component_names = ['learning_rate', 'reward_scale', 'reward']
+    if len(component_names) == 1:
+        projection = '2d'
+    elif len(component_names) == 2:
+        projection = '3d'
+    else:
+        raise RuntimeError('Must have 2 or 3 components')
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection=projection)
+    csv_files = csv_dir.glob('*.csv')
+    colors = itertools.cycle('bgrcmkw')
+    for plot_path, color in zip(csv_files, colors):
+        with plot_path.open() as csv_file:
+            table = csv.DictReader(csv_file)
+            components = [[row[c] for row in table] for c in component_names]
+            ax.scatter(*components, c=color)
+    ax.set_xlabel(component_names[0])
+    ax.set_ylabel(component_names[1])
+    try:
+        ax.set_zlabel(component_names[2])
+    except IndexError:
+        pass
+    plt.savefig(plot_path)
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 import argparse
 import json
-from collections import defaultdict
+from collections import namedtuple
 from pathlib import Path, PurePath
 
 from runs.commands.flags import parse_flags
@@ -20,7 +20,7 @@ def main():
     parser.add_argument('--update-cache', action='store_true')
     args = parser.parse_args()
 
-    header, rows = table(
+    header, rows = get_table(
         tag=args.tag,
         db_path=args.db_path,
         patterns=args.patterns,
@@ -29,10 +29,11 @@ def main():
         use_cache=not args.update_cache)
     print(*header, sep=',')
     for row in rows:
+        assert len(header) == len(row)
         print(*row, sep=',')
 
 
-def table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
+def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
     logger = Logger(quiet=False)
     with DataBase(db_path, logger) as db:
         entries = {entry.path: entry for entry in db.get(patterns)}
@@ -44,36 +45,28 @@ def table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
         for data, event_file in data_points
     }
 
-    table = defaultdict(list)
-    flag_names = set(parse_flags([e.command for e in entries.values()],
-                                  delimiter='=').values())
+    def format_flag_name(name):
+        return name.lstrip('-').replace('-', '_')
 
-    for path, reward in rewards.items():
-        table[path].append(reward)
+    commands = [e.command for e in entries.values()]
+    flag_names = parse_flags(commands, delimiter='=').keys()
+    flag_names = [format_flag_name(n) for n in flag_names]
+
+    Row = namedtuple('Row', ['reward'] +
+                     list(RunEntry.fields()) +
+                     list(flag_names))
+
+    def get_row(path):
         entry = entries[path]  # type: RunEntry
         flags = parse_flags([entry.command], delimiter='=')
-        missing_flags = flag_names - set(flags.values())
-        if missing_flags:
-            raise RuntimeError(f"{path} with command {entry.command} "
-                               f"is missing the following flags:"
-                               + '\n'.join(missing_flags))
+        flags = {format_flag_name(k): v.pop() for k, v in flags.items()}
+        entry_dict = {str(k): json.dumps(str(v))
+                      for k, v in entry.asdict().items()}
+        return Row(reward=rewards[path],
+                   **entry_dict,
+                   **flags)
 
-        for flag, value in flags.items():
-            table[flag].append(value)
-        for field, attr in entry.asdict():
-            if ',' in str(attr):
-                attr = json.dumps(attr)
-            table[field].append(attr)
-
-    for k, v in table.items():
-        if len(v) != len(rewards):
-            raise RuntimeError(f'Field {k} of table has only '
-                               f'{len(v)} entries but should '
-                               f'have {len(rewards)}.')
-
-    return table
-
-
+    return Row._fields, map(get_row, rewards)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import argparse
+import json
 from pathlib import Path, PurePath
 
 from runs.database import DataBase, RunEntry
@@ -35,15 +36,26 @@ def table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
         entries = {entry.path: entry for entry in db.get(patterns)}
     dirs = [Path(tensorboard_dir, path) for path in entries]
     data_points = crawl(dirs=dirs, tag=tag, smoothing=smoothing, use_cache=use_cache)
+    len_tb_dir = len(tensorboard_dir.parts)
     rewards = {
-        str(event_file).replace(tensorboard_dir, ''): data
+        PurePath(*event_file.parts[len_tb_dir:-1]): data
         for data, event_file in data_points
     }
-    assert set(rewards.values()) == set(entries.values())
 
     header = list(RunEntry.fields()) + ['rewards']
-    rows = [[getattr(entry, field) for field in RunEntry.fields()] + [rewards[path]]
-            for path, entry in entries.items()]
+
+    def get_run_attr(path, field):
+        attr = getattr(entries[path], field)
+        if ',' in str(attr):
+            return json.dumps(attr)
+        return attr
+
+    def get_row(path, reward):
+        row = [get_run_attr(path, field) for field in RunEntry.fields()]
+        row += [reward]
+        return row
+
+    rows = [get_row(path, reward) for path, reward in rewards.items()]
     return header, rows
 
 

@@ -33,7 +33,7 @@ def crawl(dirs: List[Path], tag: str, smoothing: int, use_cache: bool) -> List[D
     for event_file_path in event_files:
         data = collect_data(tag=tag, event_file_path=event_file_path, n=smoothing)
         if data:
-            cache_path = Path(event_file_path.parent, str(smoothing), tag)
+            cache_path = Path(event_file_path.parent, f'{smoothing}.{tag}')
             data_points.append((data, event_file_path))
             if not use_cache or not cache_path.exists():
                 print(f'Writing {cache_path}...')

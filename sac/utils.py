@@ -141,6 +141,7 @@ def softmax(X, theta=1.0, axis=None):
     along the specified axis.
     :param axis:
     """
+    X = np.array(X)
 
     # make X at least 2d
     y = np.atleast_2d(X)

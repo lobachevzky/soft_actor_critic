@@ -2,6 +2,7 @@
 import argparse
 import csv
 import itertools
+import re
 from collections import defaultdict
 from pathlib import PurePath, Path
 from typing import List, Dict
@@ -26,7 +27,7 @@ def main():
     parser.add_argument('csv_dir', type=Path)
     parser.add_argument('--components', default=None, nargs='+')
     parser.add_argument('--delimiter', default='|')
-    parser.add_argument('--plot-path', default=Path('/tmp', 'plot.png'))
+    parser.add_argument('--plot-path', default=None)
     parser.add_argument('--weight-key')
     parser.add_argument('--figsize', type=parse_double)
     args = parser.parse_args()
@@ -67,14 +68,22 @@ def collect_components(csv_path: Path, keys: List[str], delimiter: str):
     with csv_path.open() as csv_file:
         table = csv.DictReader(csv_file, delimiter=delimiter)
         values = defaultdict(list)
+        max_reward = 0
         for row in table:
+            reward = float(row['reward'])
+            if reward > max_reward:
+                max_reward = reward
             for key in keys:
+                if key not in row:
+                    return
                 values[key].append(float(row[key]))
+        if max_reward < .8:
+            print(csv_path)
         return values
 
 
 def subplot(components: Dict[str, List[float]], keys: List[str],
-            fig, R, C, P, color: str = 'c'):
+            fig, position: tuple, color: str = 'c'):
     if len(keys) == 2:
         projection = '2d'
     elif len(keys) > 2:
@@ -82,14 +91,11 @@ def subplot(components: Dict[str, List[float]], keys: List[str],
     else:
         raise RuntimeError('Must have 2 or 3 components')
 
-    ax = fig.add_subplot(R, C, P, projection=projection)
+    ax = fig.add_subplot(*position, projection=projection)
     ax.scatter(*[components[k] for k in keys], c=color)
-    ax.set_xlabel(keys[0])
-    ax.set_ylabel(keys[1])
-    try:
-        ax.set_zlabel(keys[2])
-    except IndexError:
-        pass
+    set_labels = [ax.set_xlabel, ax.set_ylabel, ax.set_zlabel]
+    for set_label, key in zip(set_labels, keys):
+        set_label(key)
 
 
 def plot(csv_dir,
@@ -109,26 +115,36 @@ def plot(csv_dir,
     # colors = itertools.cycle('bgrcmkw')
 
     if weight_key:
-        components = {k: [] for k in keys}
         keys.append(weight_key)
+        components = {k: [] for k in keys}
 
     fig = plt.figure(figsize=figsize)
-    for i, csv_path in enumerate(csv_paths):
-        components = collect_components(csv_path=csv_path,
-                                        keys=keys,
-                                        delimiter=delimiter)
-        if weight_key:
-            weights = softmax(np.array(components[weight_key]))
-            for k, v in components.items():
-                components[k].append(np.dot(weights, np.array(v)))
-        else:
-            subplot(components=components, keys=keys, fig=fig,
-                    R=len(csv_paths), C=1, P=i + 1)
+    i = 1
+    for csv_path in csv_paths:
+        sub_components = collect_components(csv_path=csv_path,
+                                            keys=keys,
+                                            delimiter=delimiter)
+        if sub_components is not None:
+            if weight_key:
+                weights = softmax(sub_components[weight_key])
+                for k, v in sub_components.items():
+                    components[k].append(np.dot(weights, v))
+                    if k == 'grad_clip' and np.dot(weights, v) > 100000:
+                        print(csv_path)
 
-    if weight_key:
+            else:
+                subplot(components=sub_components, keys=keys, fig=fig,
+                        position=(len(csv_paths), 1, i))
+                i += 1
+                print(f'Plotted subplot {i}.')
+
+    if weight_key and components is not None:
         subplot(components=components, keys=keys, fig=fig,
-                R=1, C=1, P=1)
-    plt.savefig(plot_path)
+                position=(1, 1, 1))
+    if plot_path is None:
+        plt.show()
+    else:
+        plt.savefig(plot_path)
 
 
 if __name__ == '__main__':

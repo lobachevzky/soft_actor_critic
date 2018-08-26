@@ -1,43 +1,40 @@
 #! /usr/bin/env python
 import argparse
-import csv
-import itertools
-import re
-from collections import defaultdict
-from pathlib import PurePath, Path
-from typing import List, Dict
-import numpy as np
+from pathlib import Path
 
+import matplotlib.pyplot as plt
+import pandas as pd
 # noinspection PyUnresolvedReferences
 from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
+from pandas.errors import EmptyDataError
 
-from sac.utils import softmax, parse_double
+from sac.utils import softmax
 
 
-def parse_double(string):
+def parse_double(string, delimiter='x'):
     if string is None:
         return
-    a, b = map(float, string.split('x'))
+    a, b = map(float, string.split(delimiter))
     return a, b
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('csv_dir', type=Path)
-    parser.add_argument('--components', default=None, nargs='+')
+    parser.add_argument('--components', nargs='+')
     parser.add_argument('--delimiter', default='|')
     parser.add_argument('--plot-path', default=None)
+    parser.add_argument('--min-rows', type=int, default=15)
     parser.add_argument('--weight-key')
-    parser.add_argument('--figsize', type=parse_double)
+    parser.add_argument('--fig-size', type=parse_double)
     args = parser.parse_args()
 
-    plot(keys=args.components,
+    plot(labels=args.components,
          delimiter=args.delimiter,
          csv_dir=args.csv_dir,
          plot_path=args.plot_path,
          weight_key=args.weight_key,
-         figsize=args.figsize)
+         min_rows=args.min_rows)
 
     # # goal-space=-.4to.4
     # # rldl7: sort-runs .runs/tensorboard/multi-task-2d/goal_space=-.4to.4/ --smoothing=50
@@ -59,92 +56,84 @@ def main():
     # ys = np.array([2e-4, 5e-5, 2e-4, 5e-5, 1e-4, 5e-5])
     # zs = np.array([256] * len(ys))
     # ax.scatter(xs, ys, zs, c='g', marker='x')
-    #
-    # # plt.save('best-params')
-    # plt.show()
-
-
-def collect_components(csv_path: Path, keys: List[str], delimiter: str):
-    with csv_path.open() as csv_file:
-        table = csv.DictReader(csv_file, delimiter=delimiter)
-        values = defaultdict(list)
-        max_reward = 0
-        for row in table:
-            reward = float(row['reward'])
-            if reward > max_reward:
-                max_reward = reward
-            for key in keys:
-                if key not in row:
-                    return
-                values[key].append(float(row[key]))
-        if max_reward < .8:
-            print(csv_path)
-        return values
-
-
-def subplot(components: Dict[str, List[float]], keys: List[str],
-            fig, position: tuple, color: str = 'c'):
-    if len(keys) == 2:
-        projection = '2d'
-    elif len(keys) > 2:
-        projection = '3d'
-    else:
-        raise RuntimeError('Must have 2 or 3 components')
-
-    ax = fig.add_subplot(*position, projection=projection)
-    ax.scatter(*[components[k] for k in keys], c=color)
-    set_labels = [ax.set_xlabel, ax.set_ylabel, ax.set_zlabel]
-    for set_label, key in zip(set_labels, keys):
-        set_label(key)
 
 
 def plot(csv_dir,
          delimiter,
-         keys,
+         labels,
          plot_path,
          weight_key,
-         figsize):
-    # default keys
-    if keys is None:
-        if weight_key == 'reward':
-            keys = ['learning_rate', 'reward_scale', 'grad_clip']
-        else:
-            keys = ['learning_rate', 'reward_scale', 'reward']
-
+         min_rows):
     csv_paths = list(csv_dir.glob('*.csv'))
-    # colors = itertools.cycle('bgrcmkw')
-
+    x_label, y_label, z_label, *legend_labels = labels
+    xyz_labels = [x_label, y_label, z_label]
+    fig = plt.figure()
     if weight_key:
-        keys.append(weight_key)
-        components = {k: [] for k in keys}
-
-    fig = plt.figure(figsize=figsize)
+        nrows = ncols = 1
+    else:
+        nrows = int(len(csv_paths) ** (1/2))
+        ncols = len(csv_paths) / nrows
+    ax = fig.add_subplot(nrows, ncols, 1, projection='3d')
     i = 1
     for csv_path in csv_paths:
-        sub_components = collect_components(csv_path=csv_path,
-                                            keys=keys,
-                                            delimiter=delimiter)
-        if sub_components is not None:
-            if weight_key:
-                weights = softmax(sub_components[weight_key])
-                for k, v in sub_components.items():
-                    components[k].append(np.dot(weights, v))
-                    if k == 'grad_clip' and np.dot(weights, v) > 100000:
-                        print(csv_path)
+        try:
+            df = pd.read_csv(csv_path, delimiter=delimiter, index_col='path')
+        except EmptyDataError:
+            continue
+        if df.shape[0] < min_rows:
+            continue
 
-            else:
-                subplot(components=sub_components, keys=keys, fig=fig,
-                        position=(len(csv_paths), 1, i))
-                i += 1
-                print(f'Plotted subplot {i}.')
+        def filter_in_df(keys):
+            return [k for k in keys if k in df]
 
-    if weight_key and components is not None:
-        subplot(components=components, keys=keys, fig=fig,
-                position=(1, 1, 1))
+        if weight_key:
+            scatter_weighted(ax=ax, weight_key=weight_key,
+                             df=df[filter_in_df(labels + [weight_key])],
+                             labels=xyz_labels)
+
+        else:
+            scatter(ax=fig.add_subplot(nrows, ncols, i, projection='3d'),
+                    df=df[filter_in_df(labels)],
+                    legend_labels=filter_in_df(legend_labels),
+                    xyz_labels=xyz_labels)
+            i += 1
+
+    plt.tight_layout()
+
     if plot_path is None:
-        plt.show()
+        plt.show(aspect='auto')
     else:
-        plt.savefig(plot_path)
+        plt.savefig(plot_path, bbox_inches='tight', dpi=100)
+
+
+def format_label(k, v):
+    if .01 < abs(v) < 1000:
+        return '{}: {}'.format(k, v)
+    return '{}: {:.1e}'.format(k, v)
+
+
+def scatter(ax, df, legend_labels, xyz_labels):
+    if legend_labels:
+        for label_values, group in df.groupby(legend_labels):
+            # if not isinstance(label_values, list):
+            #     label = format_label(legend_labels[0], label_values)
+            # else:
+            try:
+                label = ', '.join(format_label(k, v)
+                                  for k, v in zip(legend_labels, label_values))
+            except TypeError:
+                label = format_label(legend_labels[0], label_values)
+
+            ax.scatter(*group[xyz_labels].values.T, label=label)
+    else:
+        ax.scatter(*df[xyz_labels].values.T)
+    ax.legend()
+
+
+def scatter_weighted(ax, df, weight_key, labels):
+    weights = softmax(df[weight_key])
+    series = df.mul(weights, axis=0).sum()
+    ax.scatter(*series[labels])
 
 
 if __name__ == '__main__':

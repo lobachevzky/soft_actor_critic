@@ -2,10 +2,23 @@
 import argparse
 import csv
 import itertools
+from collections import defaultdict
 from pathlib import PurePath, Path
+from typing import List, Dict
+import numpy as np
 
+# noinspection PyUnresolvedReferences
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
+
+from sac.utils import softmax, parse_double
+
+
+def parse_double(string):
+    if string is None:
+        return
+    a, b = map(float, string.split('x'))
+    return a, b
 
 
 def main():
@@ -14,12 +27,16 @@ def main():
     parser.add_argument('--components', default=None, nargs='+')
     parser.add_argument('--delimiter', default='|')
     parser.add_argument('--plot-path', default=Path('/tmp', 'plot.png'))
+    parser.add_argument('--weight-key')
+    parser.add_argument('--figsize', type=parse_double)
     args = parser.parse_args()
 
-    plot(component_names=args.components,
+    plot(keys=args.components,
          delimiter=args.delimiter,
          csv_dir=args.csv_dir,
-         plot_path=args.plot_path)
+         plot_path=args.plot_path,
+         weight_key=args.weight_key,
+         figsize=args.figsize)
 
     # # goal-space=-.4to.4
     # # rldl7: sort-runs .runs/tensorboard/multi-task-2d/goal_space=-.4to.4/ --smoothing=50
@@ -46,35 +63,71 @@ def main():
     # plt.show()
 
 
-def plot(csv_dir,
-         delimiter,
-         component_names,
-         plot_path):
-    if component_names is None:
-        component_names = ['learning_rate', 'reward_scale', 'reward']
-    if len(component_names) == 2:
+def collect_components(csv_path: Path, keys: List[str], delimiter: str):
+    with csv_path.open() as csv_file:
+        table = csv.DictReader(csv_file, delimiter=delimiter)
+        values = defaultdict(list)
+        for row in table:
+            for key in keys:
+                values[key].append(float(row[key]))
+        return values
+
+
+def subplot(components: Dict[str, List[float]], keys: List[str],
+            fig, R, C, P, color: str = 'c'):
+    if len(keys) == 2:
         projection = '2d'
-    elif len(component_names) > 2:
+    elif len(keys) > 2:
         projection = '3d'
     else:
         raise RuntimeError('Must have 2 or 3 components')
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection=projection)
-    csv_paths = csv_dir.glob('*.csv')
-    colors = itertools.cycle('bgrcmkw')
-    for csv_path, color in zip(csv_paths, colors):
-        with csv_path.open() as csv_file:
-            table = csv.DictReader(csv_file, delimiter=delimiter)
-            components = zip(*[[float(row[c]) for c in component_names]
-                               for row in table])
-            ax.scatter(*components, c=color)
-    ax.set_xlabel(component_names[0])
-    ax.set_ylabel(component_names[1])
+    ax = fig.add_subplot(R, C, P, projection=projection)
+    ax.scatter(*[components[k] for k in keys], c=color)
+    ax.set_xlabel(keys[0])
+    ax.set_ylabel(keys[1])
     try:
-        ax.set_zlabel(component_names[2])
+        ax.set_zlabel(keys[2])
     except IndexError:
         pass
+
+
+def plot(csv_dir,
+         delimiter,
+         keys,
+         plot_path,
+         weight_key,
+         figsize):
+    # default keys
+    if keys is None:
+        if weight_key == 'reward':
+            keys = ['learning_rate', 'reward_scale', 'grad_clip']
+        else:
+            keys = ['learning_rate', 'reward_scale', 'reward']
+
+    csv_paths = list(csv_dir.glob('*.csv'))
+    # colors = itertools.cycle('bgrcmkw')
+
+    if weight_key:
+        components = {k: [] for k in keys}
+        keys.append(weight_key)
+
+    fig = plt.figure(figsize=figsize)
+    for i, csv_path in enumerate(csv_paths):
+        components = collect_components(csv_path=csv_path,
+                                        keys=keys,
+                                        delimiter=delimiter)
+        if weight_key:
+            weights = softmax(np.array(components[weight_key]))
+            for k, v in components.items():
+                components[k].append(np.dot(weights, np.array(v)))
+        else:
+            subplot(components=components, keys=keys, fig=fig,
+                    R=len(csv_paths), C=1, P=i + 1)
+
+    if weight_key:
+        subplot(components=components, keys=keys, fig=fig,
+                R=1, C=1, P=1)
     plt.savefig(plot_path)
 
 

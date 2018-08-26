@@ -15,6 +15,7 @@ from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
 from sac.networks import LstmAgent, MlpAgent
 from sac.train import HindsightTrainer, Trainer
+from sac.utils import parse_double
 from scripts.gym_env import check_probability
 
 
@@ -25,13 +26,6 @@ def put_in_xml_setter(ctx, param, value: str):
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
                    for p, v in setters if '_r_' in p]
     return [s._replace(path=s.path) for s in setters + mirroring]
-
-
-def parse_double(ctx, param, string):
-    if string is None:
-        return
-    a, b = map(float, string.split(','))
-    return a, b
 
 
 def env_wrapper(func):

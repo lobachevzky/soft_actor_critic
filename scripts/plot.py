@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--plot-path', default=None)
     parser.add_argument('--min-rows', type=int, default=15)
     parser.add_argument('--weight-key')
+    parser.add_argument('--aggregate', action='store_true')
     parser.add_argument('--fig-size', type=parse_double)
     args = parser.parse_args()
 
@@ -35,7 +36,8 @@ def main():
          plot_path=args.plot_path,
          weight_key=args.weight_key,
          min_rows=args.min_rows,
-         fig_size=args.fig_size
+         fig_size=args.fig_size,
+         aggregate=args.aggregate,
          )
 
     # # goal-space=-.4to.4
@@ -66,7 +68,8 @@ def plot(csv_dir,
          plot_path,
          weight_key,
          min_rows,
-         fig_size):
+         fig_size,
+         aggregate):
     csv_paths = list(csv_dir.glob('*.csv'))
     x_label, y_label, z_label, *legend_labels = labels
     xyz_labels = [x_label, y_label, z_label]
@@ -78,6 +81,7 @@ def plot(csv_dir,
         ncols = len(csv_paths) / nrows
     ax = fig.add_subplot(nrows, ncols, 1, projection='3d')
     i = 1
+    dfs = []
     for csv_path in csv_paths:
         print(f'Plotting {csv_path}')
         try:
@@ -86,7 +90,14 @@ def plot(csv_dir,
             continue
         if df.shape[0] < min_rows:
             continue
+        dfs.append(df)
 
+    titles = csv_paths
+    if aggregate:
+        dfs = [pd.concat(dfs)]
+        titles = [None]
+
+    for df, title in zip(dfs, titles):
         def filter_in_df(keys):
             return [k for k in keys if k in df]
 
@@ -107,7 +118,7 @@ def plot(csv_dir,
         for setter, xyz_label in zip(setters, xyz_labels):
             setter(xyz_label)
         if not weight_key:
-            ax.set_title(get_title(csv_path), loc='left')
+            ax.set_title(get_title(title), loc='left')
             ax.legend(loc='upper right')
 
     if plot_path is None:

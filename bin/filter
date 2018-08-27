@@ -1,0 +1,7 @@
+#! /usr/bin/env bash
+if [[ $# -ge 1 && -f "$1" ]]; then
+  input="$1"  # read from file
+else
+  input="-"  # read from keyboard
+fi
+cat $input | grep -v logdir | grep -v save-path | grep -v use-dof

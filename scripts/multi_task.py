@@ -1,57 +1,104 @@
+from pathlib import Path
+
 import click
+import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.multi_task import MultiTaskEnv
-from sac.train import MultiTaskHindsightTrainer
+from sac.networks import MlpAgent, SACXAgent
+from sac.train import MultiTaskTrainer
+from scripts.lift import env_wrapper, put_in_xml_setter
+from sac.utils import parse_double
+
+
+def parse_coordinate(ctx, param, string):
+    if string is None:
+        return
+    return np.array(list(map(float, string.split(','))))
 
 
 @click.command()
 @click.option('--seed', default=0, type=int)
+@click.option('--n-networks', default=None, type=int)
 @click.option('--device-num', default=0, type=int)
+@click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
+@click.option('--sacx', 'agent', flag_value=SACXAgent)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=3e-4, type=float)
+@click.option('--learning-rate', default=1e-4, type=float)
 @click.option('--buffer-size', default=1e5, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=200, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
-@click.option('--max-steps', default=300, type=int)
+@click.option('--entropy-scale', default=1, type=float)
+@click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.1, type=float)
-@click.option('--min-lift-height', default=.02, type=float)
 @click.option('--grad-clip', default=2e4, type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render-freq', default=0, type=int)
-@click.option('--baseline', is_flag=True)
+@click.option('--render', is_flag=True)
+@click.option('--record-freq', type=int, default=0)
+@click.option('--record-path', type=Path)
+@click.option('--image-dims', type=str, callback=parse_double)
+@click.option('--record', is_flag=True)
 @click.option('--eval', is_flag=True)
-def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, activation,
-        n_layers, layer_size, learning_rate, reward_scale, grad_clip, batch_size,
-        num_train_steps, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, baseline, eval):
-    MultiTaskHindsightTrainer(
-        env=PickAndPlaceHindsightWrapper(
-            env=TimeLimit(
-                max_episode_steps=max_steps,
-                env=MultiTaskEnv(
-                    steps_per_action=steps_per_action,
-                    geofence=geofence,
-                    min_lift_height=min_lift_height,
-                    render_freq=render_freq))),
+@click.option('--randomize-pose', is_flag=True)
+@click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
+@click.option('--geofence', default=.25, type=float)
+@click.option('--hindsight-geofence', default=None, type=float)
+@click.option('--fixed-block', default=None, callback=parse_coordinate)
+@click.option('--fixed-goal', default=None, callback=parse_coordinate)
+@click.option('--goal-x', default=None, callback=parse_coordinate)
+@click.option('--goal-y', default=None, callback=parse_coordinate)
+@click.option('--xml-file', type=Path, default='world.xml')
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint', 'goal_x', 'goal_y'
+    ])
+@env_wrapper
+def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_size,
+        learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
+        num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
+        temp_path, render_freq, record, record_path, record_freq, image_dims,
+        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal,
+        randomize_pose, goal_x, goal_y):
+    env = TimeLimit(
+        max_episode_steps=max_steps,
+        env=MultiTaskEnv(
+            geofence=geofence,
+            xml_filepath=temp_path,
+            steps_per_action=steps_per_action,
+            render_freq=render_freq,
+            record=record,
+            record_path=record_path,
+            record_freq=record_freq,
+            image_dimensions=image_dims,
+            fixed_block=fixed_block,
+            fixed_goal=fixed_goal,
+            randomize_pose=randomize_pose,
+            goal_x=goal_x,
+            goal_y=goal_y,
+        ))
+    kwargs = dict(
+        base_agent=agent,
+        seq_len=None,
         seed=seed,
         device_num=device_num,
-        n_goals=n_goals,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
         reward_scale=reward_scale,
+        entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
@@ -61,6 +108,8 @@ def cli(max_steps, geofence, min_lift_height, seed, device_num, buffer_size, act
         render=False,  # because render is handled inside env
         evaluation=eval,
     )
+
+    MultiTaskTrainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

@@ -1,3 +1,3 @@
-* pull out non-training Runner class
-* Incorporate non-hindsight wrapper
-* Incoporate best xml joint settings.
+* reward worker by proximity to goal-space (not dot product)
+* get boss working with boss-freq=2 and boss-actions=25 (use worker oracle?)
+*

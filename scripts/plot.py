@@ -34,7 +34,9 @@ def main():
          csv_dir=args.csv_dir,
          plot_path=args.plot_path,
          weight_key=args.weight_key,
-         min_rows=args.min_rows)
+         min_rows=args.min_rows,
+         fig_size=args.fig_size
+         )
 
     # # goal-space=-.4to.4
     # # rldl7: sort-runs .runs/tensorboard/multi-task-2d/goal_space=-.4to.4/ --smoothing=50
@@ -63,19 +65,21 @@ def plot(csv_dir,
          labels,
          plot_path,
          weight_key,
-         min_rows):
+         min_rows,
+         fig_size):
     csv_paths = list(csv_dir.glob('*.csv'))
     x_label, y_label, z_label, *legend_labels = labels
     xyz_labels = [x_label, y_label, z_label]
-    fig = plt.figure()
+    fig = plt.figure(figsize=fig_size)
     if weight_key:
         nrows = ncols = 1
     else:
-        nrows = int(len(csv_paths) ** (1/2))
+        nrows = int(len(csv_paths) ** (1 / 2))
         ncols = len(csv_paths) / nrows
     ax = fig.add_subplot(nrows, ncols, 1, projection='3d')
     i = 1
     for csv_path in csv_paths:
+        print(f'Plotting {csv_path}')
         try:
             df = pd.read_csv(csv_path, delimiter=delimiter, index_col='path')
         except EmptyDataError:
@@ -89,21 +93,36 @@ def plot(csv_dir,
         if weight_key:
             scatter_weighted(ax=ax, weight_key=weight_key,
                              df=df[filter_in_df(labels + [weight_key])],
-                             labels=xyz_labels)
+                             xyz_labels=xyz_labels)
 
         else:
-            scatter(ax=fig.add_subplot(nrows, ncols, i, projection='3d'),
-                    df=df[filter_in_df(labels)],
-                    legend_labels=filter_in_df(legend_labels),
-                    xyz_labels=xyz_labels)
+            ax = fig.add_subplot(nrows, ncols, i, projection='3d')
+            scatter_unweighted(ax=ax,
+                               df=df[filter_in_df(labels)],
+                               legend_labels=filter_in_df(legend_labels),
+                               xyz_labels=xyz_labels)
             i += 1
 
-    plt.tight_layout()
+        setters = [ax.set_xlabel, ax.set_ylabel, ax.set_zlabel]
+        for setter, xyz_label in zip(setters, xyz_labels):
+            setter(xyz_label)
+        if not weight_key:
+            ax.set_title(get_title(csv_path), loc='left')
+            ax.legend(loc='upper right')
 
     if plot_path is None:
-        plt.show(aspect='auto')
+        plt.show()
     else:
-        plt.savefig(plot_path, bbox_inches='tight', dpi=100)
+        print('Saving...')
+        plt.savefig(plot_path)
+
+
+def get_title(csv_path):
+    try:
+        csv_path = csv_path.relative_to(Path.home())
+    except ValueError:
+        pass
+    return str(csv_path.stem)
 
 
 def format_label(k, v):
@@ -112,28 +131,27 @@ def format_label(k, v):
     return '{}: {:.1e}'.format(k, v)
 
 
-def scatter(ax, df, legend_labels, xyz_labels):
+def scatter_unweighted(ax, df, legend_labels, xyz_labels):
     if legend_labels:
         for label_values, group in df.groupby(legend_labels):
-            # if not isinstance(label_values, list):
-            #     label = format_label(legend_labels[0], label_values)
-            # else:
             try:
                 label = ', '.join(format_label(k, v)
                                   for k, v in zip(legend_labels, label_values))
             except TypeError:
                 label = format_label(legend_labels[0], label_values)
 
-            ax.scatter(*group[xyz_labels].values.T, label=label)
+            ax.scatter(*group[xyz_labels].values.T, label=label, s=200, alpha=.5)
     else:
-        ax.scatter(*df[xyz_labels].values.T)
-    ax.legend()
+        ax.scatter(*df[xyz_labels].values.T, s=200, alpha=.5)
 
 
-def scatter_weighted(ax, df, weight_key, labels):
-    weights = softmax(df[weight_key])
-    series = df.mul(weights, axis=0).sum()
-    ax.scatter(*series[labels])
+def scatter_weighted(ax, df, weight_key, xyz_labels):
+    weights = df[weight_key]
+    if weights.max() < .8:
+        return
+    softmaxed = softmax(weights, theta=100)
+    series = df.mul(softmaxed, axis=0).sum()
+    ax.scatter(*series[xyz_labels], c='b', s=500, alpha=.5)
 
 
 if __name__ == '__main__':

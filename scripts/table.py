@@ -44,9 +44,8 @@ def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
                         smoothing=smoothing,
                         use_cache=use_cache,
                         quiet=True)
-    len_tb_dir = len(tensorboard_dir.parts)
     rewards = {
-        PurePath(*event_file.parts[len_tb_dir:-1]): data
+        event_file.relative_to(tensorboard_dir).parent: data
         for data, event_file in data_points
     }
 

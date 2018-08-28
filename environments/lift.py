@@ -100,39 +100,20 @@ class LiftEnv(MujocoEnv):
         return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
 
     def _get_obs(self):
+        def get_qvels(joints):
+            base_qvel = []
+            for joint in joints:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except RuntimeError:
+                    pass
+            return np.array(base_qvel)
 
-        # positions
-        grip_pos = self.gripper_pos()
-        dt = self.sim.nsubsteps * self.sim.timestep
-        object_pos = self.block_pos()
-        grip_velp = .5 * sum(self.sim.get_body_xvelp(name) for name in self._finger_names)
-        # rotations
-        object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+        return np.concatenate([self.sim.qpos, get_qvels(['slide_x', 'slide_y'])])
 
-        # velocities
-        object_velp = self.sim.get_body_xvelp(self._block_name) * dt
-        object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+    def block_pos(self):
+        return self.sim.get_body_xpos(self._goal_block_name)
 
-        # gripper state
-        object_rel_pos = object_pos - grip_pos
-        object_velp -= grip_velp
-        gripper_state = np.array(
-            [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
-        qvels = np.array(
-            [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
-        gripper_vel = dt * .5 * qvels
-
-        return np.concatenate([
-            grip_pos,
-            object_pos.ravel(),
-            object_rel_pos.ravel(),
-            gripper_state,
-            object_rot.ravel(),
-            object_velp.ravel(),
-            object_velr.ravel(),
-            grip_velp,
-            gripper_vel,
-        ])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._block_name)
@@ -173,17 +154,3 @@ class LiftEnv(MujocoEnv):
         return s, r, t, i
 
 
-def mat2euler(mat):
-    """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
-    mat = np.asarray(mat, dtype=np.float64)
-    assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
-
-    cy = np.sqrt(mat[..., 2, 2] * mat[..., 2, 2] + mat[..., 1, 2] * mat[..., 1, 2])
-    condition = cy > np.finfo(np.float64).eps * 4.
-    euler = np.empty(mat.shape[:-1], dtype=np.float64)
-    euler[..., 2] = np.where(condition, -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
-                             -np.arctan2(-mat[..., 1, 0], mat[..., 1, 1]))
-    euler[..., 1] = np.where(condition, -np.arctan2(-mat[..., 0, 2], cy),
-                             -np.arctan2(-mat[..., 0, 2], cy))
-    euler[..., 0] = np.where(condition, -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]), 0.0)
-    return euler

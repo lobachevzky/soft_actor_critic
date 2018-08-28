@@ -32,13 +32,46 @@ class MultiTaskEnv(LiftEnv):
             for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
-        self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
+        self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
 
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
 
     def _get_obs(self):
-        return Observation(observation=super()._get_obs(), goal=self.goal)
+
+        # positions
+        grip_pos = self.gripper_pos()
+        dt = self.sim.nsubsteps * self.sim.timestep
+        object_pos = self.block_pos()
+        grip_velp = .5 * sum(self.sim.get_body_xvelp(name) for name in self._finger_names)
+        # rotations
+        object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+
+        # velocities
+        object_velp = self.sim.get_body_xvelp(self._block_name) * dt
+        object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+
+        # gripper state
+        object_rel_pos = object_pos - grip_pos
+        object_velp -= grip_velp
+        gripper_state = np.array(
+            [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
+        qvels = np.array(
+            [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
+        gripper_vel = dt * .5 * qvels
+
+        observation = np.concatenate([
+            grip_pos,
+            object_pos.ravel(),
+            object_rel_pos.ravel(),
+            gripper_state,
+            object_rot.ravel(),
+            object_velp.ravel(),
+            object_velr.ravel(),
+            grip_velp,
+            gripper_vel,
+        ])
+        return Observation(observation=observation, goal=self.goal)
 
     def _reset_qpos(self):
         block_joint = self.sim.get_jnt_qposadr('block1joint')
@@ -68,3 +101,19 @@ class MultiTaskEnv(LiftEnv):
         # labels[tuple(self.goal_space.high) + z] = ']'
         # labels[tuple(self.goal) + z] = '|'
         return super().render(labels=labels, **kwargs)
+
+
+def mat2euler(mat):
+    """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
+    mat = np.asarray(mat, dtype=np.float64)
+    assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
+
+    cy = np.sqrt(mat[..., 2, 2] * mat[..., 2, 2] + mat[..., 1, 2] * mat[..., 1, 2])
+    condition = cy > np.finfo(np.float64).eps * 4.
+    euler = np.empty(mat.shape[:-1], dtype=np.float64)
+    euler[..., 2] = np.where(condition, -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
+                             -np.arctan2(-mat[..., 1, 0], mat[..., 1, 1]))
+    euler[..., 1] = np.where(condition, -np.arctan2(-mat[..., 0, 2], cy),
+                             -np.arctan2(-mat[..., 0, 2], cy))
+    euler[..., 0] = np.where(condition, -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]), 0.0)
+    return euler

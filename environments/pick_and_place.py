@@ -73,10 +73,10 @@ class PickAndPlaceEnv(MujocoEnv):
         self._discrete = discrete
         self._isolate_movements = isolate_movements
         self._prev_action = None
+        self._neg_reward = neg_reward
 
         super().__init__(
             xml_filepath=xml_filepath,
-            neg_reward=neg_reward,
             steps_per_action=steps_per_action,
             image_dimensions=None,
             render_freq=render_freq,

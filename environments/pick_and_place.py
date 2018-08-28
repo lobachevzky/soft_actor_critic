@@ -56,6 +56,7 @@ class PickAndPlaceEnv(MujocoEnv):
                  discrete=False,
                  cheat_prob=0,
                  render_freq=0,
+                 record=False,
                  isolate_movements=False,
                  obs_type=None):
         self.block_xrange = block_xrange
@@ -80,6 +81,7 @@ class PickAndPlaceEnv(MujocoEnv):
             steps_per_action=steps_per_action,
             image_dimensions=None,
             render_freq=render_freq,
+            record=record,
         )
 
         self.initial_qpos = np.copy(self.init_qpos)

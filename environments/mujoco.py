@@ -37,7 +37,7 @@ class MujocoEnv:
             if not record_path:
                 record_path = Path('/tmp/training-video')
             if not image_dimensions:
-                image_dimensions = (800, 800)
+                image_dimensions = (400, 400)
             if not record_freq:
                 record_freq = 20
 

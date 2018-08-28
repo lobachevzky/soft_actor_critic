@@ -68,9 +68,7 @@ class LiftEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
-
+        self.observation_space = self._get_obs_space()
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -95,11 +93,27 @@ class LiftEnv(MujocoEnv):
 
         return self.init_qpos
 
-    def _get_obs_space(self, obs):
-        inf_like_obs = np.inf * np.ones_like(obs, dtype=np.float32)
-        return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
+    def _get_obs_space(self):
+        qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
+        qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]
+        for joint_id in range(self.sim.njnt):
+            if self.sim.get_jnt_type(joint_id) in ['mjJNT_SLIDE', 'mjJNT_HINGE']:
+                qposadr = self.sim.get_jnt_qposadr(joint_id)
+                qpos_limits[qposadr] = self.sim.jnt_range[joint_id]
+        if not self._fixed_block:
+            block_joint = self.sim.get_jnt_qposadr('block1joint')
+            qpos_limits[block_joint:block_joint + 7] = [
+                self.block_xrange,  # x
+                self.block_yrange,  # y
+                (.4, .921),  # z
+                (0, 1),  # quat 0
+                (0, 0),  # quat 1
+                (0, 0),  # quat 2
+                (-1, 1),  # quat 3
+            ]
+        return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
 
-    def _get_obs(self):
+    def _qvel_obs(self):
         def get_qvels(joints):
             base_qvel = []
             for joint in joints:
@@ -109,11 +123,10 @@ class LiftEnv(MujocoEnv):
                     pass
             return np.array(base_qvel)
 
-        return np.concatenate([self.sim.qpos, get_qvels(['slide_x', 'slide_y'])])
+        return get_qvels(['slide_x', 'slide_x'])
 
-    def block_pos(self):
-        return self.sim.get_body_xpos(self._goal_block_name)
-
+    def _get_obs(self):
+        return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._block_name)
@@ -126,7 +139,9 @@ class LiftEnv(MujocoEnv):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
-        return self._is_successful()
+        EPSILON = .01
+        below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
+        return below_table or self._is_successful()
 
     def compute_reward(self):
         if self._is_successful():

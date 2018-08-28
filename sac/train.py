@@ -18,7 +18,7 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize
+from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize, normalize
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -223,7 +223,10 @@ class Trainer:
     def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
-        return obs
+        return normalize(
+            vector=obs,
+            low=self.env.observation_space.low,
+            high=self.env.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)

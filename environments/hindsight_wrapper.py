@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
+from typing import Optional
 
 import gym
 import numpy as np

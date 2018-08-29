@@ -9,8 +9,10 @@ from environments.mujoco import distance_between
 from environments.pick_and_place import Goal
 from sac.utils import Step, vectorize
 
+Goal = namedtuple('Goal', 'gripper block')
 
-class Observation(namedtuple('State', 'observation achieved_goal desired_goal')):
+
+class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
 

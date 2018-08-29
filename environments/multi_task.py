@@ -32,7 +32,7 @@ class MultiTaskEnv(LiftEnv):
             for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
-        self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
+        self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
 
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()[:2]) < self.geofence

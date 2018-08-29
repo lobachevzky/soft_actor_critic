@@ -170,6 +170,7 @@ def softmax(X, theta=1.0, axis=None):
 
     return p
 
+
 Obs = Any
 
 

@@ -22,8 +22,7 @@ def main():
         tag=args.tag,
         smoothing=args.smoothing,
         use_cache=args.use_cache,
-        quiet=args.quiet
-    )
+        quiet=args.quiet)
     print('Sorted lowest to highest:')
     print('*************************')
     for data, event_file in sorted(data_points):
@@ -33,7 +32,8 @@ def main():
 DataPoint = namedtuple('DataPoint', 'data source')
 
 
-def crawl(dirs: List[Path], tag: str, smoothing: int, use_cache: bool, quiet: bool) -> List[DataPoint]:
+def crawl(dirs: List[Path], tag: str, smoothing: int, use_cache: bool,
+          quiet: bool) -> List[DataPoint]:
     event_files = collect_events_files(dirs)
     data_points = []
     for event_file_path in event_files:

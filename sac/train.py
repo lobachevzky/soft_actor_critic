@@ -18,7 +18,7 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize, normalize
+from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 

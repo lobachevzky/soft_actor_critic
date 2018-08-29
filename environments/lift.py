@@ -5,7 +5,6 @@ from gym import spaces
 
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
-from sac.utils import vectorize
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -167,5 +166,3 @@ class LiftEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
-
-

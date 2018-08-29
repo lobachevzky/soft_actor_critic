@@ -122,10 +122,12 @@ class LiftHindsightWrapper(HindsightWrapper):
         return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
 
     def _is_success(self, achieved_goal, desired_goal):
-        geofence = self.env.unwrapped.geofence
-        return distance_between(achieved_goal.block, desired_goal.block) < geofence and \
-            distance_between(achieved_goal.gripper,
-                             desired_goal.gripper) < geofence
+        achieved_goal = Goal(*achieved_goal)
+        desired_goal = Goal(*desired_goal)
+        block_distance = distance_between(achieved_goal.block, desired_goal.block)
+        gripper_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
+        return np.logical_and(block_distance < self._geofence,
+                              gripper_distance < self._geofence)
 
     def _achieved_goal(self):
         return Goal(

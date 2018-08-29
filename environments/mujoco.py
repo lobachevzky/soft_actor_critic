@@ -6,7 +6,6 @@ import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import MujocoError, ObjType
 
 
 class MujocoEnv:
@@ -103,7 +102,7 @@ class MujocoEnv:
 
         self._set_new_goal()
         qpos = self.reset_qpos()
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()

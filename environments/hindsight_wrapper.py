@@ -1,16 +1,15 @@
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
-from typing import Iterable
-import numpy as np
 
 import gym
+import numpy as np
 from gym.spaces import Box
 
 from environments.mujoco import distance_between
 from environments.pick_and_place import PickAndPlaceEnv
 from sac.array_group import ArrayGroup
-from sac.utils import Step, vectorize, unwrap_env
+from sac.utils import Step, unwrap_env, vectorize
 
 Goal = namedtuple('Goal', 'gripper block')
 
@@ -74,6 +73,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     """
     new obs is [pos, vel, goal_pos]
     """
+
     def step(self, action):
         o2, r, t, info = super().step(action)
         return o2, max([0, r]), t, info
@@ -123,5 +123,3 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         return self.env.unwrapped.goal()
-
-

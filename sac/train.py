@@ -6,7 +6,7 @@ from typing import Iterable, Optional, Tuple
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import spaces, Wrapper
+from gym import Wrapper, spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
@@ -221,9 +221,11 @@ class HindsightTrainer(TrajectoryTrainer):
         assert isinstance(self.hindsight_env, HindsightWrapper)
         return
         self.buffer.extend(
-            self.hindsight_env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
+            self.hindsight_env.recompute_trajectory(
+                self._trajectory(), final_step=self.buffer[-1]))
         if self.n_goals - 1 and self.timesteps() > 0:
-            final_indexes = np.random.randint(1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
+            final_indexes = np.random.randint(
+                1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:
@@ -234,6 +236,7 @@ class HindsightTrainer(TrajectoryTrainer):
     def reset(self) -> State:
         self.add_hindsight_trajectories()
         return super().reset()
+
 
 class MultiTaskHindsightTrainer(HindsightTrainer):
     def __init__(self, evaluation, env: HindsightWrapper, n_goals: int, **kwargs):

@@ -50,6 +50,7 @@ def component(function):
 
     return wrapper
 
+
 def is_scalar(x):
     try:
         return np.shape(x) == ()
@@ -81,6 +82,7 @@ def assign_to_vector(x, vector: np.ndarray):
             indices = [slice(None) for _ in vector.shape]
             indices[-1] = slice(start, stop)
             assign_to_vector(_x, vector[tuple(indices)])
+
 
 def vectorize(x, shape: tuple = None):
     if isinstance(x, np.ndarray):
@@ -151,7 +153,9 @@ def softmax(X, theta=1.0, axis=None):
     # multiply y against the theta parameter,
     y = y * float(theta)
 
+
 State = Any
+
 
 class Step(namedtuple('Step', 's1 a r s2 t')):
     def replace(self, **kwargs):

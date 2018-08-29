@@ -8,8 +8,8 @@ from gym.wrappers import TimeLimit
 from environments.multi_task import MultiTaskEnv
 from sac.networks import MlpAgent, SACXAgent
 from sac.train import MultiTaskTrainer
-from scripts.lift import env_wrapper, put_in_xml_setter
 from sac.utils import parse_double
+from scripts.lift import env_wrapper, put_in_xml_setter
 
 
 def parse_coordinate(ctx, param, string):

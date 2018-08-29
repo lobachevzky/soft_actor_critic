@@ -1,11 +1,11 @@
 import random
-from collections import namedtuple, Iterable
+from collections import namedtuple
 from pathlib import Path
 
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv, at_goal, print1
+from environments.mujoco import MujocoEnv
 from mujoco import ObjType
 
 CHEAT_STARTS = [[
@@ -91,7 +91,7 @@ class PickAndPlaceEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
         if discrete:
             self.action_space = spaces.Discrete(7)
         else:
@@ -142,12 +142,10 @@ class PickAndPlaceEnv(MujocoEnv):
             qvel = self.sim.qvel
 
         elif self._obs_type == 'robot-qvel':
-            qvel = get_qvels(['slide_x', 'slide_y',
-                              'arm_lift_joint',
-                              'arm_flex_joint',
-                              'wrist_roll_joint',
-                              'hand_l_proximal_joint',
-                              'hand_r_proximal_joint'])
+            qvel = get_qvels([
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
+            ])
         elif self._obs_type == 'base-qvel':
             qvel = get_qvels(['slide_x', 'slide_x'])
         else:
@@ -193,7 +191,7 @@ class PickAndPlaceEnv(MujocoEnv):
                 action -= 1
                 joint = action // 2
                 assert 0 <= joint <= 2
-                direction = (-1) ** (action % 2)
+                direction = (-1)**(action % 2)
                 joint_scale = [.2, .05, .5]
                 a[2] = self.grip
                 a[joint] = direction * joint_scale[joint]
@@ -207,7 +205,7 @@ class PickAndPlaceEnv(MujocoEnv):
         # insert mirrored values at the appropriate indexes
         mirrored_index, mirroring_index = [
             self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-            ]
+        ]
         # necessary because np.insert can't append multiple values to end:
         if self._discrete:
             action[mirroring_index] = action[mirrored_index]
@@ -218,11 +216,10 @@ class PickAndPlaceEnv(MujocoEnv):
         if self._isolate_movements:
             if self._prev_action is not None:
                 base_motors = ['slide_x_motor', 'slide_y_motor']
-                other_motors = ['arm_lift_motor',
-                                'arm_flex_motor',
-                                'wrist_roll_motor',
-                                'hand_l_proximal_motor',
-                                'hand_r_proximal_motor']
+                other_motors = [
+                    'arm_lift_motor', 'arm_flex_motor', 'wrist_roll_motor',
+                    'hand_l_proximal_motor', 'hand_r_proximal_motor'
+                ]
 
                 def get_index(name):
                     try:
@@ -247,4 +244,3 @@ class PickAndPlaceEnv(MujocoEnv):
             i['log count'] = {'successes': float(r > 0)}
         self._prev_action = action
         return s, r, t, i
-

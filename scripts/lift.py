@@ -7,8 +7,7 @@ from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
-from gym.wrappers import Monitor
-from gym.wrappers import TimeLimit
+from gym.wrappers import Monitor, TimeLimit
 
 from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
 from environments.pick_and_place import PickAndPlaceEnv
@@ -54,11 +53,14 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
         return tree
 
-    included_files = [rel_to_abs(e.get('file')) for e in
-                      ET.parse(xml_filepath).findall('*/include')]
+    included_files = [
+        rel_to_abs(e.get('file')) for e in ET.parse(xml_filepath).findall('*/include')
+    ]
 
-    temp = {path: tempfile.NamedTemporaryFile()
-            for path in (included_files + [xml_filepath])}
+    temp = {
+        path: tempfile.NamedTemporaryFile()
+        for path in (included_files + [xml_filepath])
+    }
     try:
         for path, f in temp.items():
             tree = ET.parse(path)
@@ -78,8 +80,7 @@ def put_in_xml_setter(ctx, param, value: str):
                  for p, v in setters if '_l_' in p] \
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
                    for p, v in setters if '_r_' in p]
-    return [s._replace(path=PurePath(s.path))
-            for s in setters + mirroring]
+    return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
 
 
 def parse_range(ctx, param, string):
@@ -123,44 +124,49 @@ def parse_range(ctx, param, string):
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option('--use-dof', multiple=True, default=['slide_x',
-                                                   'slide_y',
-                                                   'arm_lift_joint',
-                                                   'arm_flex_joint',
-                                                   'wrist_roll_joint',
-                                                   'hand_l_proximal_joint',
-                                                   'hand_r_proximal_joint'])
-def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_geofence, seed, device_num,
-        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
-        isolate_movements, obs_type, block_xrange, block_yrange, record):
+@click.option(
+    '--use-dof',
+    multiple=True,
+    default=[
+        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+        'hand_l_proximal_joint', 'hand_r_proximal_joint'
+    ])
+def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_geofence,
+        seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
+        reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+        steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
+        xml_file, set_xml, use_dof, isolate_movements, obs_type, block_xrange,
+        block_yrange, record):
     print('Obs type:', obs_type)
     print('Isolate movements:', isolate_movements)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
-    with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+    with mutate_xml(
+            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
             geofence=hindsight_geofence,
             env=TimeLimit(
                 max_episode_steps=max_steps,
-                env=PickAndPlaceEnv(discrete=discrete,
-                                    cheat_prob=cheat_prob,
-                                    steps_per_action=steps_per_action,
-                                    fixed_block=fixed_block,
-                                    min_lift_height=min_lift_height,
-                                    geofence=geofence,
-                                    render_freq=render_freq,
-                                    record=record,
-                                    xml_filepath=temp_path,
-                                    obs_type=obs_type,
-                                    isolate_movements=isolate_movements,
-                                    block_xrange=block_xrange,
-                                    block_yrange=block_yrange,
-                                    )))
+                env=PickAndPlaceEnv(
+                    discrete=discrete,
+                    cheat_prob=cheat_prob,
+                    steps_per_action=steps_per_action,
+                    fixed_block=fixed_block,
+                    min_lift_height=min_lift_height,
+                    geofence=geofence,
+                    render_freq=render_freq,
+                    record=record,
+                    xml_filepath=temp_path,
+                    obs_type=obs_type,
+                    isolate_movements=isolate_movements,
+                    block_xrange=block_xrange,
+                    block_yrange=block_yrange,
+                )))
         if record_dir:
-            env = Monitor(env=env,
-                          directory=str(record_dir),
-                          force=True, )
+            env = Monitor(
+                env=env,
+                directory=str(record_dir),
+                force=True,
+            )
         HindsightTrainer(
             env=env,
             seed=seed,

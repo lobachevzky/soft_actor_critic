@@ -75,18 +75,28 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
 
+    def __init__(self, env):
+        super().__init__(env)
+        self.observation_space = Box(
+            low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
+            high=vectorize([self.observation_space.high, env.unwrapped.max_position]))
+
     def step(self, action):
         o2, r, t, info = super().step(action)
-        return o2, max([0, r]), t, info
+        is_success = self._is_success(o2.achieved_goal, o2.desired_goal)
+        new_t = is_success or t
+        new_r = float(is_success)
+        info['base_reward'] = r
+        return o2, new_r, new_t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]
 
-    def _is_success(self, achieved_goal, desired_goal):
-        return self.env.unwrapped.state[0] >= self._desired_goal()
-
     def _desired_goal(self):
         return 0.45
+
+    def _is_success(self, achieved_goal, desired_goal):
+        return achieved_goal >= desired_goal
 
 
 class LiftHindsightWrapper(HindsightWrapper):

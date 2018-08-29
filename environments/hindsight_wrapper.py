@@ -130,9 +130,10 @@ class LiftHindsightWrapper(HindsightWrapper):
                               gripper_distance < self._geofence)
 
     def _achieved_goal(self):
-        return Goal(
-            gripper=self.env.unwrapped.gripper_pos(),
-            block=self.env.unwrapped.block_pos())
+        return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
 
     def _desired_goal(self):
-        return self.env.unwrapped.goal()
+        assert isinstance(self.pap_env, LiftEnv)
+        goal = self.pap_env.initial_block_pos.copy()
+        goal[2] += self.pap_env.min_lift_height
+        return Goal(gripper=goal, block=goal)

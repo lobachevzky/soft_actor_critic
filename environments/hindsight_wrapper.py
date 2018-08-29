@@ -32,12 +32,12 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def step(self, action):
-        s2, r, t, info = self.env.step(action)
-        new_s2 = Observation(
-            observation=s2,
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=o2,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        return new_s2, r, t, info
+        return new_o2, r, t, info
 
     def reset(self):
         return Observation(
@@ -49,14 +49,14 @@ class HindsightWrapper(gym.Wrapper):
         achieved_goal = None
         for step in trajectory:
             if achieved_goal is None:
-                achieved_goal = final_step.s2.achieved_goal
-            new_t = self._is_success(step.s2.achieved_goal, achieved_goal)
+                achieved_goal = final_step.o2.achieved_goal
+            new_t = self._is_success(step.o2.achieved_goal, achieved_goal)
             r = float(new_t)
             yield Step(
-                s1=step.s1.replace(desired_goal=achieved_goal),
+                o1=step.o1.replace(desired_goal=achieved_goal),
                 a=step.a,
                 r=r,
-                s2=step.s2.replace(desired_goal=achieved_goal),
+                o2=step.o2.replace(desired_goal=achieved_goal),
                 t=new_t)
             if new_t:
                 break
@@ -72,8 +72,8 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     new obs is [pos, vel, goal_pos]
     """
     def step(self, action):
-        s2, r, t, info = super().step(action)
-        return s2, max([0, r]), t, info
+        o2, r, t, info = super().step(action)
+        return o2, max([0, r]), t, info
 
     def _achieved_goal(self):
         return self.env.unwrapped.state[0]

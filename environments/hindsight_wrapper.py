@@ -10,7 +10,7 @@ from environments.pick_and_place import Goal
 from sac.utils import Step, vectorize
 
 
-class State(namedtuple('State', 'observation achieved_goal desired_goal')):
+class Observation(namedtuple('State', 'observation achieved_goal desired_goal')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
 
@@ -35,14 +35,14 @@ class HindsightWrapper(gym.Wrapper):
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
-        new_s2 = State(
+        new_s2 = Observation(
             observation=s2,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
         return new_s2, r, t, info
 
     def reset(self):
-        return State(
+        return Observation(
             observation=self.env.reset(),
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
@@ -64,7 +64,7 @@ class HindsightWrapper(gym.Wrapper):
                 break
 
     def preprocess_obs(self, obs, shape: tuple = None):
-        obs = State(*obs)
+        obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
         return vectorize(obs, shape=shape)
 

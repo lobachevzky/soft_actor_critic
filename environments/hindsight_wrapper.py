@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
+from copy import deepcopy
 from typing import Iterable
 import numpy as np
 
@@ -8,6 +9,7 @@ from gym.spaces import Box
 
 from environments.mujoco import distance_between
 from environments.pick_and_place import PickAndPlaceEnv
+from sac.array_group import ArrayGroup
 from sac.utils import Step, vectorize, unwrap_env
 
 Goal = namedtuple('Goal', 'gripper block')
@@ -45,21 +47,22 @@ class HindsightWrapper(gym.Wrapper):
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
 
-    def recompute_trajectory(self, trajectory: Iterable, final_step: Step):
-        achieved_goal = None
-        for step in trajectory:
-            if achieved_goal is None:
-                achieved_goal = final_step.o2.achieved_goal
-            new_t = self._is_success(step.o2.achieved_goal, achieved_goal)
-            r = float(new_t)
-            yield Step(
-                o1=step.o1.replace(desired_goal=achieved_goal),
-                a=step.a,
-                r=r,
-                o2=step.o2.replace(desired_goal=achieved_goal),
-                t=new_t)
-            if new_t:
-                break
+    def recompute_trajectory(self, trajectory: Step):
+        trajectory = Step(*deepcopy(trajectory))
+
+        # get values
+        o1 = Observation(*trajectory.o1)
+        o2 = Observation(*trajectory.o2)
+        achieved_goal = ArrayGroup(o2.achieved_goal)[-1]
+
+        # perform assignment
+        ArrayGroup(o1.desired_goal)[:] = achieved_goal
+        ArrayGroup(o2.desired_goal)[:] = achieved_goal
+        trajectory.r[:] = self._is_success(o2.achieved_goal, o2.desired_goal)
+        trajectory.t[:] = np.logical_or(trajectory.t, trajectory.r)
+
+        first_terminal = np.flatnonzero(trajectory.t)[0]
+        return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
     def preprocess_obs(self, obs, shape: tuple = None):
         obs = Observation(*obs)

@@ -19,11 +19,6 @@ class Observation(namedtuple('Obs', 'observation achieved_goal desired_goal')):
 
 
 class HindsightWrapper(gym.Wrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        vector_state = self.preprocess_obs(self.reset())
-        self.observation_space = Box(-1, 1, vector_state.shape)
-
     @abstractmethod
     def _achieved_goal(self):
         raise NotImplementedError
@@ -92,6 +87,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
+        env.reset()
         super().__init__(env)
         self.pap_env = unwrap_env(env, lambda e: isinstance(e, PickAndPlaceEnv))
         self._geofence = geofence

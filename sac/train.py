@@ -8,12 +8,12 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces, Wrapper
 
-from environments.hindsight_wrapper import HindsightWrapper, State as Observation
+from environments.hindsight_wrapper import HindsightWrapper
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step, vectorize
+from sac.utils import State, Step
 
 
 class Trainer:
@@ -234,11 +234,6 @@ class HindsightTrainer(TrajectoryTrainer):
     def reset(self) -> State:
         self.add_hindsight_trajectories()
         return super().reset()
-
-    def vectorize_state(self, state: State) -> np.ndarray:
-        assert isinstance(self.hindsight_env, HindsightWrapper)
-        return self.hindsight_env.vectorize_state(state)
-
 
 class MultiTaskHindsightTrainer(HindsightTrainer):
     def __init__(self, evaluation, env: HindsightWrapper, n_goals: int, **kwargs):

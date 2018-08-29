@@ -1,9 +1,8 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Iterable, List
+from typing import Iterable
 
 import gym
-import numpy as np
 from gym.spaces import Box
 
 from environments.mujoco import distance_between
@@ -33,10 +32,6 @@ class HindsightWrapper(gym.Wrapper):
     @abstractmethod
     def _desired_goal(self):
         raise NotImplementedError
-
-    @staticmethod
-    def vectorize_state(state):
-        return np.concatenate(state)
 
     def step(self, action):
         s2, r, t, info = self.env.step(action)
@@ -91,13 +86,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return 0.45
 
-    @staticmethod
-    def vectorize_state(states: List[State]):
-        if isinstance(states, State):
-            states = [states]
-        return np.stack(
-            np.append(state.observation, state.desired_goal) for state in states)
-
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
@@ -117,25 +105,4 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
     def _desired_goal(self):
         return self.env.unwrapped.goal()
 
-    @staticmethod
-    def vectorize_state(states: List[State]):
-        """
-        :returns
-        >>> np.stack([np.concatenate(
-        >>>    [state.observation, state.desired_goal.gripper, state.desired_goal.block])
-        >>>     for state in states])
-        """
-        if isinstance(states, State):
-            states = [states]
-
-        def get_arrays(s: State):
-            return [s.observation, s.desired_goal.gripper, s.desired_goal.block]
-
-        slices = np.cumsum([0] + [np.size(a) for a in get_arrays(states[0])])
-        state_vector = np.empty((len(states), slices[-1]))
-        for i, state in enumerate(states):
-            for (start, stop), array in zip(zip(slices, slices[1:]), get_arrays(state)):
-                state_vector[i, start:stop] = array
-
-        return state_vector
 

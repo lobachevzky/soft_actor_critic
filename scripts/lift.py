@@ -103,6 +103,7 @@ def parse_range(ctx, param, string):
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--geofence', default=.4, type=float)
+@click.option('--hindsight-geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
@@ -129,7 +130,7 @@ def parse_range(ctx, param, string):
                                                    'wrist_roll_joint',
                                                    'hand_l_proximal_joint',
                                                    'hand_r_proximal_joint'])
-def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, device_num,
+def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
         save_path, load_path, render_freq, record_dir, n_goals, xml_file, set_xml, use_dof,
@@ -139,6 +140,7 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, seed, devic
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
         env = PickAndPlaceHindsightWrapper(
+            geofence=hindsight_geofence,
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=PickAndPlaceEnv(discrete=discrete,

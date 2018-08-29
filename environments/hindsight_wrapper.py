@@ -6,8 +6,8 @@ import gym
 from gym.spaces import Box
 
 from environments.mujoco import distance_between
-from environments.pick_and_place import Goal
-from sac.utils import Step, vectorize
+from environments.pick_and_place import Goal, PickAndPlaceEnv
+from sac.utils import Step, vectorize, unwrap_env
 
 Goal = namedtuple('Goal', 'gripper block')
 
@@ -90,8 +90,21 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 
 class PickAndPlaceHindsightWrapper(HindsightWrapper):
-    def __init__(self, env):
+    def __init__(self, env, geofence):
         super().__init__(env)
+        self.pap_env = unwrap_env(env, lambda e: isinstance(e, PickAndPlaceEnv))
+        self._geofence = geofence
+        # self.observation_space = Box(
+        #     low=vectorize(
+        #         Observation(
+        #             observation=env.observation_space.low,
+        #             desired_goal=Goal(self.goal_space.low, self.goal_space.low),
+        #             achieved_goal=None)),
+        #     high=vectorize(
+        #         Observation(
+        #             observation=env.observation_space.high,
+        #             desired_goal=Goal(self.goal_space.high, self.goal_space.high),
+        #             achieved_goal=None)))
 
     def _is_success(self, achieved_goal, desired_goal):
         geofence = self.env.unwrapped.geofence

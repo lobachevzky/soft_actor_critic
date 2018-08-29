@@ -8,7 +8,7 @@ from gym.spaces import Box
 
 from environments.mujoco import distance_between
 from environments.pick_and_place import Goal
-from sac.utils import Step
+from sac.utils import Step, vectorize
 
 
 class State(namedtuple('State', 'observation achieved_goal desired_goal')):
@@ -19,8 +19,8 @@ class State(namedtuple('State', 'observation achieved_goal desired_goal')):
 class HindsightWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
-        vector_state = self.vectorize_state(self.reset())
-        self.observation_space = Box(-1, 1, vector_state.shape[1:])
+        vector_state = self.preprocess_obs(self.reset())
+        self.observation_space = Box(-1, 1, vector_state.shape)
 
     @abstractmethod
     def _achieved_goal(self):
@@ -67,6 +67,11 @@ class HindsightWrapper(gym.Wrapper):
                 t=new_t)
             if new_t:
                 break
+
+    def preprocess_obs(self, obs, shape: tuple = None):
+        obs = State(*obs)
+        obs = [obs.observation, obs.desired_goal]
+        return vectorize(obs, shape=shape)
 
 
 class MountaincarHindsightWrapper(HindsightWrapper):

@@ -49,6 +49,51 @@ def component(function):
 
     return wrapper
 
+def is_scalar(x):
+    try:
+        return np.shape(x) == ()
+    except ValueError:
+        return False
+
+
+def get_size(x):
+    if x is None:
+        return 0
+    if is_scalar(x):
+        return 1
+    return sum(map(get_size, x))
+
+
+def assign_to_vector(x, vector: np.ndarray):
+    try:
+        dim = vector.size / vector.shape[-1]
+    except ZeroDivisionError:
+        return
+    if is_scalar(x):
+        x = np.array([x])
+    if isinstance(x, np.ndarray):
+        vector.reshape(x.shape)[:] = x
+    else:
+        sizes = np.array(list(map(get_size, x)))
+        sizes = np.cumsum(sizes / dim, dtype=int)
+        for _x, start, stop in zip(x, [0] + list(sizes), sizes):
+            indices = [slice(None) for _ in vector.shape]
+            indices[-1] = slice(start, stop)
+            assign_to_vector(_x, vector[tuple(indices)])
+
+def vectorize(x, shape: tuple = None):
+    if isinstance(x, np.ndarray):
+        return x
+
+    size = get_size(x)
+    vector = np.zeros(size)
+    if shape:
+        vector = vector.reshape(shape)
+
+    assert isinstance(vector, np.ndarray)
+    assign_to_vector(x=x, vector=vector)
+    return vector
+
 
 State = Any
 

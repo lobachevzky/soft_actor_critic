@@ -8,12 +8,12 @@ import numpy as np
 import tensorflow as tf
 from gym import spaces, Wrapper
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.hindsight_wrapper import HindsightWrapper, State as Observation
 from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step
+from sac.utils import State, Step, vectorize
 
 
 class Trainer:
@@ -32,6 +32,7 @@ class Trainer:
         self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
         self.agent = agent = self.build_agent(**kwargs)
+        self.seq_len = None
 
         saver = tf.train.Saver()
         tb_writer = None
@@ -43,6 +44,7 @@ class Trainer:
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
+        self.preprocess_obs = self.env.preprocess_obs
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
@@ -79,7 +81,7 @@ class Trainer:
         tick = time.time()
         for time_steps in itertools.count(1):
             a = self.agent.get_actions(
-                self.vectorize_state(s1), sample=(not self.is_eval_period()))
+                self.preprocess_obs(s1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
             s2, r, t, info = self.step(a)
@@ -94,11 +96,7 @@ class Trainer:
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
                     sample_steps = self.sample_buffer()
-                    step = self.agent.train_step(
-                        sample_steps.replace(
-                            s1=self.vectorize_state(sample_steps.s1),
-                            s2=self.vectorize_state(sample_steps.s2),
-                        ))
+                    step = self.agent.train_step(sample_steps)
                     episode_mean.update(
                         Counter({
                             k: getattr(step, k.replace(' ', '_'))
@@ -162,7 +160,27 @@ class Trainer:
         return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self) -> Step:
-        return Step(*self.buffer.sample(self.batch_size))
+        sample = Step(*self.buffer.sample(self.batch_size, seq_len=self.seq_len))
+        if self.seq_len is None:
+            # leave state as dummy value for non-recurrent
+            shape = [self.batch_size, -1]
+            return Step(
+                s1=self.preprocess_obs(sample.s1, shape=[self.batch_size, -1]),
+                s2=self.preprocess_obs(sample.s2, shape=[self.batch_size, -1]),
+                # s=sample.s,
+                a=sample.a,
+                r=sample.r,
+                t=sample.t)
+        else:
+            # adjust state for recurrent networks
+            shape = [self.batch_size, self.seq_len, -1]
+            return Step(
+                s1=self.preprocess_obs(sample.s1, shape=shape),
+                s2=self.preprocess_obs(sample.s2, shape=shape),
+                s=np.swapaxes(sample.s[:, -1], 0, 1),
+                a=sample.a[:, -1],
+                r=sample.r[:, -1],
+                t=sample.t[:, -1])
 
 
 class TrajectoryTrainer(Trainer):
@@ -201,6 +219,7 @@ class HindsightTrainer(TrajectoryTrainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
+        return
         self.buffer.extend(
             self.hindsight_env.recompute_trajectory(self._trajectory(), final_step=self.buffer[-1]))
         if self.n_goals - 1 and self.timesteps() > 0:

@@ -8,7 +8,7 @@ import numpy as np
 from gym.spaces import Box
 
 from environments.mujoco import distance_between
-from environments.pick_and_place import PickAndPlaceEnv
+from environments.lift import LiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -89,11 +89,11 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return 0.45
 
 
-class PickAndPlaceHindsightWrapper(HindsightWrapper):
+class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         env.reset()
         super().__init__(env)
-        self.pap_env = unwrap_env(env, lambda e: isinstance(e, PickAndPlaceEnv))
+        self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self._geofence = geofence
         self.observation_space = Box(
             low=vectorize(

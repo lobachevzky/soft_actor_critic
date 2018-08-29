@@ -1,11 +1,11 @@
 import numpy as np
 from gym import spaces
 
-from environments.pick_and_place import Goal, PickAndPlaceEnv
+from environments.lift import Goal, LiftEnv
 from mujoco import ObjType
 
 
-class MultiTaskEnv(PickAndPlaceEnv):
+class MultiTaskEnv(LiftEnv):
     def __init__(self, fixed_pose=True, **kwargs):
         self.randomize_pose = fixed_pose
         self._goal = None

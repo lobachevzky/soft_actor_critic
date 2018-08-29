@@ -43,7 +43,7 @@ def quaternion_multiply(quaternion1, quaternion0):
 Goal = namedtuple('Goal', 'gripper block')
 
 
-class PickAndPlaceEnv(MujocoEnv):
+class LiftEnv(MujocoEnv):
     def __init__(self,
                  xml_filepath,
                  steps_per_action,

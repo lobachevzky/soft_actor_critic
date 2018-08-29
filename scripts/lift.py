@@ -9,8 +9,8 @@ import click
 import tensorflow as tf
 from gym.wrappers import Monitor, TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
-from environments.pick_and_place import PickAndPlaceEnv
+from environments.hindsight_wrapper import LiftHindsightWrapper
+from environments.lift import LiftEnv
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
@@ -142,11 +142,11 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_g
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(
             changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = PickAndPlaceHindsightWrapper(
+        env = LiftHindsightWrapper(
             geofence=hindsight_geofence,
             env=TimeLimit(
                 max_episode_steps=max_steps,
-                env=PickAndPlaceEnv(
+                env=LiftEnv(
                     discrete=discrete,
                     cheat_prob=cheat_prob,
                     steps_per_action=steps_per_action,

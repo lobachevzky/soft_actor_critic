@@ -1,6 +1,7 @@
 from collections import namedtuple
-from typing import Any
+from typing import Any, Callable
 
+import gym
 import numpy as np
 import tensorflow as tf
 
@@ -95,8 +96,62 @@ def vectorize(x, shape: tuple = None):
     return vector
 
 
-State = Any
+def normalize(vector: np.ndarray, low: np.ndarray, high: np.ndarray):
+    mean = (low + high) / 2
+    mean = np.clip(mean, -1e4, 1e4)
+    mean[np.isnan(mean)] = 0
+    dev = high - low
+    dev[dev < 1e-3] = 1
+    dev[np.isinf(dev)] = 1
+    return (vector - mean) / dev
 
+
+def unwrap_env(env: gym.Env, condition: Callable[[gym.Env], bool]):
+    while not condition(env):
+        try:
+            env = env.env
+        except AttributeError:
+            raise RuntimeError(f"env {env} has no children that meet condition.")
+    return env
+
+
+def create_sess():
+    config = tf.ConfigProto(allow_soft_placement=True)
+    config.gpu_options.allow_growth = True
+    config.inter_op_parallelism_threads = 1
+    return tf.Session(config=config)
+
+
+def softmax(X, theta=1.0, axis=None):
+    """
+    Courtesy of https://nolanbconaway.github.io/blog/2017/softmax-numpy
+    Compute the softmax of each element along an axis of X.
+
+    Parameters
+    ----------
+    X: ND-Array. Probably should be floats.
+    theta (optional): float parameter, used as a multiplier
+        prior to exponentiation. Default = 1.0
+    axis (optional): axis to compute values along. Default is the
+        first non-singleton axis.
+
+    Returns an array the same size as X. The result will sum to 1
+    along the specified axis.
+    :param axis:
+    """
+    X = np.array(X)
+
+    # make X at least 2d
+    y = np.atleast_2d(X)
+
+    # find axis
+    if axis is None:
+        axis = next(j[0] for j in enumerate(y.shape) if j[1] > 1)
+
+    # multiply y against the theta parameter,
+    y = y * float(theta)
+
+State = Any
 
 class Step(namedtuple('Step', 's1 a r s2 t')):
     def replace(self, **kwargs):

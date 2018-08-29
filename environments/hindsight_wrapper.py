@@ -66,7 +66,7 @@ class HindsightWrapper(gym.Wrapper):
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
-    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+    def preprocess_obs(self, obs, shape: tuple = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
         return vectorize(obs, shape=shape)

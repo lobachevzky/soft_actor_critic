@@ -7,8 +7,10 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
-from environments.mujoco import distance_between
+from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
+from environments.mujoco import distance_between
+from environments.multi_task import MultiTaskEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 

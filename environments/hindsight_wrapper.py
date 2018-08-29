@@ -139,3 +139,63 @@ class LiftHindsightWrapper(HindsightWrapper):
         goal = self.pap_env.initial_block_pos.copy()
         goal[2] += self.pap_env.min_lift_height
         return Goal(gripper=goal, block=goal)
+
+
+class MultiTaskHindsightWrapper(LiftHindsightWrapper):
+    def __init__(self, env, geofence):
+        self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
+        super().__init__(env, geofence)
+        # tack on gripper goal_space
+        self.observation_space = Box(
+            low=vectorize([env.observation_space.low, self.goal_space.low, -np.inf]),
+            high=vectorize([env.observation_space.high, self.goal_space.high, np.inf]))
+
+    def _desired_goal(self):
+        assert isinstance(self.multi_task_env, MultiTaskEnv)
+        block_height = self.multi_task_env.initial_block_pos[2]
+        goal = np.append(self.multi_task_env.goal, block_height)
+        return Goal(goal, goal)
+
+    def step(self, action):
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=o2.observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        return new_o2, r, t, info
+
+    def reset(self):
+        return Observation(
+            observation=self.env.reset().observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+
+
+class FrozenLakeHindsightWrapper(HindsightWrapper):
+    def __init__(self, env):
+        self.frozen_lake_env = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))
+        super().__init__(env)
+
+    def _achieved_goal(self):
+        fl_env = self.frozen_lake_env
+        return np.array([fl_env.s // fl_env.nrow, fl_env.s % fl_env.ncol])
+
+    def _is_success(self, achieved_goal, desired_goal):
+        return (achieved_goal == desired_goal).prod(axis=-1)
+
+    def _desired_goal(self):
+        return self.frozen_lake_env.goal_vector()
+
+    def step(self, action):
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=np.array(o2.observation),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        return new_o2, r, t, info
+
+    def reset(self):
+        return Observation(
+            observation=np.array(self.env.reset().observation),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())

@@ -109,7 +109,7 @@ class LiftEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
-    def reset_qpos(self):
+    def _reset_qpos(self):
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             self.init_qpos = np.array(random.choice(CHEAT_STARTS))

@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 import argparse
-import json
 from collections import namedtuple
 from pathlib import Path, PurePath
 
@@ -39,11 +38,8 @@ def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
     with DataBase(db_path, logger) as db:
         entries = {entry.path: entry for entry in db.get(patterns)}
     dirs = [Path(tensorboard_dir, path) for path in entries]
-    data_points = crawl(dirs=dirs,
-                        tag=tag,
-                        smoothing=smoothing,
-                        use_cache=use_cache,
-                        quiet=True)
+    data_points = crawl(
+        dirs=dirs, tag=tag, smoothing=smoothing, use_cache=use_cache, quiet=True)
     rewards = {
         event_file.relative_to(tensorboard_dir).parent: data
         for data, event_file in data_points
@@ -56,19 +52,14 @@ def get_table(tag, db_path, patterns, smoothing, tensorboard_dir, use_cache):
     flag_names = parse_flags(commands, delimiter='=').keys()
     flag_names = [format_flag_name(n) for n in flag_names]
 
-    Row = namedtuple('Row', ['reward'] +
-                     list(RunEntry.fields()) +
-                     list(flag_names))
+    Row = namedtuple('Row', ['reward'] + list(RunEntry.fields()) + list(flag_names))
 
     def get_row(path):
         entry = entries[path]  # type: RunEntry
         flags = parse_flags([entry.command], delimiter='=')
         flags = {format_flag_name(k): v.pop() for k, v in flags.items()}
-        entry_dict = {str(k): str(v)
-                      for k, v in entry.asdict().items()}
-        return Row(reward=rewards[path],
-                   **entry_dict,
-                   **flags)
+        entry_dict = {str(k): str(v) for k, v in entry.asdict().items()}
+        return Row(reward=rewards[path], **entry_dict, **flags)
 
     return Row._fields, map(get_row, rewards)
 

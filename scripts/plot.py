@@ -5,9 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 # noinspection PyUnresolvedReferences
-from mpl_toolkits.mplot3d import Axes3D
 from pandas.errors import EmptyDataError
-
 from sac.utils import softmax
 
 
@@ -30,15 +28,16 @@ def main():
     parser.add_argument('--fig-size', type=parse_double)
     args = parser.parse_args()
 
-    plot(labels=args.components,
-         delimiter=args.delimiter,
-         csv_dir=args.csv_dir,
-         plot_path=args.plot_path,
-         weight_key=args.weight_key,
-         min_rows=args.min_rows,
-         fig_size=args.fig_size,
-         aggregate=args.aggregate,
-         )
+    plot(
+        labels=args.components,
+        delimiter=args.delimiter,
+        csv_dir=args.csv_dir,
+        plot_path=args.plot_path,
+        weight_key=args.weight_key,
+        min_rows=args.min_rows,
+        fig_size=args.fig_size,
+        aggregate=args.aggregate,
+    )
 
     # # goal-space=-.4to.4
     # # rldl7: sort-runs .runs/tensorboard/multi-task-2d/goal_space=-.4to.4/ --smoothing=50
@@ -62,13 +61,7 @@ def main():
     # ax.scatter(xs, ys, zs, c='g', marker='x')
 
 
-def plot(csv_dir,
-         delimiter,
-         labels,
-         plot_path,
-         weight_key,
-         min_rows,
-         fig_size,
+def plot(csv_dir, delimiter, labels, plot_path, weight_key, min_rows, fig_size,
          aggregate):
     csv_paths = list(csv_dir.glob('*.csv'))
     x_label, y_label, z_label, *legend_labels = labels
@@ -77,7 +70,7 @@ def plot(csv_dir,
     if weight_key:
         nrows = ncols = 1
     else:
-        nrows = int(len(csv_paths) ** (1 / 2))
+        nrows = int(len(csv_paths)**(1 / 2))
         ncols = len(csv_paths) / nrows
     ax = fig.add_subplot(nrows, ncols, 1, projection='3d')
     i = 1
@@ -98,20 +91,24 @@ def plot(csv_dir,
         titles = [None]
 
     for df, title in zip(dfs, titles):
+
         def filter_in_df(keys):
             return [k for k in keys if k in df]
 
         if weight_key:
-            scatter_weighted(ax=ax, weight_key=weight_key,
-                             df=df[filter_in_df(labels + [weight_key])],
-                             xyz_labels=xyz_labels)
+            scatter_weighted(
+                ax=ax,
+                weight_key=weight_key,
+                df=df[filter_in_df(labels + [weight_key])],
+                xyz_labels=xyz_labels)
 
         else:
             ax = fig.add_subplot(nrows, ncols, i, projection='3d')
-            scatter_unweighted(ax=ax,
-                               df=df[filter_in_df(labels)],
-                               legend_labels=filter_in_df(legend_labels),
-                               xyz_labels=xyz_labels)
+            scatter_unweighted(
+                ax=ax,
+                df=df[filter_in_df(labels)],
+                legend_labels=filter_in_df(legend_labels),
+                xyz_labels=xyz_labels)
             i += 1
 
         setters = [ax.set_xlabel, ax.set_ylabel, ax.set_zlabel]
@@ -146,8 +143,8 @@ def scatter_unweighted(ax, df, legend_labels, xyz_labels):
     if legend_labels:
         for label_values, group in df.groupby(legend_labels):
             try:
-                label = ', '.join(format_label(k, v)
-                                  for k, v in zip(legend_labels, label_values))
+                label = ', '.join(
+                    format_label(k, v) for k, v in zip(legend_labels, label_values))
             except TypeError:
                 label = format_label(legend_labels[0], label_values)
 

@@ -98,9 +98,9 @@ class Trainer:
                 perform_updates=not self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
-            episode_timesteps = self.episode_count['timesteps']
+            episode_time_steps = self.episode_count['time_steps']
             self.count.update(
-                Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
+                Counter(reward=episode_reward, episode=1, time_steps=episode_time_steps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 self.count['time_steps'], episode_reward))
@@ -159,7 +159,7 @@ class Trainer:
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()
-            episode_count.update(Counter(reward=r, timesteps=1))
+            episode_count.update(Counter(reward=r, time_steps=1))
             if t:
                 for k in episode_mean:
                     episode_count[k] = episode_mean[k] / float(time_steps)
@@ -275,17 +275,17 @@ class TrajectoryTrainer(Trainer):
         super().add_to_buffer(step)
 
     def trajectory(self) -> Iterable:
-        return self.buffer[-self.episode_count['timesteps']:]
+        return self.buffer[-self.episode_count['time_steps']:]
 
     def reset(self) -> Obs:
         return super().reset()
 
-    def timesteps(self):
-        return self.episode_count['timesteps']
+    def time_steps(self):
+        return self.episode_count['time_steps']
 
     def _trajectory(self) -> Iterable:
-        if self.timesteps():
-            return self.buffer[-self.timesteps():]
+        if self.time_steps():
+            return self.buffer[-self.time_steps():]
         return ()
 
 
@@ -307,9 +307,9 @@ class HindsightTrainer(TrajectoryTrainer):
         self.buffer.extend(
             self.hindsight_env.recompute_trajectory(
                 self._trajectory(), final_step=self.buffer[-1]))
-        if self.n_goals - 1 and self.timesteps() > 0:
+        if self.n_goals - 1 and self.time_steps() > 0:
             final_indexes = np.random.randint(
-                1, self.timesteps(), size=self.n_goals - 1) - self.timesteps()
+                1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:

@@ -132,7 +132,7 @@ class AbstractAgent:
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
 
-    def train_step(self, step: Step, feed_dict: dict = None) -> TrainStep:
+    def train_step(self, step: Step, feed_dict: dict = None) -> dict:
         if feed_dict is None:
             feed_dict = {
                 self.S1: step.s1,
@@ -141,8 +141,18 @@ class AbstractAgent:
                 self.S2: step.s2,
                 self.T: step.t
             }
-        return TrainStep(*self.sess.run([getattr(self, attr)
-                                         for attr in TRAIN_VALUES], feed_dict))
+        train_values = [
+            'entropy',
+            'soft_update_xi_bar',
+            'V_loss',
+            'Q_loss',
+            'pi_loss',
+            'V_grad',
+            'Q_grad',
+            'pi_grad',
+        ]
+        return self.sess.run({attr: getattr(self, attr)
+                              for attr in train_values}, feed_dict)
 
     def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
         if np.ndim(s1) == 1:

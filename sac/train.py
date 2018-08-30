@@ -95,20 +95,11 @@ class Trainer:
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    sample_steps = self.sample_buffer()
-                    step = self.agent.train_step(sample_steps)
+                    step = self.agent.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
-                            k: getattr(step, k.replace(' ', '_'))
-                            for k in [
-                                'entropy',
-                                'V loss',
-                                'Q loss',
-                                'pi loss',
-                                'V grad',
-                                'Q grad',
-                                'pi grad',
-                            ]
+                            k.replace(' ', '_'): v
+                            for k, v in step.items() if np.isscalar(v)
                         }))
             s1 = s2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))

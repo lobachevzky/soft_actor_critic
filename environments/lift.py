@@ -48,7 +48,6 @@ class LiftEnv(MujocoEnv):
                  block_yrange=None,
                  fixed_block=False,
                  min_lift_height=.02,
-                 geofence=.04,
                  cheat_prob=0,
                  obs_type='base-qvel',
                  **kwargs):
@@ -61,11 +60,9 @@ class LiftEnv(MujocoEnv):
         self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
-        self.grip = 0
         self._fixed_block = fixed_block
         self._goal_block_name = 'block1'
         self.min_lift_height = min_lift_height
-        self.geofence = geofence
         self._prev_action = None
 
         super().__init__(**kwargs)

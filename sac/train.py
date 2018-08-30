@@ -1,6 +1,6 @@
 import itertools
 import time
-from collections import Counter
+from collections import Counter, namedtuple
 from typing import Iterable, Optional, Tuple
 
 import gym
@@ -13,7 +13,9 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize, normalize
+from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize
+
+Agents = namedtuple('Agents', 'train act')
 
 
 class Trainer:
@@ -42,16 +44,28 @@ class Trainer:
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
-        self.action_space = env.action_space
-        self.observation_space = env.observation_space
+        self.action_space = action_space or env.action_space
+        self.observation_space = observation_space or env.observation_space
 
-        self.agent = agent = self.build_agent(
-            sess=self.sess,
-            batch_size=None,
-            seq_len=None,
-            **kwargs)
-        self.seq_len = None
-
+        self.agents = Agents(
+            act=self.build_agent(
+                sess=self.sess,
+                batch_size=None,
+                seq_len=1,
+                reuse=False,
+                action_space=action_space,
+                observation_space=observation_space,
+                **kwargs),
+            train=None)
+        # train=self.build_agent(
+        #     sess=self.sess,
+        #     batch_size=batch_size,
+        #     seq_len=seq_len,
+        #     reuse=True,
+        #     action_space=action_space,
+        #     observation_space=observation_space,
+        #     **kwargs))
+        self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
@@ -109,7 +123,7 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
         for time_steps in itertools.count(1):
-            a = self.agent.get_actions(
+            a = self.agents.act.get_actions(
                 self.preprocess_obs(o1), sample=(not self.is_eval_period()))
             if render:
                 self.env.render()
@@ -124,7 +138,7 @@ class Trainer:
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
-                    step = self.agent.train_step(self.sample_buffer())
+                    step = self.agents.act.train_step(self.sample_buffer())
                     episode_mean.update(
                         Counter({
                             k.replace(' ', '_'): v

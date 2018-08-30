@@ -1,11 +1,11 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Callable, Iterable, Sequence, Union, List
+from typing import Callable, Iterable, List, Sequence
 
 import numpy as np
 import tensorflow as tf
 
-from sac.utils import Step, ArrayLike
+from sac.utils import ArrayLike, Step
 
 NetworkOutput = namedtuple('NetworkOutput', 'output state')
 

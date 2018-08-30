@@ -52,6 +52,10 @@ class LiftEnv(MujocoEnv):
                  cheat_prob=0,
                  obs_type='base-qvel',
                  **kwargs):
+        if block_xrange is None:
+            block_xrange = (0, 0)
+        if block_yrange is None:
+            block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
         self._obs_type = obs_type

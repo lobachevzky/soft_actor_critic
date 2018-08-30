@@ -108,8 +108,6 @@ def parse_range(ctx, param, string):
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
-@click.option('--discrete', is_flag=True)
-@click.option('--isolate-movements', is_flag=True)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
@@ -131,14 +129,13 @@ def parse_range(ctx, param, string):
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
-def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_geofence,
+def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
         seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
-        xml_file, set_xml, use_dof, isolate_movements, obs_type, block_xrange,
+        xml_file, set_xml, use_dof, obs_type, block_xrange,
         block_yrange, record):
     print('Obs type:', obs_type)
-    print('Isolate movements:', isolate_movements)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(
             changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
@@ -147,7 +144,6 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_g
             env=TimeLimit(
                 max_episode_steps=max_steps,
                 env=LiftEnv(
-                    discrete=discrete,
                     cheat_prob=cheat_prob,
                     steps_per_action=steps_per_action,
                     fixed_block=fixed_block,
@@ -157,7 +153,6 @@ def cli(max_steps, discrete, fixed_block, min_lift_height, geofence, hindsight_g
                     record=record,
                     xml_filepath=temp_path,
                     obs_type=obs_type,
-                    isolate_movements=isolate_movements,
                     block_xrange=block_xrange,
                     block_yrange=block_yrange,
                 )))

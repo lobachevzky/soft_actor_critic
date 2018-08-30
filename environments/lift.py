@@ -3,9 +3,9 @@ from collections import namedtuple
 
 import numpy as np
 from gym import spaces
-from mujoco import ObjType
 
 from environments.mujoco import MujocoEnv
+from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,

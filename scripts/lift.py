@@ -1,18 +1,21 @@
+import re
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
-from pathlib import Path, PurePath
+from functools import wraps
+from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
-from gym.wrappers import Monitor, TimeLimit
+from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
-from sac.networks import MlpAgent
-from sac.train import HindsightTrainer
+from sac.networks import LstmAgent, MlpAgent
+from sac.train import HindsightTrainer, Trainer
+from sac.utils import parse_double
 from scripts.gym_env import check_probability
 
 XMLSetter = namedtuple('XMLSetter', 'path value')
@@ -25,10 +28,12 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 
     def mutate_tree(tree: ET.ElementTree):
         for change in changes:
-            element_to_change = tree.find(str(change.path.parent))
+            parent = re.sub('/[^/]*$', '', change.path)
+            element_to_change = tree.find(parent)
             if isinstance(element_to_change, ET.Element):
                 print('setting', change.path, 'to', change.value)
-                element_to_change.set(change.path.name, change.value)
+                name = re.search('[^/]*$', change.path)[0]
+                element_to_change.set(name, change.value)
 
         for actuators in tree.iter('actuator'):
             for actuator in list(actuators):

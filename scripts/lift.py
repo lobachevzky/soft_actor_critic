@@ -11,6 +11,7 @@ from gym.wrappers import Monitor, TimeLimit
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
+from sac.networks import MlpAgent
 from sac.train import HindsightTrainer
 from scripts.gym_env import check_probability
 
@@ -92,6 +93,7 @@ def parse_range(ctx, param, string):
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
+@click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=2e-4, type=float)
@@ -134,7 +136,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
         reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
         xml_file, set_xml, use_dof, obs_type, block_xrange,
-        block_yrange, record):
+        block_yrange, agent, record):
     print('Obs type:', obs_type)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(
@@ -163,6 +165,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
             )
         HindsightTrainer(
             env=env,
+            base_agent=agent,
             seed=seed,
             device_num=device_num,
             n_goals=n_goals,

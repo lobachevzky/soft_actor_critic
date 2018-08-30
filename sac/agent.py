@@ -5,7 +5,6 @@ from typing import Callable, Iterable, Sequence, Union
 import numpy as np
 import tensorflow as tf
 
-from sac.networks import mlp
 from sac.utils import Step, ArrayLike
 
 NetworkOutput = namedtuple('NetworkOutput', 'output state')
@@ -145,22 +144,15 @@ class AbstractAgent:
             actions = self.sess.run(self.A_max_likelihood, feed_dict={self.S1: s1})
         return actions[0]
 
-    def mlp(self, inputs: tf.Tensor) -> tf.Tensor:
-        return mlp(
-            inputs=inputs,
-            layer_size=self.layer_size,
-            n_layers=self.n_layers,
-            activation=self.activation)
-
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(self.mlp(sa), 1, name='q'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(sa), 1, name='q'), [-1])
 
     def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(tf.layers.dense(self.mlp(s), 1, name='v'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(s), 1, name='v'), [-1])
 
     def compute_v1(self) -> tf.Tensor:
         return self.v_network(self.S1, 'V')
@@ -169,7 +161,11 @@ class AbstractAgent:
         return self.v_network(self.S2, 'V_bar')
 
     def input_processing(self, s: tf.Tensor) -> tf.Tensor:
-        return self.mlp(s)
+        return self.network(s)
+
+    @abstractmethod
+    def network(self, inputs: tf.Tensor) -> NetworkOutput:
+        pass
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape: Iterable,

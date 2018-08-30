@@ -3,13 +3,13 @@ import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import List
 from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
-from gym.wrappers import TimeLimit
+from gym.wrappers import TimeLimit, Monitor
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv

@@ -271,10 +271,10 @@ class HindsightTrainer(Trainer):
             final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
-            for final_state in self.buffer[final_indexes]:
-                self.buffer.extend(
-                    self.hindsight_env.recompute_trajectory(
-                        self._trajectory(), final_step=final_state))
+            for final_index in final_indexes:
+                traj = self.trajectory(final_index)
+                new_traj = self.hindsight_env.recompute_trajectory(traj)
+                self.buffer.append(new_traj)
 
     def reset(self) -> Obs:
         self.add_hindsight_trajectories()

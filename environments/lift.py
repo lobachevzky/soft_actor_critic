@@ -39,9 +39,6 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-Goal = namedtuple('Goal', 'gripper block')
-
-
 class LiftEnv(MujocoEnv):
     def __init__(self,
                  block_xrange=None,
@@ -74,7 +71,7 @@ class LiftEnv(MujocoEnv):
         obs_size = sum(map(np.size, self._get_obs()))
         assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size, ), dtype=np.float32)
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -153,14 +150,6 @@ class LiftEnv(MujocoEnv):
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
-
-    def goal(self):
-        goal_pos = self.initial_block_pos + \
-                   np.array([0, 0, self.min_lift_height])
-        return Goal(gripper=goal_pos, block=goal_pos)
-
-    def goal_3d(self):
-        return self.goal()[0]
 
     def at_goal(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height

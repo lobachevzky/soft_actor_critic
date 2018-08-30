@@ -13,7 +13,7 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import State, Step
+from sac.utils import Obs, Step
 
 
 class Trainer:
@@ -126,10 +126,10 @@ class Trainer:
 
         return Agent(state_shape, action_shape)
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[State, float, bool, dict]:
+    def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
         if type(self.env.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
@@ -140,7 +140,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: State) -> np.ndarray:
+    def vectorize_state(self, state: Obs) -> np.ndarray:
         """ Preprocess state before feeding to network """
         return state
 
@@ -185,7 +185,7 @@ class TrajectoryTrainer(Trainer):
     def trajectory(self) -> Iterable:
         return self.buffer[-self.episode_count['timesteps']:]
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         return super().reset()
 
     def timesteps(self):
@@ -225,7 +225,7 @@ class HindsightTrainer(TrajectoryTrainer):
                     self.hindsight_env.recompute_trajectory(
                         self._trajectory(), final_step=final_state))
 
-    def reset(self) -> State:
+    def reset(self) -> Obs:
         self.add_hindsight_trajectories()
         return super().reset()
 

@@ -1,5 +1,5 @@
 from collections import namedtuple
-from typing import Any, Callable
+from typing import Any, Callable, Optional, Union
 
 import gym
 import numpy as np
@@ -84,7 +84,7 @@ def assign_to_vector(x, vector: np.ndarray):
             assign_to_vector(_x, vector[tuple(indices)])
 
 
-def vectorize(x, shape: tuple = None):
+def vectorize(x, shape: Optional[tuple] = None):
     if isinstance(x, np.ndarray):
         return x
 
@@ -153,10 +153,37 @@ def softmax(X, theta=1.0, axis=None):
     # multiply y against the theta parameter,
     y = y * float(theta)
 
+    # subtract the max for numerical stability
+    y = y - np.expand_dims(np.max(y, axis=axis), axis)
 
-State = Any
+    # exponentiate y
+    y = np.exp(y)
+
+    # take the sum along the specified axis
+    ax_sum = np.expand_dims(np.sum(y, axis=axis), axis)
+
+    # finally: divide elementwise
+    p = y / ax_sum
+
+    # flatten if X was 1D
+    if len(X.shape) == 1: p = p.flatten()
+
+    return p
+
+
+Obs = Any
 
 
 class Step(namedtuple('Step', 's1 a r s2 t')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
+
+
+ArrayLike = Union[np.ndarray, list]
+
+
+def parse_double(ctx, param, string):
+    if string is None:
+        return
+    a, b = map(float, string.split(','))
+    return a, b

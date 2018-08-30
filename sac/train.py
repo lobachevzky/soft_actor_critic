@@ -216,9 +216,14 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 
-    def vectorize_state(self, state: Obs) -> np.ndarray:
-        """ Preprocess state before feeding to network """
-        return state
+    def preprocess_obs(self, obs, shape: tuple = None):
+        if self.preprocess_func is not None:
+            obs = self.preprocess_func(obs, shape)
+        return obs
+        # return normalize(
+            # vector=obs,
+            # low=self.env.observation_space.low,
+            # high=self.env.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)

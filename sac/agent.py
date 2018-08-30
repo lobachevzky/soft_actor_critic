@@ -13,10 +13,13 @@ NetworkOutput = namedtuple('NetworkOutput', 'output state')
 class AbstractAgent:
     def __init__(self,
                  sess: tf.Session,
+                 batch_size: int,
+                 seq_len: int,
                  s_shape: Iterable,
                  a_shape: Sequence,
                  activation: Callable,
                  reward_scale: float,
+                 entropy_scale: float,
                  n_layers: int,
                  layer_size: int,
                  learning_rate: float,

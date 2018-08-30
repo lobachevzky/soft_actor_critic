@@ -32,7 +32,14 @@ class Trainer:
         self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
         self.sess = sess or create_sess()
-        self.agent = agent = self.build_agent(sess=self.sess, **kwargs)
+        self.action_space = env.action_space
+        self.observation_space = env.observation_space
+
+        self.agent = agent = self.build_agent(
+            sess=self.sess,
+            batch_size=batch_size,
+            seq_len=None,
+            **kwargs)
         self.seq_len = None
 
         saver = tf.train.Saver()
@@ -112,20 +119,33 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def build_agent(self, base_agent: AbstractAgent = AbstractAgent, **kwargs):
-        state_shape = self.env.observation_space.shape
-        if isinstance(self.env.action_space, spaces.Discrete):
-            action_shape = [self.env.action_space.n]
+    def build_agent(self,
+                    base_agent: AbstractAgent,
+                    action_space=None,
+                    observation_space=None,
+                    **kwargs):
+        if observation_space is None:
+            observation_space = self.observation_space
+        if action_space is None:
+            action_space = self.action_space
+        if isinstance(action_space, spaces.Discrete):
+            action_shape = [action_space.n]
             policy_type = CategoricalPolicy
         else:
-            action_shape = self.env.action_space.shape
+            action_shape = action_space.shape
             policy_type = GaussianPolicy
 
-        class Agent(policy_type, base_agent):
-            def __init__(self, s_shape, a_shape):
-                super(Agent, self).__init__(s_shape=s_shape, a_shape=a_shape, **kwargs)
+        if isinstance(observation_space, spaces.Discrete):
+            state_shape = [observation_space.n]
+        else:
+            state_shape = observation_space.shape
 
-        return Agent(state_shape, action_shape)
+        class Agent(policy_type, base_agent):
+            def __init__(self):
+                super(Agent, self).__init__(
+                    s_shape=state_shape, a_shape=action_shape, **kwargs)
+
+        return Agent()
 
     def reset(self) -> Obs:
         return self.env.reset()

@@ -102,6 +102,7 @@ def parse_range(ctx, param, string):
 @click.option('--steps-per-action', default=300, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
+@click.option('--entropy-scale', default=1, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
@@ -133,7 +134,7 @@ def parse_range(ctx, param, string):
     ])
 def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
         seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+        reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
         xml_file, set_xml, use_dof, obs_type, block_xrange,
         block_yrange, agent, record):
@@ -175,6 +176,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
             layer_size=layer_size,
             learning_rate=learning_rate,
             reward_scale=reward_scale,
+            entropy_scale=entropy_scale,
             grad_clip=grad_clip if grad_clip > 0 else None,
             batch_size=batch_size,
             num_train_steps=num_train_steps,

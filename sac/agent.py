@@ -15,7 +15,7 @@ class AbstractAgent:
                  sess: tf.Session,
                  batch_size: int,
                  seq_len: int,
-                 s_shape: Iterable,
+                 o_shape: Iterable,
                  a_shape: Sequence,
                  activation: Callable,
                  reward_scale: float,
@@ -35,8 +35,8 @@ class AbstractAgent:
         self.sess = sess
 
         with tf.device('/gpu:' + str(device_num)):
-            self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
-            self.S2 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S2')
+            self.O1 = tf.placeholder(tf.float32, [None] + list(o_shape), name='S1')
+            self.O2 = tf.placeholder(tf.float32, [None] + list(o_shape), name='S2')
             self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
             self.R = R = tf.placeholder(tf.float32, [None], name='R')
             self.T = T = tf.placeholder(tf.float32, [None], name='T')
@@ -44,7 +44,7 @@ class AbstractAgent:
             tau = 0.01
 
             with tf.variable_scope('pi'):
-                processed_s = self.input_processing(self.S1)
+                processed_s = self.input_processing(self.O1)
                 self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
             # generate actions:
@@ -55,7 +55,7 @@ class AbstractAgent:
             # constructing V loss
             with tf.control_dependencies([self.A_sampled1]):
                 v1 = self.compute_v1()
-                q1 = self.q_network(self.S1, self.transform_action_sample(A_sampled1),
+                q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
                                     'Q')
                 log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, 'pi', reuse=True)
                 self.V_loss = V_loss = tf.reduce_mean(
@@ -65,7 +65,7 @@ class AbstractAgent:
             with tf.control_dependencies([self.V_loss]):
                 v2 = self.compute_v2()
                 q = self.q_network(
-                    self.S1, self.transform_action_sample(A), 'Q', reuse=True)
+                    self.O1, self.transform_action_sample(A), 'Q', reuse=True)
                 # noinspection PyTypeChecker
                 self.Q_loss = Q_loss = tf.reduce_mean(
                     0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
@@ -75,7 +75,7 @@ class AbstractAgent:
                 self.A_sampled2 = A_sampled2 = tf.stop_gradient(
                     self.sample_pi_network('pi', reuse=True))
                 q2 = self.q_network(
-                    self.S1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+                    self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
                 log_pi_sampled2 = self.pi_network_log_prob(A_sampled2, 'pi', reuse=True)
                 self.pi_loss = pi_loss = tf.reduce_mean(
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
@@ -126,10 +126,10 @@ class AbstractAgent:
     def train_step(self, step: Step, feed_dict: dict = None) -> dict:
         if feed_dict is None:
             feed_dict = {
-                self.S1: step.s1,
+                self.O1: step.o1,
                 self.A: step.a,
                 self.R: np.array(step.r) * self.reward_scale,
-                self.S2: step.s2,
+                self.O2: step.o2,
                 self.T: step.t
             }
         train_values = [
@@ -145,13 +145,13 @@ class AbstractAgent:
         return self.sess.run({attr: getattr(self, attr)
                               for attr in train_values}, feed_dict)
 
-    def get_actions(self, s1: ArrayLike, sample: bool = True) -> np.ndarray:
-        if np.ndim(s1) == 1:
-            s1 = [s1]
+    def get_actions(self, o1: ArrayLike, sample: bool = True) -> np.ndarray:
+        if np.ndim(o1) == 1:
+            o1 = [o1]
         if sample:
-            actions = self.sess.run(self.A_sampled1, feed_dict={self.S1: s1})
+            actions = self.sess.run(self.A_sampled1, feed_dict={self.O1: o1})
         else:
-            actions = self.sess.run(self.A_max_likelihood, feed_dict={self.S1: s1})
+            actions = self.sess.run(self.A_max_likelihood, feed_dict={self.O1: o1})
         return actions[0]
 
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
@@ -160,15 +160,15 @@ class AbstractAgent:
             sa = tf.concat([s, a], axis=1)
             return tf.reshape(tf.layers.dense(self.network(sa), 1, name='q'), [-1])
 
-    def v_network(self, s: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
+    def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(tf.layers.dense(self.network(s), 1, name='v'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(o), 1, name='v'), [-1])
 
     def compute_v1(self) -> tf.Tensor:
-        return self.v_network(self.S1, 'V')
+        return self.v_network(self.O1, 'V')
 
     def compute_v2(self) -> tf.Tensor:
-        return self.v_network(self.S2, 'V_bar')
+        return self.v_network(self.O2, 'V_bar')
 
     def input_processing(self, s: tf.Tensor) -> tf.Tensor:
         return self.network(s)

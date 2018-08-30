@@ -174,7 +174,7 @@ def softmax(X, theta=1.0, axis=None):
 Obs = Any
 
 
-class Step(namedtuple('Step', 's1 a r s2 t')):
+class Step(namedtuple('Step', 'o1 a r o2 t')):
     def replace(self, **kwargs):
         return super()._replace(**kwargs)
 

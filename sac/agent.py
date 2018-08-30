@@ -54,6 +54,15 @@ class AbstractAgent:
                 processed_s = self.input_processing(self.O1)
                 self.parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
+            def pi_network_log_prob(a: tf.Tensor, name: str, reuse: bool) \
+                    -> tf.Tensor:
+                with tf.variable_scope(name, reuse=reuse):
+                    return self.policy_parameters_to_log_prob(a, parameters)
+
+            def sample_pi_network(name: str, reuse: bool) -> tf.Tensor:
+                with tf.variable_scope(name, reuse=reuse):
+                    return self.policy_parameters_to_sample(parameters)
+
             # generate actions:
             self.A_max_likelihood = tf.stop_gradient(self.get_best_action('pi'))
             self.A_sampled1 = A_sampled1 = tf.stop_gradient(

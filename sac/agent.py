@@ -50,8 +50,8 @@ class AbstractAgent:
             gamma = 0.99
             tau = 0.01
 
+            processed_s, self.new_S = self.pi_network(self.O1)
             with tf.variable_scope('pi'):
-                processed_s, self.new_S = self.network(self.O1)
                 self.parameters = parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
             def pi_network_log_prob(a: tf.Tensor, name: str, reuse: bool) \

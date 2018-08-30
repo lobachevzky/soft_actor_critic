@@ -177,11 +177,11 @@ class AbstractAgent:
         with tf.variable_scope('pi'):
             return self.network(o)
 
-    def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
+    def q_network(self, o: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(self.network(sa).output, 1, name='q'), [-1])
+            oa = tf.concat([o, a], axis=1)
+            return tf.reshape(tf.layers.dense(self.network(oa).output, 1, name='q'), [-1])
 
     def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
@@ -193,7 +193,7 @@ class AbstractAgent:
 
     @abstractmethod
     def produce_policy_parameters(self, a_shape: Iterable,
-                                  processed_s: tf.Tensor) -> tf.Tensor:
+                                  processed_o: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod

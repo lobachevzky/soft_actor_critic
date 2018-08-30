@@ -51,7 +51,7 @@ class AbstractAgent:
             tau = 0.01
 
             with tf.variable_scope('pi'):
-                processed_s = self.input_processing(self.O1)
+                processed_s, self.new_S = self.network(self.O1)
                 self.parameters = parameters = self.produce_policy_parameters(a_shape[0], processed_s)
 
             def pi_network_log_prob(a: tf.Tensor, name: str, reuse: bool) \
@@ -180,14 +180,11 @@ class AbstractAgent:
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             sa = tf.concat([s, a], axis=1)
-            return tf.reshape(tf.layers.dense(self.network(sa), 1, name='q'), [-1])
+            return tf.reshape(tf.layers.dense(self.network(sa).output, 1, name='q'), [-1])
 
     def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
-            return tf.reshape(tf.layers.dense(self.network(o), 1, name='v'), [-1])
-
-    def input_processing(self, s: tf.Tensor) -> tf.Tensor:
-        return self.network(s)
+            return tf.reshape(tf.layers.dense(self.network(o).output, 1, name='v'), [-1])
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

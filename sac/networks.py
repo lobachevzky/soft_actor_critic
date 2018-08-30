@@ -26,7 +26,7 @@ class MlpAgent(AbstractAgent):
                 layer_size=self.layer_size,
                 n_layers=self.n_layers,
                 activation=self.activation),
-            state=None).output
+            state=None)
 
 
 class SACXAgent(AbstractAgent):

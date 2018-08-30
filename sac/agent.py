@@ -74,7 +74,7 @@ class AbstractAgent:
                 v1 = self.v_network(self.O1, 'V')
                 q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
                                     'Q')
-                log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, 'pi', reuse=True)
+                log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
                 self.V_loss = V_loss = tf.reduce_mean(
                     0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
 

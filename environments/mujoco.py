@@ -135,19 +135,7 @@ class MujocoEnv:
         self.sim.__exit__()
 
     @abstractmethod
-    def _set_new_goal(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _get_obs(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def goal(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def goal_3d(self):
         raise NotImplementedError
 
     @abstractmethod

@@ -2,7 +2,7 @@ import click
 import gym
 import tensorflow as tf
 
-from sac.agent import AbstractAgent
+from sac.networks import MlpAgent
 from sac.train import Trainer
 
 
@@ -22,15 +22,17 @@ def check_probability(ctx, param, value):
 @click.option('--num-train-steps', default=1, type=int)
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=1., type=float)
+@click.option('--entropy-scale', default=1., type=float)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
 def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scale,
-        batch_size, num_train_steps, logdir, save_path, load_path, render):
+        entropy_scale, batch_size, num_train_steps, logdir, save_path, load_path, render):
     Trainer(
         env=gym.make(env),
-        base_agent=AbstractAgent,
+        base_agent=MlpAgent,
+        seq_len=0,
         device_num=1,
         seed=seed,
         buffer_size=buffer_size,
@@ -38,11 +40,12 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
+        entropy_scale=entropy_scale,
         reward_scale=reward_scale,
         batch_size=batch_size,
         grad_clip=None,
-        num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=render)
+        num_train_steps=num_train_steps)
+
+
+if __name__ == '__main__':
+    cli()

@@ -240,7 +240,6 @@ class Trainer:
             return Step(
                 o1=self.preprocess_obs(sample.o1, shape=shape),
                 o2=self.preprocess_obs(sample.o2, shape=shape),
-                s=sample.s,
                 a=sample.a,
                 r=sample.r,
                 t=sample.t)
@@ -250,44 +249,12 @@ class Trainer:
             return Step(
                 o1=self.preprocess_obs(sample.o1, shape=shape),
                 o2=self.preprocess_obs(sample.o2, shape=shape),
-                s=np.swapaxes(sample.s[:, -1], 0, 1),
                 a=sample.a[:, -1],
                 r=sample.r[:, -1],
                 t=sample.t[:, -1])
 
-    def preprocess_obs(self, obs, shape: tuple = None):
-        if self.preprocess_func is not None:
-            obs = self.preprocess_func(obs, shape)
-        return obs
-        # return normalize(
-        #     vector=obs,
-        #     low=self.env.observation_space.low,
-        #     high=self.env.observation_space.high)
 
-
-class TrajectoryTrainer(Trainer):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    def add_to_buffer(self, step: Step):
-        super().add_to_buffer(step)
-
-    def trajectory(self) -> Iterable:
-        return self.buffer[-self.episode_count['time_steps']:]
-
-    def reset(self) -> Obs:
-        return super().reset()
-
-    def time_steps(self):
-        return self.episode_count['time_steps']
-
-    def _trajectory(self) -> Iterable:
-        if self.time_steps():
-            return self.buffer[-self.time_steps():]
-        return ()
-
-
-class HindsightTrainer(TrajectoryTrainer):
+class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
         self.hindsight_env = env

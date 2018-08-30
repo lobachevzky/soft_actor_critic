@@ -58,9 +58,8 @@ class LiftEnv(MujocoEnv):
         self._cheated = False
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
-        self._goal_block_name = 'block1'
+        self._block_name = 'block1'
         self.min_lift_height = min_lift_height
-        self._prev_action = None
 
         super().__init__(**kwargs)
 
@@ -134,7 +133,7 @@ class LiftEnv(MujocoEnv):
         return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
     def block_pos(self):
-        return self.sim.get_body_xpos(self._goal_block_name)
+        return self.sim.get_body_xpos(self._block_name)
 
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
@@ -171,5 +170,4 @@ class LiftEnv(MujocoEnv):
         s, r, t, i = super().step(action)
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
-        self._prev_action = action
         return s, r, t, i

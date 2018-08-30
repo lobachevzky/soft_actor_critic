@@ -61,7 +61,7 @@ class AbstractAgent:
 
             # constructing V loss
             with tf.control_dependencies([self.A_sampled1]):
-                v1 = self.compute_v1()
+                v1 = self.v_network(self.O1, 'V')
                 q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
                                     'Q')
                 log_pi_sampled1 = self.pi_network_log_prob(A_sampled1, 'pi', reuse=True)
@@ -70,7 +70,7 @@ class AbstractAgent:
 
             # constructing Q loss
             with tf.control_dependencies([self.V_loss]):
-                v2 = self.compute_v2()
+                v2 = self.v_network(self.O2, 'V_bar')
                 q = self.q_network(
                     self.O1, self.transform_action_sample(A), 'Q', reuse=True)
                 # noinspection PyTypeChecker
@@ -175,12 +175,6 @@ class AbstractAgent:
     def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.network(o), 1, name='v'), [-1])
-
-    def compute_v1(self) -> tf.Tensor:
-        return self.v_network(self.O1, 'V')
-
-    def compute_v2(self) -> tf.Tensor:
-        return self.v_network(self.O2, 'V_bar')
 
     def input_processing(self, s: tf.Tensor) -> tf.Tensor:
         return self.network(s)

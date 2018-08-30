@@ -6,6 +6,7 @@ import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
+from mujoco import MujocoError, ObjType
 
 
 class MujocoEnv:
@@ -36,7 +37,7 @@ class MujocoEnv:
             if not record_path:
                 record_path = Path('/tmp/training-video')
             if not image_dimensions:
-                image_dimensions = (400, 400)
+                image_dimensions = (800, 800)
             if not record_freq:
                 record_freq = 20
 

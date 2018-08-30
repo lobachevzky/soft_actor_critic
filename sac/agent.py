@@ -176,6 +176,10 @@ class AbstractAgent:
             actions = self.sess.run(self.A_max_likelihood, feed_dict={self.O1: o1})
         return actions[0]
 
+    def pi_network(self, o: tf.Tensor) -> NetworkOutput:
+        with tf.variable_scope('pi'):
+            return self.network(o)
+
     def q_network(self, s: tf.Tensor, a: tf.Tensor, name: str,
                   reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):

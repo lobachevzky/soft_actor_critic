@@ -264,12 +264,11 @@ class HindsightTrainer(Trainer):
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
         return
-        self.buffer.extend(
-            self.hindsight_env.recompute_trajectory(
-                self._trajectory(), final_step=self.buffer[-1]))
-        if self.n_goals - 1 and self.time_steps() > 0:
-            final_indexes = np.random.randint(
-                1, self.time_steps(), size=self.n_goals - 1) - self.time_steps()
+        if self.time_steps() > 0:
+            new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
+            self.buffer.append(new_trajectory)
+        if self.n_goals - 1 and self.time_steps() > 1:
+            final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
             for final_state in self.buffer[final_indexes]:

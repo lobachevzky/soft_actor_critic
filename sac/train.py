@@ -268,7 +268,6 @@ class HindsightTrainer(Trainer):
 
     def add_hindsight_trajectories(self) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        return
         if self.time_steps() > 0:
             new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
             self.buffer.append(new_trajectory)

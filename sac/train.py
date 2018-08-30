@@ -13,14 +13,15 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess
+from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize, normalize
 
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, num_train_steps: int, logdir: str, save_path: str,
-                 load_path: str, render: bool, sess: tf.Session = None, **kwargs):
-        env.reset()
+                 load_path: str, render: bool, sess: tf.Session = None,
+                 preprocess_func=None, **kwargs):
+        obs = env.reset()
 
         if seed is not None:
             np.random.seed(seed)
@@ -54,7 +55,13 @@ class Trainer:
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
-        self.preprocess_obs = self.env.preprocess_obs
+        self.preprocess_func = preprocess_func
+        if preprocess_func is None and not isinstance(obs, np.ndarray):
+            try:
+                self.preprocess_func = unwrap_env(
+                    env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
+            except RuntimeError:
+                self.preprocess_func = vectorize
 
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
@@ -196,6 +203,14 @@ class Trainer:
                 a=sample.a[:, -1],
                 r=sample.r[:, -1],
                 t=sample.t[:, -1])
+
+    def preprocess_obs(self, obs, shape: tuple = None):
+        if self.preprocess_func is not None:
+            obs = self.preprocess_func(obs, shape)
+        return normalize(
+            vector=obs,
+            low=self.env.observation_space.low,
+            high=self.env.observation_space.high)
 
 
 class TrajectoryTrainer(Trainer):

@@ -119,8 +119,8 @@ class AbstractAgent:
                     for (xbar, x) in zip(xi_bar, xi)
                 ]
                 self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
-                self.check = tf.add_check_numerics_ops()
-                self.entropy = self.compute_entropy()
+                # self.check = tf.add_check_numerics_ops()
+                self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
                 # ensure that xi and xi_bar are the same at initialization
 
             sess.run(tf.global_variables_initializer())
@@ -130,6 +130,10 @@ class AbstractAgent:
 
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
+
+    @property
+    def seq_len(self):
+        return self._seq_len
 
     def train_step(self, step: Step, feed_dict: dict = None) -> dict:
         if feed_dict is None:

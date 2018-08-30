@@ -164,12 +164,16 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
                 cheat_prob=cheat_prob,
                 steps_per_action=steps_per_action,
                 fixed_block=fixed_block,
+                randomize_pose=randomize_pose,
                 min_lift_height=min_lift_height,
-                render_freq=render_freq,
-                record=record,
                 xml_filepath=temp_path,
                 block_xrange=block_xrange,
                 block_yrange=block_yrange,
+                render_freq=render_freq,
+                record=record,
+                record_path=record_path,
+                record_freq=record_freq,
+                image_dimensions=image_dims,
             )))
     # if record_dir:
     #     env = Monitor(

@@ -1,16 +1,21 @@
 import itertools
 import time
-from collections import Counter, namedtuple
-from typing import Iterable, Optional, Tuple
+from collections import Counter, deque, namedtuple
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
 import tensorflow as tf
 from gym import Wrapper, spaces
+from gym.spaces import Box
 
-from environments.hindsight_wrapper import HindsightWrapper
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
+                                               Hierarchical,
+                                               HierarchicalAgents,
+                                               HierarchicalWrapper)
+from environments.hindsight_wrapper import HindsightWrapper, Observation
 from environments.multi_task import MultiTaskEnv
-from sac.agent import AbstractAgent
+from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize

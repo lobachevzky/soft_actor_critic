@@ -127,6 +127,7 @@ class LiftEnv(MujocoEnv):
                 except RuntimeError:
                     pass
             return np.array(base_qvel)
+
         return get_qvels(['slide_x', 'slide_x'])
 
     def _get_obs(self):
@@ -139,21 +140,20 @@ class LiftEnv(MujocoEnv):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
 
-    def at_goal(self):
+    def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
         # return False
-        return self.at_goal()
+        return self._is_successful()
 
     def compute_reward(self):
-        if self.at_goal():
+        if self._is_successful():
             return 1
         else:
             return 0
 
     def step(self, action):
-        # action = np.array([1, 1, 0, 0, 0, 0])
         action = np.clip(action, self.action_space.low, self.action_space.high)
 
         mirrored = 'hand_l_proximal_motor'

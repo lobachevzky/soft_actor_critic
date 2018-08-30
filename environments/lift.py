@@ -1,10 +1,11 @@
 import random
+from collections import namedtuple
 
 import numpy as np
 from gym import spaces
+from mujoco import ObjType
 
 from environments.mujoco import MujocoEnv
-from mujoco import ObjType
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -45,6 +46,7 @@ class LiftEnv(MujocoEnv):
                  fixed_block=False,
                  min_lift_height=.02,
                  cheat_prob=0,
+                 obs_type='base-qvel',
                  **kwargs):
         if block_xrange is None:
             block_xrange = (0, 0)
@@ -52,22 +54,23 @@ class LiftEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
-        self.grip = 0
-        self.min_lift_height = min_lift_height
-
+        self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
         self._block_name = 'block1'
+        self.min_lift_height = min_lift_height
 
         super().__init__(**kwargs)
 
-        self.reward_range = 0, 1
         self.initial_qpos = np.copy(self.init_qpos)
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        self.observation_space = self._get_obs_space()
+        obs_size = sum(map(np.size, self._get_obs()))
+        assert obs_size != 0
+        self.observation_space = spaces.Box(
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -91,6 +94,9 @@ class LiftEnv(MujocoEnv):
             self.init_qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         return self.init_qpos
+
+    def _set_new_goal(self):
+        pass
 
     def _get_obs_space(self):
         qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
@@ -138,9 +144,8 @@ class LiftEnv(MujocoEnv):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
-        EPSILON = .01
-        below_table = self.block_pos()[2] < self.initial_qpos[2] - EPSILON
-        return below_table or self._is_successful()
+        # return False
+        return self._is_successful()
 
     def compute_reward(self):
         if self._is_successful():

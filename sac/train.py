@@ -238,9 +238,9 @@ class Trainer:
             # leave state as dummy value for non-recurrent
             shape = [self.batch_size, -1]
             return Step(
-                o1=self.preprocess_obs(sample.o1, shape=[self.batch_size, -1]),
-                o2=self.preprocess_obs(sample.o2, shape=[self.batch_size, -1]),
-                # s=sample.s,
+                o1=self.preprocess_obs(sample.o1, shape=shape),
+                o2=self.preprocess_obs(sample.o2, shape=shape),
+                s=sample.s,
                 a=sample.a,
                 r=sample.r,
                 t=sample.t)

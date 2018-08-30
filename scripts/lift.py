@@ -18,6 +18,30 @@ from sac.train import HindsightTrainer, Trainer
 from sac.utils import parse_double
 from scripts.gym_env import check_probability
 
+
+def put_in_xml_setter(ctx, param, value: str):
+    setters = [XMLSetter(*v.split(',')) for v in value]
+    mirroring = [XMLSetter(p.replace('_l_', '_r_'), v)
+                 for p, v in setters if '_l_' in p] \
+                + [XMLSetter(p.replace('_r_', '_l_'), v)
+                   for p, v in setters if '_r_' in p]
+    return [s._replace(path=s.path) for s in setters + mirroring]
+
+
+def env_wrapper(func):
+    @wraps(func)
+    def _wrapper(render, render_freq, set_xml, use_dof, xml_file, **kwargs):
+        if render and not render_freq:
+            render_freq = 20
+        xml_filepath = Path(
+            Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
+        with mutate_xml(
+                changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+            return func(temp_path=temp_path, render_freq=render_freq, **kwargs)
+
+    return _wrapper
+
+
 XMLSetter = namedtuple('XMLSetter', 'path value')
 
 
@@ -80,20 +104,6 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
             f.close()
 
 
-def put_in_xml_setter(ctx, param, value: str):
-    setters = [XMLSetter(*v.split(',')) for v in value]
-    mirroring = [XMLSetter(p.replace('_l_', '_r_'), v)
-                 for p, v in setters if '_l_' in p] \
-                + [XMLSetter(p.replace('_r_', '_l_'), v)
-                   for p, v in setters if '_r_' in p]
-    return [s._replace(path=PurePath(s.path)) for s in setters + mirroring]
-
-
-def parse_range(ctx, param, string):
-    low, high = map(float, string.split(','))
-    return low, high
-
-
 @click.command()
 @click.option('--seed', default=0, type=int)
 @click.option('--device-num', default=0, type=int)
@@ -127,8 +137,8 @@ def parse_range(ctx, param, string):
 @click.option('--add-qvel', 'obs_type', flag_value='qvel')
 @click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
 @click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
-@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_range)
-@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_range)
+@click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
+@click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
 @click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
 @click.option(

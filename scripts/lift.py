@@ -156,9 +156,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
         steps_per_action, logdir, save_path, load_path, render_freq, n_goals,
         block_xrange, seq_len, block_yrange, agent, record, randomize_pose, image_dims,
         record_freq, record_path, hindsight, temp_path):
-    env = LiftHindsightWrapper(
-        geofence=hindsight_geofence,
-        env=TimeLimit(
+    env = TimeLimit(
             max_episode_steps=max_steps,
             env=LiftEnv(
                 cheat_prob=cheat_prob,
@@ -174,30 +172,32 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
                 record_path=record_path,
                 record_freq=record_freq,
                 image_dimensions=image_dims,
-            )))
-    # if record_dir:
-    #     env = Monitor(
-    #         env=env,
-    #         directory=str(record_dir),
-    #         force=True,
-    #     )
-    HindsightTrainer(
-        env=env,
-        seq_len=seq_len,
-        base_agent=agent,
-        seed=seed,
-        device_num=device_num,
-        n_goals=n_goals,
-        buffer_size=buffer_size,
-        activation=activation,
-        n_layers=n_layers,
-        layer_size=layer_size,
-        learning_rate=learning_rate,
-        reward_scale=reward_scale,
-        entropy_scale=entropy_scale,
-        grad_clip=grad_clip if grad_clip > 0 else None,
-        batch_size=batch_size,
-        num_train_steps=num_train_steps).train(
+            ))
+
+    kwargs = dict(
+            seq_len=seq_len,
+            base_agent=agent,
+            seed=seed,
+            device_num=device_num,
+            buffer_size=buffer_size,
+            activation=activation,
+            n_layers=n_layers,
+            layer_size=layer_size,
+            learning_rate=learning_rate,
+            reward_scale=reward_scale,
+            entropy_scale=entropy_scale,
+            grad_clip=grad_clip if grad_clip > 0 else None,
+            batch_size=batch_size,
+            num_train_steps=num_train_steps)
+
+    if hindsight_geofence:
+        trainer = HindsightTrainer(
+            env=LiftHindsightWrapper(env=env, geofence=hindsight_geofence),
+            n_goals=n_goals,
+            **kwargs)
+    else:
+        trainer = Trainer(env=env, **kwargs)
+    trainer.train(
             load_path=load_path,
             logdir=logdir,
             render=False,

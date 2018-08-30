@@ -136,13 +136,9 @@ class Trainer:
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
-        if render:
-            self.env.render()
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
-            o2, r, t, info = self.step(a)
-            if render:
-                self.env.render()
+            o2, r, t, info = self.step(a, render)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -209,8 +205,10 @@ class Trainer:
     def reset(self) -> Obs:
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
+    def step(self, action: np.ndarray, render: bool) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
+        if render:
+            self.env.render()
         if type(self.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))

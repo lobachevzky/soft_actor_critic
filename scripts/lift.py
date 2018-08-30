@@ -138,11 +138,12 @@ def parse_range(ctx, param, string):
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
-def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
-        seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
+def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed,
+        device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
-        xml_file, set_xml, use_dof, obs_type, block_xrange, seq_len, block_yrange, agent, record):
+        xml_file, set_xml, use_dof, obs_type, block_xrange, seq_len, block_yrange, agent,
+        record):
     print('Obs type:', obs_type)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(
@@ -186,11 +187,11 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
             grad_clip=grad_clip if grad_clip > 0 else None,
             batch_size=batch_size,
             num_train_steps=num_train_steps).train(
-            load_path=load_path,
-            logdir=logdir,
-            render=False,
-            save_path=save_path,
-        )
+                load_path=load_path,
+                logdir=logdir,
+                render=False,
+                save_path=save_path,
+            )
 
 
 if __name__ == '__main__':

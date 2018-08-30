@@ -45,8 +45,6 @@ Goal = namedtuple('Goal', 'gripper block')
 
 class LiftEnv(MujocoEnv):
     def __init__(self,
-                 xml_filepath,
-                 steps_per_action,
                  block_xrange,
                  block_yrange,
                  fixed_block=False,
@@ -55,15 +53,12 @@ class LiftEnv(MujocoEnv):
                  neg_reward=False,
                  discrete=False,
                  cheat_prob=0,
-                 render_freq=0,
-                 record=False,
                  isolate_movements=False,
-                 obs_type=None):
+                 obs_type=None,
+                 **kwargs):
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
         self._obs_type = obs_type
-        if discrete:
-            xml_filepath = Path(__file__).parent, 'models', 'discrete.xml'
         self._cheated = False
         self._cheat_prob = cheat_prob
         self.grip = 0
@@ -76,13 +71,7 @@ class LiftEnv(MujocoEnv):
         self._prev_action = None
         self._neg_reward = neg_reward
 
-        super().__init__(
-            xml_filepath=xml_filepath,
-            steps_per_action=steps_per_action,
-            image_dimensions=None,
-            render_freq=render_freq,
-            record=record,
-        )
+        super().__init__(**kwargs)
 
         self.initial_qpos = np.copy(self.init_qpos)
         self.initial_block_pos = np.copy(self.block_pos())

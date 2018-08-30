@@ -6,9 +6,9 @@ import numpy as np
 import tensorflow as tf
 
 from sac.networks import mlp
-from sac.utils import Step
+from sac.utils import Step, ArrayLike
 
-ArrayLike = Union[np.ndarray, list]
+NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 
 class AbstractAgent:

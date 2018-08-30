@@ -257,12 +257,7 @@ class Trainer:
 class HindsightTrainer(Trainer):
     def __init__(self, env: Wrapper, n_goals: int, **kwargs):
         self.n_goals = n_goals
-        self.hindsight_env = env
-        while not isinstance(self.hindsight_env, HindsightWrapper):
-            try:
-                self.hindsight_env = self.hindsight_env.env
-            except AttributeError:
-                raise RuntimeError(f"env {env} must include HindsightWrapper.")
+        self.hindsight_env = unwrap_env(env, lambda e: isinstance(e, HindsightWrapper))
         assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 

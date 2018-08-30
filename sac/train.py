@@ -145,14 +145,14 @@ class Trainer:
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                self.episode_count.update(Counter(info['log count']))
+                episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
+            episode_count.update(Counter(reward=r, time_steps=1))
             self.add_to_buffer(Step(o1=o1, a=a, r=r, o2=o2, t=t))
 
-            if self.buffer_full() and perform_updates:
+            if perform_updates:
                 episode_mean.update(self.perform_update())
-            episode_count.update(Counter(reward=r, time_steps=1))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             tick = time.time()

@@ -127,16 +127,17 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
+@click.option('--randomize-pose', is_flag=True)
 @click.option('--logdir', default=None, type=str)
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
+@click.option('--image-dims', type=str, callback=parse_double)
 @click.option('--render-freq', type=int, default=0)
+@click.option('--render', is_flag=True)
+@click.option('--record-freq', type=int, default=0)
+@click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
-@click.option('--record-dir', type=Path)
-@click.option('--no-qvel', 'obs_type', flag_value='no-qvel')
-@click.option('--add-qvel', 'obs_type', flag_value='qvel')
-@click.option('--add-base-qvel', 'obs_type', flag_value='base-qvel', default=True)
-@click.option('--add-robot-qvel', 'obs_type', flag_value='robot-qvel')
+@click.option('--hindsight', is_flag=True)
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -151,10 +152,9 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed,
         device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
-        steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
-        xml_file, set_xml, use_dof, obs_type, block_xrange, seq_len, block_yrange, agent,
-        record):
-    print('Obs type:', obs_type)
+        steps_per_action, logdir, save_path, load_path, render_freq, n_goals,
+        xml_file, set_xml, use_dof, block_xrange, seq_len, block_yrange, agent,
+        record, randomize_pose, image_dims, render, record_freq, record_path, hindsight):
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(
             changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
@@ -170,16 +170,15 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
                     render_freq=render_freq,
                     record=record,
                     xml_filepath=temp_path,
-                    obs_type=obs_type,
                     block_xrange=block_xrange,
                     block_yrange=block_yrange,
                 )))
-        if record_dir:
-            env = Monitor(
-                env=env,
-                directory=str(record_dir),
-                force=True,
-            )
+        # if record_dir:
+        #     env = Monitor(
+        #         env=env,
+        #         directory=str(record_dir),
+        #         force=True,
+        #     )
         HindsightTrainer(
             env=env,
             seq_len=seq_len,

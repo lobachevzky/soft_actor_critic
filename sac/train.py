@@ -13,13 +13,13 @@ from environments.multi_task import MultiTaskEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step
+from sac.utils import Obs, Step, create_sess
 
 
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, num_train_steps: int, logdir: str, save_path: str,
-                 load_path: str, render: bool, **kwargs):
+                 load_path: str, render: bool, sess: tf.Session = None, **kwargs):
 
         if seed is not None:
             np.random.seed(seed)
@@ -31,16 +31,17 @@ class Trainer:
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
         self.save_path = save_path
-        self.agent = agent = self.build_agent(**kwargs)
+        self.sess = sess or create_sess()
+        self.agent = agent = self.build_agent(sess=self.sess, **kwargs)
         self.seq_len = None
 
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
-            saver.restore(agent.sess, load_path)
+            saver.restore(self.sess, load_path)
             print("Model restored from", load_path)
         if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=agent.sess.graph)
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.sess.graph)
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
@@ -50,7 +51,7 @@ class Trainer:
             if save_path and episodes % 25 == 1:
                 _save_path = save_path.replace('<episode>', str(episodes))
                 print("model saved in path:", saver.save(
-                    agent.sess, save_path=_save_path))
+                    self.sess, save_path=_save_path))
             self.episode_count = self.run_episode(
                 s1=self.reset(),
                 render=render,

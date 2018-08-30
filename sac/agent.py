@@ -11,14 +11,25 @@ NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 
 class AbstractAgent:
-    def __init__(self, s_shape: Iterable, a_shape: Sequence, activation: Callable,
-                 reward_scale: float, n_layers: int, layer_size: int,
-                 learning_rate: float, grad_clip: float, device_num: int) -> None:
+    def __init__(self,
+                 sess: tf.Session,
+                 s_shape: Iterable,
+                 a_shape: Sequence,
+                 activation: Callable,
+                 reward_scale: float,
+                 n_layers: int,
+                 layer_size: int,
+                 learning_rate: float,
+                 grad_clip: float,
+                 device_num: int,
+                 reuse=False,
+                 name='agent') -> None:
 
+        self.reward_scale = reward_scale
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
-        self.reward_scale = reward_scale
+        self.sess = sess
 
         with tf.device('/gpu:' + str(device_num)):
             self.S1 = tf.placeholder(tf.float32, [None] + list(s_shape), name='S1')
@@ -101,10 +112,6 @@ class AbstractAgent:
                 self.entropy = self.compute_entropy()
                 # ensure that xi and xi_bar are the same at initialization
 
-            config = tf.ConfigProto(allow_soft_placement=True)
-            config.gpu_options.allow_growth = True
-            config.inter_op_parallelism_threads = 1
-            self.sess = sess = tf.Session(config=config)
             sess.run(tf.global_variables_initializer())
 
             # ensure that xi and xi_bar are the same at initialization

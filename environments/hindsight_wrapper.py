@@ -103,7 +103,6 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
 class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
-        env.reset()
         super().__init__(env)
         self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self._geofence = geofence

@@ -20,6 +20,7 @@ class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, num_train_steps: int, logdir: str, save_path: str,
                  load_path: str, render: bool, sess: tf.Session = None, **kwargs):
+        env.reset()
 
         if seed is not None:
             np.random.seed(seed)
@@ -52,6 +53,7 @@ class Trainer:
 
         self.count = count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
+
         self.preprocess_obs = self.env.preprocess_obs
 
         for episodes in itertools.count(1):

@@ -37,7 +37,7 @@ class Trainer:
 
         self.agent = agent = self.build_agent(
             sess=self.sess,
-            batch_size=batch_size,
+            batch_size=None,
             seq_len=None,
             **kwargs)
         self.seq_len = None

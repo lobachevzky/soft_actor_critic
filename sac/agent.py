@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
-from typing import Callable, Iterable, Sequence, Union
+from typing import Callable, Iterable, Sequence, Union, List
 
 import numpy as np
 import tensorflow as tf
@@ -32,14 +32,21 @@ class AbstractAgent:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
+        self._seq_len = seq_len
+        self.initial_state = None
         self.sess = sess
 
-        with tf.device('/gpu:' + str(device_num)):
-            self.O1 = tf.placeholder(tf.float32, [None] + list(o_shape), name='S1')
-            self.O2 = tf.placeholder(tf.float32, [None] + list(o_shape), name='S2')
-            self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
-            self.R = R = tf.placeholder(tf.float32, [None], name='R')
-            self.T = T = tf.placeholder(tf.float32, [None], name='T')
+        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
+            seq_dim = [batch_size]
+            if self.seq_len is not None:
+                seq_dim = [batch_size, self.seq_len]
+
+            self.O1 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O1')
+            self.O2 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O2')
+            self.A = A = tf.placeholder(
+                tf.float32, [batch_size] + list(a_shape), name='A')
+            self.R = R = tf.placeholder(tf.float32, [batch_size], name='R')
+            self.T = T = tf.placeholder(tf.float32, [batch_size], name='T')
             gamma = 0.99
             tau = 0.01
 
@@ -81,10 +88,11 @@ class AbstractAgent:
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
-            phi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='pi/')
-            theta = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='Q/')
-            xi = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V/')
-            xi_bar = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='V_bar/')
+            def get_variables(var_name: str) -> List[tf.Variable]:
+                return tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/{var_name}/')
+
+            phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
             def train_op(loss, var_list, dependency):
                 with tf.control_dependencies([dependency]):

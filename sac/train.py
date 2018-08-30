@@ -140,7 +140,7 @@ class Trainer:
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                episode_count.update(Counter(info['log count']))
+                self.episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
             self.add_to_buffer(Step(o1=o1, a=a, r=r, o2=o2, t=t))

@@ -216,20 +216,3 @@ class AbstractAgent:
     @abstractmethod
     def entropy_from_params(self, params: tf.Tensor) -> tf.Tensor:
         pass
-
-    def compute_entropy(self, reuse: bool = None) -> tf.Tensor:
-        with tf.variable_scope('entropy', reuse=reuse):
-            return tf.reduce_mean(self.entropy_from_params(self.parameters))
-
-    def pi_network_log_prob(self, a: tf.Tensor, name: str,
-                            reuse: bool = None) -> tf.Tensor:
-        with tf.variable_scope(name, reuse=reuse):
-            return self.policy_parameters_to_log_prob(a, self.parameters)
-
-    def sample_pi_network(self, name: str, reuse: bool = None) -> tf.Tensor:
-        with tf.variable_scope(name, reuse=reuse):
-            return self.policy_parameters_to_sample(self.parameters)
-
-    def get_best_action(self, name: str, reuse: bool = None) -> tf.Tensor:
-        with tf.variable_scope(name, reuse=reuse):
-            return self.policy_parameters_to_max_likelihood_action(self.parameters)

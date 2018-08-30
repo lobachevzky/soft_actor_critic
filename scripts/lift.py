@@ -149,58 +149,56 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
         'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
+@env_wrapper
 def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed,
         device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, n_goals,
-        xml_file, set_xml, use_dof, block_xrange, seq_len, block_yrange, agent,
-        record, randomize_pose, image_dims, render, record_freq, record_path, hindsight):
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
-    with mutate_xml(
-            changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-        env = LiftHindsightWrapper(
-            geofence=hindsight_geofence,
-            env=TimeLimit(
-                max_episode_steps=max_steps,
-                env=LiftEnv(
-                    cheat_prob=cheat_prob,
-                    steps_per_action=steps_per_action,
-                    fixed_block=fixed_block,
-                    min_lift_height=min_lift_height,
-                    render_freq=render_freq,
-                    record=record,
-                    xml_filepath=temp_path,
-                    block_xrange=block_xrange,
-                    block_yrange=block_yrange,
-                )))
-        # if record_dir:
-        #     env = Monitor(
-        #         env=env,
-        #         directory=str(record_dir),
-        #         force=True,
-        #     )
-        HindsightTrainer(
-            env=env,
-            seq_len=seq_len,
-            base_agent=agent,
-            seed=seed,
-            device_num=device_num,
-            n_goals=n_goals,
-            buffer_size=buffer_size,
-            activation=activation,
-            n_layers=n_layers,
-            layer_size=layer_size,
-            learning_rate=learning_rate,
-            reward_scale=reward_scale,
-            entropy_scale=entropy_scale,
-            grad_clip=grad_clip if grad_clip > 0 else None,
-            batch_size=batch_size,
-            num_train_steps=num_train_steps).train(
-                load_path=load_path,
-                logdir=logdir,
-                render=False,
-                save_path=save_path,
-            )
+        block_xrange, seq_len, block_yrange, agent, record, randomize_pose, image_dims,
+        record_freq, record_path, hindsight, temp_path):
+    env = LiftHindsightWrapper(
+        geofence=hindsight_geofence,
+        env=TimeLimit(
+            max_episode_steps=max_steps,
+            env=LiftEnv(
+                cheat_prob=cheat_prob,
+                steps_per_action=steps_per_action,
+                fixed_block=fixed_block,
+                min_lift_height=min_lift_height,
+                render_freq=render_freq,
+                record=record,
+                xml_filepath=temp_path,
+                block_xrange=block_xrange,
+                block_yrange=block_yrange,
+            )))
+    # if record_dir:
+    #     env = Monitor(
+    #         env=env,
+    #         directory=str(record_dir),
+    #         force=True,
+    #     )
+    HindsightTrainer(
+        env=env,
+        seq_len=seq_len,
+        base_agent=agent,
+        seed=seed,
+        device_num=device_num,
+        n_goals=n_goals,
+        buffer_size=buffer_size,
+        activation=activation,
+        n_layers=n_layers,
+        layer_size=layer_size,
+        learning_rate=learning_rate,
+        reward_scale=reward_scale,
+        entropy_scale=entropy_scale,
+        grad_clip=grad_clip if grad_clip > 0 else None,
+        batch_size=batch_size,
+        num_train_steps=num_train_steps).train(
+            load_path=load_path,
+            logdir=logdir,
+            render=False,
+            save_path=save_path,
+        )
 
 
 if __name__ == '__main__':

@@ -119,7 +119,7 @@ class LiftEnv(MujocoEnv):
             ]
         return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
 
-    def _get_obs(self):
+    def _qvel_obs(self):
         def get_qvels(joints):
             base_qvel = []
             for joint in joints:
@@ -128,21 +128,10 @@ class LiftEnv(MujocoEnv):
                 except RuntimeError:
                     pass
             return np.array(base_qvel)
+        return get_qvels(['slide_x', 'slide_x'])
 
-        if self._obs_type == 'qvel':
-            qvel = self.sim.qvel
-
-        elif self._obs_type == 'robot-qvel':
-            qvel = get_qvels([
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint', 'hand_r_proximal_joint'
-            ])
-        elif self._obs_type == 'base-qvel':
-            qvel = get_qvels(['slide_x', 'slide_x'])
-        else:
-            qvel = []
-
-        return np.concatenate([self.sim.qpos, qvel])
+    def _get_obs(self):
+        return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._goal_block_name)

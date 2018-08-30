@@ -1,4 +1,4 @@
-<mujoco model="world">
+<mujoco model="hsr">
     <option impratio="2.5" timestep="0.002"/>
     <default>
         <default class="wall">
@@ -38,6 +38,7 @@
     <option cone="elliptic"/>
     <visual>
         <map znear=".03"/>
+        <global offwidth="1000" offheight="1000"/>
     </visual>
     <compiler coordinate="local" angle="degree" meshdir="../hsr_meshes/meshes/" inertiafromgeom="true"/>
     <size njmax="500" nconmax="100"/>

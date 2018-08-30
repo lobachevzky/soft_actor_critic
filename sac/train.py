@@ -118,6 +118,18 @@ class Trainer:
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
 
+    def trajectory(self, final_index=None) -> Optional[Step]:
+        if final_index is None:
+            final_index = 0  # points to current time step
+        else:
+            final_index -= self.time_steps()  # relative to start of episode
+        if self.buffer.empty:
+            return None
+        return Step(*self.buffer[-self.time_steps():final_index])
+
+    def time_steps(self):
+        return self.episode_count['time_steps']
+
     def run_episode(self, o1, perform_updates, render):
         episode_count = Counter()
         episode_mean = Counter()
@@ -152,6 +164,22 @@ class Trainer:
                 for k in episode_mean:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
+
+    def perform_update(self):
+        counter = Counter()
+        if self.buffer_full():
+            for i in range(self.num_train_steps):
+                step = self.agents.act.train_step(self.sample_buffer())
+                counter.update(
+                    Counter({
+                        k.replace(' ', '_'): v
+                        for k, v in step.items() if np.isscalar(v)
+                    }))
+        return counter
+
+    def get_actions(self, o1, s):
+        return self.agents.act.get_actions(
+            self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
 
     def build_agent(self,
                     base_agent: AbstractAgent,

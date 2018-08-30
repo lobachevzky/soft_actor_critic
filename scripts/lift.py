@@ -94,6 +94,7 @@ def parse_range(ctx, param, string):
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
+@click.option('--seq-len', default=8, type=int)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=2e-4, type=float)
@@ -136,8 +137,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
         seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, record_dir, n_goals,
-        xml_file, set_xml, use_dof, obs_type, block_xrange,
-        block_yrange, agent, record):
+        xml_file, set_xml, use_dof, obs_type, block_xrange, seq_len, block_yrange, agent, record):
     print('Obs type:', obs_type)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
     with mutate_xml(
@@ -166,6 +166,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
             )
         HindsightTrainer(
             env=env,
+            seq_len=seq_len,
             base_agent=agent,
             seed=seed,
             device_num=device_num,
@@ -179,11 +180,12 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence,
             entropy_scale=entropy_scale,
             grad_clip=grad_clip if grad_clip > 0 else None,
             batch_size=batch_size,
-            num_train_steps=num_train_steps,
-            logdir=logdir,
-            save_path=save_path,
+            num_train_steps=num_train_steps).train(
             load_path=load_path,
-            render=False)  # because render is handled inside env
+            logdir=logdir,
+            render=False,
+            save_path=save_path,
+        )
 
 
 if __name__ == '__main__':

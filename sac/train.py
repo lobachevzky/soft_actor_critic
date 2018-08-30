@@ -17,10 +17,19 @@ from sac.utils import Obs, Step, create_sess, unwrap_env, vectorize, normalize
 
 
 class Trainer:
-    def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
-                 batch_size: int, num_train_steps: int, logdir: str, save_path: str,
-                 load_path: str, render: bool, sess: tf.Session = None,
-                 preprocess_func=None, **kwargs):
+    def __init__(self,
+                 env: gym.Env,
+                 seed: Optional[int],
+                 buffer_size: int,
+                 batch_size: int,
+                 seq_len: int,
+                 num_train_steps: int,
+                 sess: tf.Session = None,
+                 preprocess_func=None,
+                 action_space=None,
+                 observation_space=None,
+                 **kwargs):
+
         obs = env.reset()
 
         if seed is not None:
@@ -32,7 +41,6 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
-        self.save_path = save_path
         self.sess = sess or create_sess()
         self.action_space = env.action_space
         self.observation_space = env.observation_space
@@ -44,15 +52,7 @@ class Trainer:
             **kwargs)
         self.seq_len = None
 
-        saver = tf.train.Saver()
-        tb_writer = None
-        if load_path:
-            saver.restore(self.sess, load_path)
-            print("Model restored from", load_path)
-        if logdir:
-            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.sess.graph)
-
-        self.count = count = Counter(reward=0, episode=0, time_steps=0)
+        self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
         self.preprocess_func = preprocess_func
@@ -63,22 +63,33 @@ class Trainer:
             except RuntimeError:
                 self.preprocess_func = vectorize
 
+        # self.train(load_path, logdir, render, save_path)
+
+    def train(self, load_path, logdir, render, save_path):
+        saver = tf.train.Saver()
+        tb_writer = None
+        if load_path:
+            saver.restore(self.sess, load_path)
+            print("Model restored from", load_path)
+        if logdir:
+            tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.sess.graph)
+
         for episodes in itertools.count(1):
             if save_path and episodes % 25 == 1:
-                _save_path = save_path.replace('<episode>', str(episodes))
-                print("model saved in path:", saver.save(
-                    self.sess, save_path=_save_path))
+                print("model saved in path:", saver.save(self.sess, save_path=save_path))
+                saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
+
             episode_reward = self.episode_count['reward']
             episode_timesteps = self.episode_count['timesteps']
-            count.update(
+            self.count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=episode_timesteps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
-                count['time_steps'], episode_reward))
+                self.count['time_steps'], episode_reward))
             if logdir:
                 summary = tf.Summary()
                 if self.is_eval_period():
@@ -87,7 +98,7 @@ class Trainer:
                     for k in self.episode_count:
                         summary.value.add(tag=k.replace('_', ' '),
                                           simple_value=self.episode_count[k])
-                tb_writer.add_summary(summary, count['time_steps'])
+                tb_writer.add_summary(summary, self.count['time_steps'])
                 tb_writer.flush()
 
     def is_eval_period(self):
@@ -207,10 +218,11 @@ class Trainer:
     def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
-        return normalize(
-            vector=obs,
-            low=self.env.observation_space.low,
-            high=self.env.observation_space.high)
+        return obs
+        # return normalize(
+        #     vector=obs,
+        #     low=self.env.observation_space.low,
+        #     high=self.env.observation_space.high)
 
 
 class TrajectoryTrainer(Trainer):

@@ -5,28 +5,10 @@ from typing import Callable, Iterable, Sequence, Union
 import numpy as np
 import tensorflow as tf
 
+from sac.networks import mlp
 from sac.utils import Step
 
-
-def mlp(inputs, layer_size, n_layers, activation):
-    for i in range(n_layers):
-        inputs = tf.layers.dense(inputs, layer_size, activation, name='fc' + str(i))
-    return inputs
-
-
 ArrayLike = Union[np.ndarray, list]
-
-TRAIN_VALUES = """\
-entropy
-soft_update_xi_bar
-V_loss
-Q_loss
-pi_loss
-V_grad
-Q_grad
-pi_grad\
-""".split('\n')
-TrainStep = namedtuple('TrainStep', TRAIN_VALUES)
 
 
 class AbstractAgent:

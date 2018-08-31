@@ -3,17 +3,17 @@ import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
 
 import click
 import tensorflow as tf
-from gym.wrappers import TimeLimit, Monitor
+from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
-from sac.networks import LstmAgent, MlpAgent
+from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 from sac.utils import parse_double
 from scripts.gym_env import check_probability

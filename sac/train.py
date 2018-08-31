@@ -37,8 +37,6 @@ class Trainer:
                  observation_space=None,
                  **kwargs):
 
-        obs = env.reset()
-
         if seed is not None:
             np.random.seed(seed)
             tf.set_random_seed(seed)
@@ -61,19 +59,19 @@ class Trainer:
                 action_space=action_space,
                 observation_space=observation_space,
                 **kwargs),
-            train=None)
-        # train=self.build_agent(
-        #     sess=self.sess,
-        #     batch_size=batch_size,
-        #     seq_len=seq_len,
-        #     reuse=True,
-        #     action_space=action_space,
-        #     observation_space=observation_space,
-        #     **kwargs))
+            train=self.build_agent(
+                sess=self.sess,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                action_space=action_space,
+                observation_space=observation_space,
+                **kwargs))
         self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
 
+        obs = env.reset()
         self.preprocess_func = preprocess_func
         if preprocess_func is None and not isinstance(obs, np.ndarray):
             try:
@@ -149,7 +147,7 @@ class Trainer:
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
             episode_count.update(Counter(reward=r, time_steps=1))
-            self.add_to_buffer(Step(o1=o1, a=a, r=r, o2=o2, t=t))
+            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
 
             if perform_updates:
                 episode_mean.update(self.perform_update())
@@ -224,11 +222,10 @@ class Trainer:
     def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
-        return obs
-        # return normalize(
-            # vector=obs,
-            # low=self.env.observation_space.low,
-            # high=self.env.observation_space.high)
+        return normalize(
+            vector=obs,
+            low=self.env.observation_space.low,
+            high=self.env.observation_space.high)
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -245,6 +242,7 @@ class Trainer:
             return Step(
                 o1=self.preprocess_obs(sample.o1, shape=shape),
                 o2=self.preprocess_obs(sample.o2, shape=shape),
+                s=sample.s,
                 a=sample.a,
                 r=sample.r,
                 t=sample.t)
@@ -254,6 +252,7 @@ class Trainer:
             return Step(
                 o1=self.preprocess_obs(sample.o1, shape=shape),
                 o2=self.preprocess_obs(sample.o2, shape=shape),
+                s=np.swapaxes(sample.s[:, -1], 0, 1),
                 a=sample.a[:, -1],
                 r=sample.r[:, -1],
                 t=sample.t[:, -1])

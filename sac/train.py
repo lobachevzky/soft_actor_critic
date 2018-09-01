@@ -101,8 +101,9 @@ class Trainer:
                 perform_updates=not self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
+            episode_time_steps = self.episode_count['time_steps']
             self.count.update(
-                Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
+                Counter(reward=episode_reward, episode=1, time_steps=episode_time_steps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 self.count['time_steps'], episode_reward))
@@ -112,27 +113,25 @@ class Trainer:
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
                     for k in self.episode_count:
-                        summary.value.add(tag=k, simple_value=self.episode_count[k])
+                        summary.value.add(tag=k.replace('_', ' '),
+                                          simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, self.count['time_steps'])
                 tb_writer.flush()
 
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
 
-    def trajectory(self, final_index=None) -> Optional[Step]:
+    def trajectory(self, time_steps: int, final_index=None) -> Optional[Step]:
         if final_index is None:
             final_index = 0  # points to current time step
         else:
-            final_index -= self.time_steps()  # relative to start of episode
+            final_index -= time_steps  # relative to start of episode
         if self.buffer.empty:
             return None
-        return Step(*self.buffer[-self.time_steps():final_index])
-
-    def time_steps(self):
-        return self.episode_count['time_steps']
+        return Step(*self.buffer[-time_steps:final_index])
 
     def run_episode(self, o1, perform_updates, render):
-        self.episode_count = Counter()
+        episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
@@ -142,10 +141,10 @@ class Trainer:
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                self.episode_count.update(Counter(info['log count']))
+                episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.episode_count.update(Counter(reward=r, time_steps=1))
+            episode_count.update(Counter(reward=r, time_steps=1))
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
 
             if perform_updates:
@@ -155,8 +154,8 @@ class Trainer:
             tick = time.time()
             if t:
                 for k in episode_mean:
-                    self.episode_count[k] = episode_mean[k] / float(time_steps)
-                return self.episode_count
+                    episode_count[k] = episode_mean[k] / float(time_steps)
+                return episode_count
 
     def perform_update(self):
         counter = Counter()
@@ -264,13 +263,13 @@ class HindsightTrainer(Trainer):
         assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
-    def add_hindsight_trajectories(self) -> None:
+    def add_hindsight_trajectories(self, time_steps: int) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
-        if self.time_steps() > 0:
-            new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
+        if time_steps > 0:
+            new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory(time_steps))
             self.buffer.append(new_trajectory)
-        if self.n_goals - 1 and self.time_steps() > 1:
-            final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
+        if self.n_goals - 1 and time_steps > 1:
+            final_indexes = np.random.randint(1, time_steps, size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:
@@ -279,7 +278,7 @@ class HindsightTrainer(Trainer):
                 self.buffer.append(new_traj)
 
     def reset(self) -> Obs:
-        self.add_hindsight_trajectories()
+        self.add_hindsight_trajectories(self.episode_count['time_steps'])
         return super().reset()
 
 
@@ -387,7 +386,7 @@ class HierarchicalTrainer(Trainer):
                 initial_state=0))
 
     def boss_turn(self):
-        return self.time_steps() % self.boss_act_freq == 0
+        return self.episode_count['time_steps'] % self.boss_act_freq == 0
 
     def get_actions(self, o1, s):
         # boss
@@ -421,7 +420,7 @@ class HierarchicalTrainer(Trainer):
             }
         }
 
-    def trajectory(self, final_index=None):
+    def trajectory(self, time_steps, final_index=None):
         raise NotImplemented
 
     def add_to_buffer(self, step: Step):

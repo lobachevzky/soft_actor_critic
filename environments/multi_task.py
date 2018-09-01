@@ -5,7 +5,6 @@ import numpy as np
 from gym import spaces
 
 from environments.lift import LiftEnv
-from environments.mujoco import distance_between
 
 Observation = namedtuple('Obs', 'observation goal')
 
@@ -35,7 +34,8 @@ class MultiTaskEnv(LiftEnv):
         self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
 
     def _is_successful(self):
-        return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
+        distance_to_goal = np.linalg.norm(self.goal - self.block_pos()[:2], axis=-1)
+        return distance_to_goal < self.geofence
 
     def _get_obs(self):
 

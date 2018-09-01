@@ -166,17 +166,6 @@ def quaternion2euler(w, x, y, z):
     return euler_x, euler_y, euler_z
 
 
-def distance_between(pos1, pos2):
-    return np.sqrt(np.sum(np.square(pos1 - pos2), axis=-1))
-
-
-def at_goal(pos, goal, geofence, verbose=False):
-    distance_to_goal = distance_between(pos, goal)
-    if verbose:
-        print(distance_to_goal)
-    return distance_to_goal < geofence
-
-
 def escaped(pos, world_upper_bound, world_lower_bound):
     # noinspection PyTypeChecker
     return np.any(pos > world_upper_bound) \

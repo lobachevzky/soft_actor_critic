@@ -38,7 +38,7 @@ class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrappe
         )
 
     def _achieved_goal(self):
-        return np.copy(self.pap_env.block_pos()[:2])
+        return np.copy(self.lift_env.block_pos()[:2])
 
     def _desired_goal(self):
         return self.multi_task_env.goal

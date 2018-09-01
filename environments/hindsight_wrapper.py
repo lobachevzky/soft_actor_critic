@@ -1,7 +1,6 @@
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
-from typing import Optional
 
 import gym
 import numpy as np
@@ -9,7 +8,6 @@ from gym.spaces import Box
 
 from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
-from environments.mujoco import distance_between
 from environments.multi_task import MultiTaskEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
@@ -104,40 +102,34 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
+        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self._geofence = geofence
         self.observation_space = Box(
             low=vectorize(
                 Observation(
                     observation=env.observation_space.low,
-                    desired_goal=Goal(self.goal_space.low, self.goal_space.low),
+                    desired_goal=self.goal_space.low,
                     achieved_goal=None)),
             high=vectorize(
                 Observation(
                     observation=env.observation_space.high,
-                    desired_goal=Goal(self.goal_space.high, self.goal_space.high),
+                    desired_goal=self.goal_space.high,
                     achieved_goal=None)))
 
     @property
     def goal_space(self):
-        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+        return Box(low=np.array(.4), high=np.array(.921))
 
     def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal)
-        desired_goal = Goal(*desired_goal)
-        block_distance = distance_between(achieved_goal.block, desired_goal.block)
-        gripper_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
-        return np.logical_and(block_distance < self._geofence,
-                              gripper_distance < self._geofence)
+        distance = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
+        return distance < self._geofence
 
     def _achieved_goal(self):
-        return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
+        return self.lift_env.block_pos()[2]
 
     def _desired_goal(self):
-        assert isinstance(self.pap_env, LiftEnv)
-        goal = self.pap_env.initial_block_pos.copy()
-        goal[2] += self.pap_env.min_lift_height
-        return Goal(gripper=goal, block=goal)
+        assert isinstance(self.lift_env, LiftEnv)
+        return self.lift_env.initial_block_pos[2] + self.lift_env.min_lift_height
 
 
 class MultiTaskHindsightWrapper(LiftHindsightWrapper):

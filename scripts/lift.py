@@ -13,7 +13,7 @@ from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
-from sac.networks import LstmAgent, MlpAgent
+from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 from sac.utils import parse_double
 from scripts.gym_env import check_probability
@@ -109,21 +109,20 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
-@click.option('--lstm', 'agent', flag_value=LstmAgent)
 @click.option('--seq-len', default=8, type=int)
 @click.option('--n-layers', default=3, type=int)
 @click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=18e-5, type=float)
+@click.option('--learning-rate', default=2e-4, type=float)
 @click.option('--buffer-size', default=1e5, type=int)
 @click.option('--num-train-steps', default=4, type=int)
 @click.option('--steps-per-action', default=300, type=int)
 @click.option('--batch-size', default=32, type=int)
-@click.option('--reward-scale', default=1, type=float)
-@click.option('--entropy-scale', default=15e-5, type=float)
+@click.option('--reward-scale', default=7e3, type=float)
+@click.option('--entropy-scale', default=1, type=float)
 @click.option('--cheat-prob', default=0, type=float, callback=check_probability)
-@click.option('--max-steps', default=300, type=int)
+@click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
-@click.option('--geofence', default=.1, type=float)
+@click.option('--hindsight-geofence', default=.4, type=float)
 @click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
@@ -137,7 +136,6 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--record-freq', type=int, default=0)
 @click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
-@click.option('--hindsight', is_flag=True)
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -150,12 +148,12 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
 @env_wrapper
-def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buffer_size,
-        activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
-        cheat_prob, grad_clip, batch_size, num_train_steps, steps_per_action, logdir,
-        save_path, load_path, render_freq, record_freq, record_path, image_dims, record,
-        n_goals, block_xrange, block_yrange, agent, seq_len, hindsight, temp_path,
-        randomize_pose):
+def cli(max_steps, fixed_block, min_lift_height, hindsight_geofence, seed, device_num,
+        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
+        entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+        steps_per_action, logdir, save_path, load_path, render_freq, n_goals,
+        block_xrange, seq_len, block_yrange, agent, record, randomize_pose, image_dims,
+        record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=LiftEnv(
@@ -173,6 +171,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
             record_freq=record_freq,
             image_dimensions=image_dims,
         ))
+
     kwargs = dict(
         seq_len=seq_len,
         base_agent=agent,
@@ -187,18 +186,20 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
-        num_train_steps=num_train_steps,
-    )
-    if hindsight:
-        env = LiftHindsightWrapper(env=env, geofence=geofence)
-        trainer = HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+        num_train_steps=num_train_steps)
+
+    if hindsight_geofence:
+        trainer = HindsightTrainer(
+            env=LiftHindsightWrapper(env=env, geofence=hindsight_geofence),
+            n_goals=n_goals,
+            **kwargs)
     else:
         trainer = Trainer(env=env, **kwargs)
     trainer.train(
         load_path=load_path,
         logdir=logdir,
+        render=False,
         save_path=save_path,
-        render=False,  # because render is handled inside env
     )
 
 

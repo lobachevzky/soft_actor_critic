@@ -64,20 +64,20 @@
         <body name="torso_lift_link" pos="0 0 0.752">
             <inertial pos="-0.051142 0.003454 -0.2905" quat="0.511154 0.00760492 -0.0140194 0.859341" mass="3.42078"
                       diaginertia="0.105342 0.104252 0.0127461"/>
-            <!--<joint name="torso_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" range="0 0.345" />-->
+            <!--<joint name="torso_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="false" range="0 0.345" />-->
             <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="torso_light"/>
             <!--<geom type="mesh" mesh="torso"/>-->
             <body name="head_pan_link" pos="0 0 0">
                 <camera quat=".5 .5 -.5 -.5" name="rgb" pos="0 0 0"/>
                 <inertial pos="0.001724 -0.001969 -0.028886" quat="0.865343 0.459592 0.192259 -0.0547077"
                           mass="0.571903" diaginertia="0.00102408 0.00077623 0.000589392"/>
-                <!--<joint name="head_pan_joint" pos="0 0 0" axis="0 0 1" limited="true" range="-3.84 1.75" />-->
+                <!--<joint name="head_pan_joint" pos="0 0 0" axis="0 0 1" limited="false" range="-3.84 1.75" />-->
                 <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="head_pan"/>
                 <geom type="mesh" mesh="head_pan"/>
                 <body name="head_tilt_link" pos="0.02 0 0">
                     <inertial pos="-0.055376 -0.002436 0.117733" quat="0.973833 0.0131235 -0.226864 -0.00327368"
                               mass="2.1238" diaginertia="0.0218915 0.0149823 0.0091862"/>
-                    <!--<joint name="head_tilt_joint" pos="0 0 0" axis="0 -1 0" limited="true" range="-1.57 0.52" />-->
+                    <!--<joint name="head_tilt_joint" pos="0 0 0" axis="0 -1 0" limited="false" range="-1.57 0.52" />-->
                     <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="head_upper"/>
                     <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="head_tilt"/>
                     <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="tablet_base"/>

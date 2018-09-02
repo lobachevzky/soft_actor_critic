@@ -103,8 +103,8 @@ class MujocoEnv:
 
         if self.randomize_pose:
             for joint in [
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint'
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
             ]:
                 try:
                     qpos_idx = self.sim.get_jnt_qposadr(joint)

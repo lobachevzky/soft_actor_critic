@@ -104,7 +104,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
+        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self._geofence = geofence
         self.observation_space = Box(
             low=vectorize(
@@ -131,12 +131,12 @@ class LiftHindsightWrapper(HindsightWrapper):
                               gripper_distance < self._geofence)
 
     def _achieved_goal(self):
-        return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
+        return Goal(gripper=self.lift_env.gripper_pos(), block=self.lift_env.block_pos())
 
     def _desired_goal(self):
-        assert isinstance(self.pap_env, LiftEnv)
-        goal = self.pap_env.initial_block_pos.copy()
-        goal[2] += self.pap_env.min_lift_height
+        assert isinstance(self.lift_env, LiftEnv)
+        goal = self.lift_env.initial_block_pos.copy()
+        goal[2] += self.lift_env.min_lift_height
         return Goal(gripper=goal, block=goal)
 
 

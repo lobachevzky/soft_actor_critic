@@ -130,9 +130,6 @@ class Trainer:
             return None
         return Step(*self.buffer[-time_steps:final_index])
 
-    def time_steps(self):
-        return self.episode_count['time_steps']
-
     def run_episode(self, o1, perform_updates, render):
         episode_count = Counter()
         episode_mean = Counter()
@@ -349,6 +346,7 @@ class HierarchicalTrainer(Trainer):
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
         self.action_space = env.action_space.worker
+        self.time_steps = 0
 
         def boss_preprocess_obs(obs, shape=None):
             obs = Observation(*obs)
@@ -391,7 +389,7 @@ class HierarchicalTrainer(Trainer):
                 initial_state=0))
 
     def boss_turn(self):
-        return self.time_steps() % self.boss_act_freq == 0
+        return self.time_steps % self.boss_act_freq == 0
 
     def get_actions(self, o1, s):
         # boss
@@ -450,6 +448,12 @@ class HierarchicalTrainer(Trainer):
                 o1=self.worker_o1, o2=step.o2.replace(desired_goal=direction))
             self.trainers.worker.buffer.append(step)
             self.episode_count.update(Counter(worker_reward=step.r))
+
+        self.time_steps += 1
+
+    def reset(self):
+        self.time_steps = 0
+        return super().reset()
 
 
 def boss_oracle(env: HierarchicalWrapper):

@@ -110,12 +110,12 @@ class LiftHindsightWrapper(HindsightWrapper):
             low=vectorize(
                 Observation(
                     observation=env.observation_space.low,
-                    desired_goal=Goal(self.goal_space.low, self.goal_space.low),
+                    desired_goal=self.goal_space.low,
                     achieved_goal=None)),
             high=vectorize(
                 Observation(
                     observation=env.observation_space.high,
-                    desired_goal=Goal(self.goal_space.high, self.goal_space.high),
+                    desired_goal=self.goal_space.high,
                     achieved_goal=None)))
 
     @property
@@ -123,9 +123,7 @@ class LiftHindsightWrapper(HindsightWrapper):
         return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
 
     def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal)
-        desired_goal = Goal(*desired_goal)
-        return distance_between(achieved_goal.block[2], desired_goal.block[2]) < self._geofence
+        return distance_between(achieved_goal[2], desired_goal[2]) < self._geofence
 
     def _achieved_goal(self):
         return Goal(gripper=self.lift_env.gripper_pos(), block=self.lift_env.block_pos())

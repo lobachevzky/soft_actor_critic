@@ -125,7 +125,7 @@ class Trainer:
         if final_index is None:
             final_index = 0  # points to current time step
         else:
-            final_index -= self.time_steps()  # relative to start of episode
+            final_index -= time_steps  # relative to start of episode
         if self.buffer.empty:
             return None
         return Step(*self.buffer[-self.time_steps():final_index])

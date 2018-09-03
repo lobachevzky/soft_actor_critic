@@ -121,8 +121,8 @@
               <!--pos="0 0 0.34">-->
             <!--<inertial pos="0.051549 0.042438 -0.064145" quat="-0.111496 0.499152 -0.110462 0.852182" mass="1.27582"-->
                       <!--diaginertia="0.00909548 0.00799354 0.00328099"/>-->
-            <joint name="arm_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="true" damping="100"
-                   range="0 0.31" />
+            <joint name="arm_lift_joint" pos="0 0 0" axis="0 0 1" type="slide" limited="false" damping="100"
+                   range=".072 0.173" />
             <geom type="mesh" contype="0" conaffinity="0" group="1" mesh="shoulder"/>
             <geom type="mesh" mesh="shoulder"/>
             <body name="arm_flex_link" pos="0.141 0.078 0">

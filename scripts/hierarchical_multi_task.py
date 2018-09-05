@@ -6,13 +6,13 @@ from gym.wrappers import TimeLimit
 
 from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
                                                HierarchicalWrapper,
-                                               MultiTaskHierarchicalWrapper)
-from environments.multi_task import MultiTaskEnv
+                                               ShiftHierarchicalWrapper)
+from environments.shift import ShiftEnv
 from sac.networks import MlpAgent
 from sac.train import HierarchicalTrainer
 from sac.utils import create_sess
 from scripts.lift import env_wrapper, put_in_xml_setter
-from scripts.multi_task import parse_coordinate
+from scripts.shift import parse_coordinate
 
 
 def check_probability(ctx, param, value):
@@ -119,7 +119,7 @@ def cli(
 ):
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=MultiTaskEnv(
+        env=ShiftEnv(
             geofence=geofence,
             xml_filepath=temp_path,
             steps_per_action=steps_per_action,
@@ -166,7 +166,7 @@ def cli(
     )
 
     HierarchicalTrainer(
-        env=MultiTaskHierarchicalWrapper(env, geofence=geofence),
+        env=ShiftHierarchicalWrapper(env, geofence=geofence),
         boss_act_freq=boss_freq,
         use_worker_oracle=worker_oracle,
         use_boss_oracle=boss_oracle,

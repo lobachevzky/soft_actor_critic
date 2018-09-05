@@ -5,11 +5,12 @@ import numpy as np
 from gym import spaces
 
 from environments.lift import LiftEnv
+from environments.mujoco import distance_between
 
 Observation = namedtuple('Obs', 'observation goal')
 
 
-class MultiTaskEnv(LiftEnv):
+class ShiftEnv(LiftEnv):
     def __init__(self,
                  geofence: float,
                  fixed_block=None,
@@ -22,7 +23,7 @@ class MultiTaskEnv(LiftEnv):
         self.geofence = geofence
         self.goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
-        super().__init__(fixed_block=False, **kwargs)
+        super().__init__(fixed_block=False, randomize_pose=randomize_pose, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         # goal_size = np.array([.0317, .0635, .0234]) * geofence
         intervals = [2, 3, 1]
@@ -34,8 +35,7 @@ class MultiTaskEnv(LiftEnv):
         self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
 
     def _is_successful(self):
-        distance_to_goal = np.linalg.norm(self.goal - self.block_pos()[:2], axis=-1)
-        return distance_to_goal < self.geofence
+        return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
 
     def _get_obs(self):
 
@@ -73,7 +73,7 @@ class MultiTaskEnv(LiftEnv):
         ])
         return Observation(observation=observation, goal=self.goal)
 
-    def _reset_qpos(self):
+    def _reset_qpos(self, qpos):
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         if self.fixed_block is None:
             self.init_qpos[[

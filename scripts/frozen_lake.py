@@ -3,8 +3,10 @@ import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
-from sac.networks import MlpAgent, MoEAgent
-from sac.train import Trainer
+from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
+from sac.networks import MlpAgent
+from sac.train import HierarchicalTrainer, Trainer
+from sac.utils import create_sess
 
 
 def check_probability(ctx, param, value):
@@ -40,11 +42,13 @@ def parse_double(ctx, param, string):
 @click.option('--is-slippery', is_flag=True)
 @click.option('--max-steps', default=100, type=int)
 @click.option('--render', is_flag=True)
-@click.option('--n-networks', default=None, type=int)
+@click.option('--boss-oracle', is_flag=True)
+@click.option('--worker-oracle', is_flag=True)
+@click.option('--boss-freq', default=None, type=int)
 def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         reward_scale, batch_size, num_train_steps, logdir, save_path, load_path, render,
-        grad_clip, map_dims, max_steps, n_networks, random_map, random_start, random_goal,
-        is_slippery, default_reward):
+        grad_clip, map_dims, max_steps, random_map, random_start, random_goal,
+        is_slippery, default_reward, boss_freq, worker_oracle, boss_oracle):
     env = TimeLimit(
         env=FrozenLakeEnv(
             map_dims=map_dims,
@@ -55,8 +59,10 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
             default_reward=default_reward,
         ),
         max_episode_steps=max_steps)
+
     kwargs = dict(
-        env=env,
+        sess=create_sess(),
+        base_agent=MlpAgent,
         seq_len=0,
         device_num=1,
         seed=seed,

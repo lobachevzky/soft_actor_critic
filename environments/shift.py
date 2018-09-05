@@ -6,7 +6,6 @@ from gym import spaces
 
 from environments.lift import LiftEnv
 from environments.mujoco import distance_between
-from mujoco import ObjType
 
 Observation = namedtuple('Obs', 'observation goal')
 

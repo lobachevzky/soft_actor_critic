@@ -21,7 +21,7 @@ setup(
         'hfl=scripts.hierarchical_frozen_lake:cli',
         'hmt=scripts.hierarchical_shift:cli',
         'lift=scripts.lift:cli',
-        'multi-task=scripts.shift:cli',
+        'shift=scripts.shift:cli',
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',

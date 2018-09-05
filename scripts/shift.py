@@ -9,7 +9,7 @@ from environments.hindsight_wrapper import ShiftHindsightWrapper
 from environments.shift import ShiftEnv
 from sac.networks import MlpAgent, MoEAgent, SACXAgent
 from sac.train import ShiftHindsightTrainer, ShiftTrainer
-from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
+from scripts.lift import env_wrapper, parse_double, put_in_xml_setter
 
 
 def parse_coordinate(ctx, param, string):

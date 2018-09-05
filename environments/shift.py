@@ -14,7 +14,6 @@ Observation = namedtuple('Obs', 'observation goal')
 class ShiftEnv(LiftEnv):
     def __init__(self,
                  geofence: float,
-                 randomize_pose=False,
                  fixed_block=None,
                  fixed_goal=None,
                  goal_x=(-.11, .09),
@@ -22,7 +21,6 @@ class ShiftEnv(LiftEnv):
                  **kwargs):
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
-        self.randomize_pose = randomize_pose
         self.geofence = geofence
         self.goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal

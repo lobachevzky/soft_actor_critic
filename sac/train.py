@@ -13,7 +13,7 @@ from environments.shift import ShiftEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, normalize, unwrap_env, vectorize
+from sac.utils import Obs, Step, normalize, unwrap_env, vectorize, create_sess
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -21,7 +21,12 @@ Agents = namedtuple('Agents', 'train act')
 class Trainer:
     def __init__(self, env: gym.Env, seed: Optional[int], buffer_size: int,
                  batch_size: int, seq_len: int, num_train_steps: int, logdir: str,
-                 save_path: str, load_path: str, render: bool, **kwargs):
+                 save_path: str, load_path: str, render: bool,
+                 sess=None,
+                 action_space=None,
+                 observation_space=None,
+                 **kwargs,
+    ):
 
         if seed is not None:
             np.random.seed(seed)
@@ -32,12 +37,9 @@ class Trainer:
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
-        self.save_path = save_path
-
-        config = tf.ConfigProto(allow_soft_placement=True)
-        config.gpu_options.allow_growth = True
-        config.inter_op_parallelism_threads = 1
-        sess = tf.Session(config=config)
+        self.sess = sess = sess or create_sess()
+        self.action_space = action_space or env.action_space
+        self.observation_space = observation_space or env.observation_space
 
         self.agents = Agents(
             act=self.build_agent(

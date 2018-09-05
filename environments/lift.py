@@ -46,6 +46,7 @@ class LiftEnv(MujocoEnv):
                  fixed_block=False,
                  min_lift_height=.02,
                  cheat_prob=0,
+                 obs_type='base-qvel',
                  **kwargs):
         if block_xrange is None:
             block_xrange = (0, 0)
@@ -53,24 +54,23 @@ class LiftEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
-        self.grip = 0
-        self.min_lift_height = min_lift_height
-
+        self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
         self._block_name = 'block1'
+        self.min_lift_height = min_lift_height
 
         super().__init__(**kwargs)
 
-        self.reward_range = 0, 1
         self.initial_qpos = np.copy(self.init_qpos)
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
+        obs_size = sum(map(np.size, self._get_obs()))
+        assert obs_size != 0
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
-
+            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],

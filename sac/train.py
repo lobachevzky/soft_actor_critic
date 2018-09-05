@@ -101,8 +101,9 @@ class Trainer:
                 perform_updates=not self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
+            episode_time_steps = self.episode_count['time_steps']
             self.count.update(
-                Counter(reward=episode_reward, episode=1, time_steps=self.time_steps()))
+                Counter(reward=episode_reward, episode=1, time_steps=episode_time_steps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 self.count['time_steps'], episode_reward))

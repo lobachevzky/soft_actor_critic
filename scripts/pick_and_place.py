@@ -11,7 +11,7 @@ import click
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import PickAndPlaceHindsightWrapper
+from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
 from sac.networks import LstmAgent, MlpAgent
 from sac.train import HindsightTrainer, Trainer
@@ -134,7 +134,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, seed, device_num, buf
         load_path=load_path,
         render=False)  # because render is handled inside env
     if hindsight:
-        env = PickAndPlaceHindsightWrapper(env=env, geofence=geofence)
+        env = LiftHindsightWrapper(env=env, geofence=geofence)
         HindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
         Trainer(env=env, **kwargs)

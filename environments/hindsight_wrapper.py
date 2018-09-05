@@ -7,9 +7,10 @@ import gym
 import numpy as np
 from gym.spaces import Box
 
+from environments.frozen_lake import FrozenLakeEnv
+from environments.lift import LiftEnv
 from environments.mujoco import distance_between
 from environments.multi_task import MultiTaskEnv
-from environments.lift import LiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -65,7 +66,7 @@ class HindsightWrapper(gym.Wrapper):
         first_terminal = np.flatnonzero(trajectory.t)[0]
         return ArrayGroup(trajectory)[:first_terminal + 1]  # include first terminal
 
-    def preprocess_obs(self, obs, shape: Optional[tuple] = None):
+    def preprocess_obs(self, obs, shape: tuple = None):
         obs = Observation(*obs)
         obs = [obs.observation, obs.desired_goal]
         return vectorize(obs, shape=shape)
@@ -100,7 +101,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return achieved_goal >= desired_goal
 
 
-class PickAndPlaceHindsightWrapper(HindsightWrapper):
+class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
         self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
@@ -139,7 +140,7 @@ class PickAndPlaceHindsightWrapper(HindsightWrapper):
         return Goal(gripper=goal, block=goal)
 
 
-class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
+class MultiTaskHindsightWrapper(LiftHindsightWrapper):
     def __init__(self, env, geofence):
         self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
         super().__init__(env, geofence)
@@ -165,5 +166,35 @@ class MultiTaskHindsightWrapper(PickAndPlaceHindsightWrapper):
     def reset(self):
         return Observation(
             observation=self.env.reset().observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+
+
+class FrozenLakeHindsightWrapper(HindsightWrapper):
+    def __init__(self, env):
+        self.frozen_lake_env = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))
+        super().__init__(env)
+
+    def _achieved_goal(self):
+        fl_env = self.frozen_lake_env
+        return np.array([fl_env.s // fl_env.nrow, fl_env.s % fl_env.ncol])
+
+    def _is_success(self, achieved_goal, desired_goal):
+        return (achieved_goal == desired_goal).prod(axis=-1)
+
+    def _desired_goal(self):
+        return self.frozen_lake_env.goal_vector()
+
+    def step(self, action):
+        o2, r, t, info = self.env.step(action)
+        new_o2 = Observation(
+            observation=np.array(o2.observation),
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        return new_o2, r, t, info
+
+    def reset(self):
+        return Observation(
+            observation=np.array(self.env.reset().observation),
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())

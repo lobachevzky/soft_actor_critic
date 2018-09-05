@@ -25,7 +25,8 @@ class AbstractAgent:
                  learning_rate: float,
                  grad_clip: float,
                  device_num: int,
-                 reuse=False) -> None:
+                 reuse=False,
+                 name='agent') -> None:
 
         self.reward_scale = reward_scale
         self.activation = activation
@@ -35,8 +36,7 @@ class AbstractAgent:
         self.initial_state = None
         self.sess = sess
 
-        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(
-                'agent', reuse=reuse):
+        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
             seq_dim = [batch_size]
             if self.seq_len is not None:
                 seq_dim = [batch_size, self.seq_len]

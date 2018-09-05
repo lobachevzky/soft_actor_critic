@@ -94,9 +94,6 @@ class LiftEnv(MujocoEnv):
 
         return qpos
 
-    def _set_new_goal(self):
-        pass
-
     def _get_obs_space(self):
         qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
         qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]

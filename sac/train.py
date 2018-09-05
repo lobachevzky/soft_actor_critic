@@ -134,7 +134,7 @@ class Trainer:
         return self.episode_count['time_steps']
 
     def run_episode(self, o1, perform_updates, render):
-        self.episode_count = Counter()
+        episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
@@ -147,11 +147,11 @@ class Trainer:
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
-                self.episode_count.update(Counter(info['log count']))
+                episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
+            episode_count.update(Counter(reward=r, time_steps=1))
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
-            self.episode_count.update(Counter(reward=r, time_steps=1))
 
             if self.buffer_full() and perform_updates:
                 for i in range(self.num_train_steps):
@@ -166,8 +166,8 @@ class Trainer:
             tick = time.time()
             if t:
                 for k in episode_mean:
-                    self.episode_count[k] = episode_mean[k] / float(time_steps)
-                return self.episode_count
+                    episode_count[k] = episode_mean[k] / float(time_steps)
+                return episode_count
 
     def build_agent(self,
                     base_agent: AbstractAgent,
@@ -198,6 +198,7 @@ class Trainer:
         return Agent()
 
     def reset(self) -> Obs:
+        self.episode_count = None
         return self.env.reset()
 
     def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:

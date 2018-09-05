@@ -11,7 +11,7 @@ from mujoco import ObjType
 Observation = namedtuple('Obs', 'observation goal')
 
 
-class MultiTaskEnv(LiftEnv):
+class ShiftEnv(LiftEnv):
     def __init__(self,
                  geofence: float,
                  randomize_pose=False,

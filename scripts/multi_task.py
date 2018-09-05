@@ -5,10 +5,10 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import MultiTaskHindsightWrapper
-from environments.multi_task import MultiTaskEnv
+from environments.hindsight_wrapper import ShiftHindsightWrapper
+from environments.shift import ShiftEnv
 from sac.networks import MlpAgent, MoEAgent, SACXAgent
-from sac.train import MultiTaskHindsightTrainer, MultiTaskTrainer
+from sac.train import ShiftHindsightTrainer, ShiftTrainer
 from scripts.pick_and_place import env_wrapper, parse_double, put_in_xml_setter
 
 
@@ -72,7 +72,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         randomize_pose, goal_x, goal_y):
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=MultiTaskEnv(
+        env=ShiftEnv(
             geofence=geofence,
             xml_filepath=temp_path,
             steps_per_action=steps_per_action,
@@ -113,10 +113,10 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         kwargs['n_networks'] = n_networks
 
     if hindsight_geofence:
-        env = MultiTaskHindsightWrapper(env=env, geofence=hindsight_geofence)
-        MultiTaskHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+        env = ShiftHindsightWrapper(env=env, geofence=hindsight_geofence)
+        ShiftHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
-        MultiTaskTrainer(env=env, **kwargs)
+        ShiftTrainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

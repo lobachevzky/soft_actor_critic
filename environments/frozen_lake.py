@@ -8,7 +8,7 @@ from gym import utils
 from gym.spaces import Discrete
 from six import StringIO
 
-from environments.multi_task import Observation
+from environments.shift import Observation
 
 MAPS = gym.envs.toy_text.frozen_lake.MAPS
 MAPS["2x2"] = ["FF"] * 2

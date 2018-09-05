@@ -9,7 +9,7 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 
 from environments.hindsight_wrapper import HindsightWrapper
-from environments.multi_task import MultiTaskEnv
+from environments.shift import ShiftEnv
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -236,17 +236,17 @@ class HindsightTrainer(Trainer):
         return super().reset()
 
 
-class MultiTaskTrainer(Trainer):
+class ShiftTrainer(Trainer):
     def __init__(self, evaluation, env, **kwargs):
         self.eval = evaluation
         self.n = 50000
         self.last_n_rewards = deque(maxlen=self.n)
-        self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
+        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env=env, **kwargs)
 
     def run_episode(self, o1, perform_updates, render):
         env = self.env.unwrapped
-        assert isinstance(env, MultiTaskEnv)
+        assert isinstance(env, ShiftEnv)
         if self.is_eval_period():
             for goal_corner in env.goal_corners:
                 o1 = self.reset()
@@ -270,5 +270,5 @@ class MultiTaskTrainer(Trainer):
         return self.eval
 
 
-class MultiTaskHindsightTrainer(MultiTaskTrainer, HindsightTrainer):
+class ShiftHindsightTrainer(ShiftTrainer, HindsightTrainer):
     pass

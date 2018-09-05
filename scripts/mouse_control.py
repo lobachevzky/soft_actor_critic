@@ -8,7 +8,7 @@ import numpy as np
 from click._unicodefun import click
 
 from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
+from environments.shift import ShiftEnv
 from mujoco import ObjType
 
 saved_pos = None
@@ -24,7 +24,7 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
-    env = MultiTaskEnv(
+    env = ShiftEnv(
         xml_filepath=xml_filepath,
         # fixed_block=np.array([0, 0, .43]),
         # fixed_goal=np.array([.11, .22, .4]),

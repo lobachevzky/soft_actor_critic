@@ -113,7 +113,8 @@ class Trainer:
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
                     for k in self.episode_count:
-                        summary.value.add(tag=k, simple_value=self.episode_count[k])
+                        summary.value.add(tag=k.replace('_', ' '),
+                                          simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, self.count['time_steps'])
                 tb_writer.flush()
 

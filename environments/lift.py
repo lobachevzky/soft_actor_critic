@@ -6,6 +6,7 @@ from gym import spaces
 
 from environments.mujoco import MujocoEnv
 from mujoco import ObjType
+from sac.utils import vectorize
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -67,10 +68,9 @@ class LiftEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._get_obs()))
-        assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+            low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
+
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -143,7 +143,6 @@ class LiftEnv(MujocoEnv):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
     def compute_terminal(self):
-        # return False
         return self._is_successful()
 
     def compute_reward(self):
@@ -170,3 +169,5 @@ class LiftEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
+
+

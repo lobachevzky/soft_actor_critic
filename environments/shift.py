@@ -60,7 +60,7 @@ class ShiftEnv(LiftEnv):
             [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
         gripper_vel = dt * .5 * qvels
 
-        observation = np.concatenate([
+        obs = np.concatenate([
             grip_pos,
             object_pos.ravel(),
             object_rel_pos.ravel(),
@@ -71,20 +71,21 @@ class ShiftEnv(LiftEnv):
             grip_velp,
             gripper_vel,
         ])
-        return Observation(observation=observation, goal=self.goal)
+
+        return Observation(observation=obs, goal=self.goal)
 
     def _reset_qpos(self, qpos):
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         if self.fixed_block is None:
-            self.init_qpos[[
+            qpos[[
                 block_joint + 0, block_joint + 1, block_joint + 3, block_joint + 6
             ]] = np.random.uniform(
                 low=list(self.goal_space.low) + [0, -1],
                 high=list(self.goal_space.high) + [1, 1])
         else:
-            self.init_qpos[[block_joint + 0, block_joint + 1,
+            qpos[[block_joint + 0, block_joint + 1,
                             block_joint + 2]] = self.fixed_block
-        return self.init_qpos
+        return qpos
 
     def reset(self):
         if self.fixed_goal is None:

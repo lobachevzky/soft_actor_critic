@@ -202,6 +202,7 @@ class Trainer:
         return Agent()
 
     def reset(self) -> Obs:
+        self.episode_count = None
         return self.env.reset()
 
     def step(self, action: np.ndarray, render: bool) -> Tuple[Obs, float, bool, dict]:

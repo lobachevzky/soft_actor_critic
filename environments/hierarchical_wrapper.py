@@ -5,7 +5,7 @@ from gym import spaces
 
 from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
                                             HindsightWrapper,
-                                            MultiTaskHindsightWrapper)
+                                            ShiftHindsightWrapper)
 from sac.utils import vectorize
 
 
@@ -17,7 +17,7 @@ class HierarchicalWrapper(HindsightWrapper):
         return goal
 
 
-class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrapper):
+class ShiftHierarchicalWrapper(HierarchicalWrapper, ShiftHindsightWrapper):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
         obs = super().reset()

@@ -10,7 +10,7 @@ from environments.mujoco import distance_between
 Observation = namedtuple('Obs', 'observation goal')
 
 
-class MultiTaskEnv(LiftEnv):
+class ShiftEnv(LiftEnv):
     def __init__(self,
                  geofence: float,
                  fixed_block=None,

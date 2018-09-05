@@ -9,7 +9,7 @@ from click._unicodefun import click
 
 from environments.lift import LiftEnv
 from environments.mujoco import print1
-from environments.multi_task import MultiTaskEnv
+from environments.shift import ShiftEnv
 from mujoco import ObjType
 
 saved_pos = None

@@ -130,9 +130,6 @@ class Trainer:
             return None
         return Step(*self.buffer[-time_steps:final_index])
 
-    def time_steps(self):
-        return self.episode_count['time_steps']
-
     def run_episode(self, o1, perform_updates, render):
         episode_count = Counter()
         episode_mean = Counter()

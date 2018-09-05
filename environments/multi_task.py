@@ -44,22 +44,6 @@ class MultiTaskEnv(LiftEnv):
         return Observation(observation=super()._get_obs(), goal=self.goal)
 
     def _reset_qpos(self, qpos):
-        if self.randomize_pose:
-            for joint in [
-                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                    'wrist_roll_joint', 'hand_l_proximal_joint'
-            ]:
-                qpos_idx = self.sim.get_jnt_qposadr(joint)
-                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                qpos[qpos_idx] = \
-                    np.random.uniform(
-                    *self.sim.jnt_range[jnt_range_idx])
-                    # self.sim.jnt_range[jnt_range_idx][1]
-
-        r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
-        l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
-        qpos[r] = qpos[l]
-
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         if self.fixed_block is None:
             qpos[[

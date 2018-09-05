@@ -5,9 +5,9 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.multi_task import MultiTaskEnv
+from environments.shift import ShiftEnv
 from sac.networks import MlpAgent, SACXAgent
-from sac.train import MultiTaskTrainer
+from sac.train import ShiftTrainer
 from sac.utils import parse_double
 from scripts.lift import env_wrapper, put_in_xml_setter
 
@@ -72,7 +72,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         randomize_pose, goal_x, goal_y):
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=MultiTaskEnv(
+        env=ShiftEnv(
             geofence=geofence,
             xml_filepath=temp_path,
             steps_per_action=steps_per_action,
@@ -109,7 +109,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         evaluation=eval,
     )
 
-    MultiTaskTrainer(env=env, **kwargs)
+    ShiftTrainer(env=env, **kwargs)
 
 
 if __name__ == '__main__':

@@ -99,25 +99,23 @@ class MujocoEnv:
             # if self._record_video:
                 # self.video_recorder.capture_frame()
         self.sim.reset()
-        qpos = self._reset_qpos()
-
+        qpos = np.copy(self.init_qpos)
         if self.randomize_pose:
             for joint in [
-                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                    'wrist_roll_joint', 'hand_l_proximal_joint'
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint'
             ]:
-                try:
-                    qpos_idx = self.sim.get_jnt_qposadr(joint)
-                    jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                    qpos[qpos_idx] = np.random.uniform(*self.sim.jnt_range[jnt_range_idx])
-                    # self.sim.jnt_range[jnt_range_idx][1]
-                except MujocoError:
-                    pass  # joint does not exist
+                qpos_idx = self.sim.get_jnt_qposadr(joint)
+                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
+                qpos[qpos_idx] = \
+                    np.random.uniform(
+                        *self.sim.jnt_range[jnt_range_idx])
+                # self.sim.jnt_range[jnt_range_idx][1]
 
         r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
         l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
         qpos[r] = qpos[l]
-
+        qpos = self._reset_qpos(qpos)
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
@@ -168,13 +166,6 @@ def quaternion2euler(w, x, y, z):
 
 def distance_between(pos1, pos2):
     return np.sqrt(np.sum(np.square(pos1 - pos2), axis=-1))
-
-
-def at_goal(pos, goal, geofence, verbose=False):
-    distance_to_goal = distance_between(pos, goal)
-    if verbose:
-        print(distance_to_goal)
-    return distance_to_goal < geofence
 
 
 def escaped(pos, world_upper_bound, world_lower_bound):

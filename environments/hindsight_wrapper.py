@@ -10,7 +10,7 @@ from gym.spaces import Box
 from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
 from environments.mujoco import distance_between
-from environments.multi_task import MultiTaskEnv
+from environments.shift import ShiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -104,7 +104,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 class LiftHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.pap_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
+        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self._geofence = geofence
         self.observation_space = Box(
             low=vectorize(
@@ -131,18 +131,18 @@ class LiftHindsightWrapper(HindsightWrapper):
                               gripper_distance < self._geofence)
 
     def _achieved_goal(self):
-        return Goal(gripper=self.pap_env.gripper_pos(), block=self.pap_env.block_pos())
+        return Goal(gripper=self.lift_env.gripper_pos(), block=self.lift_env.block_pos())
 
     def _desired_goal(self):
-        assert isinstance(self.pap_env, LiftEnv)
-        goal = self.pap_env.initial_block_pos.copy()
-        goal[2] += self.pap_env.min_lift_height
+        assert isinstance(self.lift_env, LiftEnv)
+        goal = self.lift_env.initial_block_pos.copy()
+        goal[2] += self.lift_env.min_lift_height
         return Goal(gripper=goal, block=goal)
 
 
-class MultiTaskHindsightWrapper(LiftHindsightWrapper):
+class ShiftHindsightWrapper(LiftHindsightWrapper):
     def __init__(self, env, geofence):
-        self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, MultiTaskEnv))
+        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env, geofence)
         # tack on gripper goal_space
         self.observation_space = Box(
@@ -150,9 +150,9 @@ class MultiTaskHindsightWrapper(LiftHindsightWrapper):
             high=vectorize([env.observation_space.high, self.goal_space.high, np.inf]))
 
     def _desired_goal(self):
-        assert isinstance(self.multi_task_env, MultiTaskEnv)
-        block_height = self.multi_task_env.initial_block_pos[2]
-        goal = np.append(self.multi_task_env.goal, block_height)
+        assert isinstance(self.shift_env, ShiftEnv)
+        block_height = self.shift_env.initial_block_pos[2]
+        goal = np.append(self.shift_env.goal, block_height)
         return Goal(goal, goal)
 
     def step(self, action):

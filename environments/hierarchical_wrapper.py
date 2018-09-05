@@ -5,7 +5,7 @@ from gym import spaces
 
 from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
                                             HindsightWrapper,
-                                            MultiTaskHindsightWrapper)
+                                            ShiftHindsightWrapper)
 from sac.utils import vectorize
 
 
@@ -17,7 +17,7 @@ class HierarchicalWrapper(HindsightWrapper):
         return goal
 
 
-class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrapper):
+class ShiftHierarchicalWrapper(HierarchicalWrapper, ShiftHindsightWrapper):
     def __init__(self, env, **kwargs):
         super().__init__(env, **kwargs)
         obs = super().reset()
@@ -33,15 +33,15 @@ class MultiTaskHierarchicalWrapper(HierarchicalWrapper, MultiTaskHindsightWrappe
                 shape=(np.shape(vectorize([obs.observation, obs.desired_goal])))))
 
         self.action_space = Hierarchical(
-            boss=self.multi_task_env.goal_space,
-            worker=self.multi_task_env.action_space,
+            boss=self.shift_env.goal_space,
+            worker=self.shift_env.action_space,
         )
 
     def _achieved_goal(self):
-        return np.copy(self.pap_env.block_pos()[:2])
+        return np.copy(self.lift_env.block_pos()[:2])
 
     def _desired_goal(self):
-        return self.multi_task_env.goal
+        return self.shift_env.goal
 
 
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):

@@ -93,10 +93,6 @@ class LiftEnv(MujocoEnv):
 
         return qpos
 
-    def _get_obs_space(self, obs):
-        inf_like_obs = np.inf * np.ones_like(obs, dtype=np.float32)
-        return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
-
     def _qvel_obs(self):
         def get_qvels(joints):
             base_qvel = []

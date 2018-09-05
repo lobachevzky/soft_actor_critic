@@ -70,14 +70,18 @@ def cli(seed, buffer_size, n_layers, layer_size, learning_rate, entropy_scale,
         batch_size=batch_size,
         grad_clip=grad_clip,
         num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=render)
-    if n_networks:
-        Trainer(base_agent=MoEAgent, n_networks=n_networks, **kwargs)
+    )
+    if boss_freq:
+        trainer = HierarchicalTrainer(
+            boss_act_freq=boss_freq,
+            use_worker_oracle=worker_oracle,
+            use_boss_oracle=boss_oracle,
+            env=FrozenLakeHierarchicalWrapper(env),
+            **kwargs)
     else:
-        Trainer(base_agent=MlpAgent, **kwargs)
+        trainer = Trainer(env=env, **kwargs)
+
+    trainer.train(load_path=load_path, logdir=logdir, render=render, save_path=save_path)
 
 
 if __name__ == '__main__':

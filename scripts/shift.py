@@ -5,11 +5,12 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import ShiftHindsightWrapper
 from environments.shift import ShiftEnv
-from sac.networks import MlpAgent, MoEAgent, SACXAgent
-from sac.train import ShiftHindsightTrainer, ShiftTrainer
-from scripts.lift import env_wrapper, parse_double, put_in_xml_setter
+from sac.networks import MlpAgent, SACXAgent
+from sac.train import ShiftTrainer, ShiftHindsightTrainer
+from sac.utils import parse_double
+from scripts.lift import env_wrapper, put_in_xml_setter
+from environments.hindsight_wrapper import ShiftHindsightWrapper
 
 
 def parse_coordinate(ctx, param, string):
@@ -104,9 +105,6 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         num_train_steps=num_train_steps,
         evaluation=eval,
     )
-    if n_networks:
-        kwargs['base_agent'] = MoEAgent
-        kwargs['n_networks'] = n_networks
 
     if hindsight_geofence:
         env = ShiftHindsightWrapper(env=env, geofence=hindsight_geofence)

@@ -7,6 +7,7 @@ import ipdb
 import numpy as np
 from click._unicodefun import click
 
+from environments.lift import LiftEnv
 from environments.mujoco import print1
 from environments.shift import ShiftEnv
 from mujoco import ObjType
@@ -24,13 +25,15 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
-    env = ShiftEnv(
+    env = LiftEnv(
+        block_xrange=(-.1,.1),
+        block_yrange=(-.2,.2),
         xml_filepath=xml_filepath,
         # fixed_block=np.array([0, 0, .43]),
         # fixed_goal=np.array([.11, .22, .4]),
-        randomize_pose=True,
-        steps_per_action=200,
-        geofence=.03,
+        randomize_pose=False,
+        steps_per_action=300,
+        # geofence=.03,
     )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
@@ -101,8 +104,9 @@ def cli(discrete, xml_file):
             if not discrete:
                 action = np.clip(action, env.action_space.low, env.action_space.high)
             s2, r, done, _ = env.step(action)
-            joints = 'slide_x slide_y arm_lift_joint arm_flex_joint wrist_roll_joint wrist_flex_joint ' \
+            joints = 'slide_x slide_y arm_lift_joint arm_flex_joint wrist_roll_joint ' \
                      'hand_l_proximal_joint'.split()
+                     # 'wrist_flex_joint ' \
             joint_angles = [env.sim.get_joint_qpos(j) for j in joints]
             # print1(','.join(map(str, joint_angles)))
             print1(joint_angles[i])

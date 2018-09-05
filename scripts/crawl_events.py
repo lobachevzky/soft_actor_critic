@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import tensorflow as tf
+from tensorflow.python.framework.errors_impl import DataLossError
 
 
 def main():
@@ -62,7 +63,10 @@ def collect_data(tag: str, event_file_path: Path, n: int) -> Optional[float]:
     :param n: number of data points to average
     :return: average of last n data-points in events file or None if events file is empty
     """
-    length = sum(1 for _ in tf.train.summary_iterator(str(event_file_path)))
+    try:
+        length = sum(1 for _ in tf.train.summary_iterator(str(event_file_path)))
+    except DataLossError:
+        return None
     iterator = tf.train.summary_iterator(str(event_file_path))
     events = islice(iterator, max(length - n, 0), length)
 

@@ -166,5 +166,3 @@ class LiftEnv(MujocoEnv):
         if not self._cheated:
             i['log count'] = {'successes': float(r > 0)}
         return s, r, t, i
-
-

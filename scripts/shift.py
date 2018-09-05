@@ -102,10 +102,6 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=False,  # because render is handled inside env
         evaluation=eval,
     )
     if n_networks:
@@ -114,9 +110,14 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
 
     if hindsight_geofence:
         env = ShiftHindsightWrapper(env=env, geofence=hindsight_geofence)
-        ShiftHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+        trainer = ShiftHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
-        ShiftTrainer(env=env, **kwargs)
+        trainer = ShiftTrainer(env=env, **kwargs)
+    trainer.train(load_path=load_path,
+                  save_path=save_path,
+                  logdir=logdir,
+                  render=False,  # because render is handled inside env
+                  )
 
 
 if __name__ == '__main__':

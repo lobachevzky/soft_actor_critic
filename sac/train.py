@@ -43,9 +43,21 @@ class Trainer:
 
         self.agents = Agents(
             act=self.build_agent(
-                sess=sess, batch_size=None, seq_len=1, reuse=False, **kwargs),
+                sess=self.sess,
+                batch_size=None,
+                seq_len=1,
+                reuse=False,
+                action_space=action_space,
+                observation_space=observation_space,
+                **kwargs),
             train=self.build_agent(
-                sess=sess, batch_size=batch_size, seq_len=seq_len, reuse=True, **kwargs))
+                sess=self.sess,
+                batch_size=batch_size,
+                seq_len=seq_len,
+                reuse=True,
+                action_space=action_space,
+                observation_space=observation_space,
+                **kwargs))
         self.seq_len = self.agents.act.seq_len
         saver = tf.train.Saver()
         tb_writer = None
@@ -143,14 +155,26 @@ class Trainer:
                     self.episode_count[k] = episode_mean[k] / float(time_steps)
                 return self.episode_count
 
-    def build_agent(self, base_agent: AbstractAgent, **kwargs):
-        state_shape = self.env.observation_space.shape
-        if isinstance(self.env.action_space, spaces.Discrete):
-            action_shape = [self.env.action_space.n]
+    def build_agent(self,
+                    base_agent: AbstractAgent,
+                    action_space=None,
+                    observation_space=None,
+                    **kwargs):
+        if observation_space is None:
+            observation_space = self.observation_space
+        if action_space is None:
+            action_space = self.action_space
+        if isinstance(action_space, spaces.Discrete):
+            action_shape = [action_space.n]
             policy_type = CategoricalPolicy
         else:
             action_shape = self.env.action_space.shape
             policy_type = GaussianPolicy
+
+        if isinstance(observation_space, spaces.Discrete):
+            state_shape = [observation_space.n]
+        else:
+            state_shape = observation_space.shape
 
         class Agent(policy_type, base_agent):
             def __init__(self):

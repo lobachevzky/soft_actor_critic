@@ -139,10 +139,7 @@ class Trainer:
         tick = time.time()
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
-            a, s = self.agents.act.get_actions(
-                self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
-            if render:
-                self.env.render()
+            a, s = self.get_actions(o1, s)
             o2, r, t, info = self.step(a)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
@@ -308,6 +305,10 @@ class ShiftTrainer(Trainer):
                 print(f'Reward for last {self.n} episodes: {average_reward}')
                 exit()
             return episode_count
+
+    def get_actions(self, o1, s):
+        return self.agents.act.get_actions(
+            self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
 
     def is_eval_period(self):
         return self.eval

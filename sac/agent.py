@@ -100,9 +100,9 @@ class AbstractAgent:
                     log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
-            def get_variables(name: str) -> List[tf.Variable]:
+            def get_variables(var_name: str) -> List[tf.Variable]:
                 return tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'agent/{name}/')
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/{var_name}/')
 
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
@@ -156,18 +156,18 @@ class AbstractAgent:
                 self.O2: step.o2,
                 self.T: step.t
             }
-            train_values = [
-                'entropy',
-                'soft_update_xi_bar',
-                'V_loss',
-                'Q_loss',
-                'pi_loss',
-                'V_grad',
-                'Q_grad',
-                'pi_grad',
-            ]
-            return self.sess.run({attr: getattr(self, attr)
-                                  for attr in train_values}, feed_dict)
+        train_values = [
+            'entropy',
+            'soft_update_xi_bar',
+            'V_loss',
+            'Q_loss',
+            'pi_loss',
+            'V_grad',
+            'Q_grad',
+            'pi_grad',
+        ]
+        return self.sess.run({attr: getattr(self, attr)
+                              for attr in train_values}, feed_dict)
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood

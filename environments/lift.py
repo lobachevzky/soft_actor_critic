@@ -85,7 +85,6 @@ class LiftEnv(MujocoEnv):
             qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
-            qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.get_jnt_qposadr('block1joint')
             qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)

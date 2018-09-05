@@ -97,40 +97,20 @@ class LiftEnv(MujocoEnv):
         inf_like_obs = np.inf * np.ones_like(obs, dtype=np.float32)
         return spaces.Box(*map(np.array, [-inf_like_obs, inf_like_obs]))
 
+    def _qvel_obs(self):
+        def get_qvels(joints):
+            base_qvel = []
+            for joint in joints:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except RuntimeError:
+                    pass
+            return np.array(base_qvel)
+
+        return get_qvels(['slide_x', 'slide_x'])
+
     def _get_obs(self):
-
-        # positions
-        grip_pos = self.gripper_pos()
-        dt = self.sim.nsubsteps * self.sim.timestep
-        object_pos = self.block_pos()
-        grip_velp = .5 * sum(self.sim.get_body_xvelp(name) for name in self._finger_names)
-        # rotations
-        object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
-
-        # velocities
-        object_velp = self.sim.get_body_xvelp(self._block_name) * dt
-        object_velr = self.sim.get_body_xvelr(self._block_name) * dt
-
-        # gripper state
-        object_rel_pos = object_pos - grip_pos
-        object_velp -= grip_velp
-        gripper_state = np.array(
-            [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
-        qvels = np.array(
-            [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
-        gripper_vel = dt * .5 * qvels
-
-        return np.concatenate([
-            grip_pos,
-            object_pos.ravel(),
-            object_rel_pos.ravel(),
-            gripper_state,
-            object_rot.ravel(),
-            object_velp.ravel(),
-            object_velr.ravel(),
-            grip_velp,
-            gripper_vel,
-        ])
+        return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
     def block_pos(self):
         return self.sim.get_body_xpos(self._block_name)

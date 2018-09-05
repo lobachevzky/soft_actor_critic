@@ -5,7 +5,7 @@ import numpy as np
 from gym import spaces
 
 from environments.mujoco import distance_between
-from environments.lift import LiftEnv
+from environments.lift import LiftEnv, mat2euler
 from mujoco import ObjType
 
 Observation = namedtuple('Obs', 'observation goal')
@@ -39,7 +39,41 @@ class ShiftEnv(LiftEnv):
         return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
 
     def _get_obs(self):
-        return Observation(observation=super()._get_obs(), goal=self.goal)
+
+        # positions
+        grip_pos = self.gripper_pos()
+        dt = self.sim.nsubsteps * self.sim.timestep
+        object_pos = self.block_pos()
+        grip_velp = .5 * sum(self.sim.get_body_xvelp(name) for name in self._finger_names)
+        # rotations
+        object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+
+        # velocities
+        object_velp = self.sim.get_body_xvelp(self._block_name) * dt
+        object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+
+        # gripper state
+        object_rel_pos = object_pos - grip_pos
+        object_velp -= grip_velp
+        gripper_state = np.array(
+            [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
+        qvels = np.array(
+            [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
+        gripper_vel = dt * .5 * qvels
+
+        obs = np.concatenate([
+            grip_pos,
+            object_pos.ravel(),
+            object_rel_pos.ravel(),
+            gripper_state,
+            object_rot.ravel(),
+            object_velp.ravel(),
+            object_velr.ravel(),
+            grip_velp,
+            gripper_vel,
+        ])
+
+        return Observation(observation=obs, goal=self.goal)
 
     def _reset_qpos(self, qpos):
         block_joint = self.sim.get_jnt_qposadr('block1joint')

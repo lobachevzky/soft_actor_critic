@@ -33,15 +33,15 @@ class ShiftHierarchicalWrapper(HierarchicalWrapper, ShiftHindsightWrapper):
                 shape=(np.shape(vectorize([obs.observation, obs.desired_goal])))))
 
         self.action_space = Hierarchical(
-            boss=self.multi_task_env.goal_space,
-            worker=self.multi_task_env.action_space,
+            boss=self.shift_env.goal_space,
+            worker=self.shift_env.action_space,
         )
 
     def _achieved_goal(self):
         return np.copy(self.lift_env.block_pos()[:2])
 
     def _desired_goal(self):
-        return self.multi_task_env.goal
+        return self.shift_env.goal
 
 
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):

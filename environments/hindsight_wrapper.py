@@ -142,7 +142,7 @@ class LiftHindsightWrapper(HindsightWrapper):
 
 class ShiftHindsightWrapper(LiftHindsightWrapper):
     def __init__(self, env, geofence):
-        self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
+        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env, geofence)
         # tack on gripper goal_space
         self.observation_space = Box(
@@ -150,9 +150,9 @@ class ShiftHindsightWrapper(LiftHindsightWrapper):
             high=vectorize([env.observation_space.high, self.goal_space.high, np.inf]))
 
     def _desired_goal(self):
-        assert isinstance(self.multi_task_env, ShiftEnv)
-        block_height = self.multi_task_env.initial_block_pos[2]
-        goal = np.append(self.multi_task_env.goal, block_height)
+        assert isinstance(self.shift_env, ShiftEnv)
+        block_height = self.shift_env.initial_block_pos[2]
+        goal = np.append(self.shift_env.goal, block_height)
         return Goal(goal, goal)
 
     def step(self, action):

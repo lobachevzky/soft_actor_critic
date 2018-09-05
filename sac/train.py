@@ -289,7 +289,7 @@ class ShiftTrainer(Trainer):
         self.eval = evaluation
         self.n = 50000
         self.last_n_rewards = deque(maxlen=self.n)
-        self.multi_task_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
+        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env=env, **kwargs)
 
     def run_episode(self, o1, perform_updates, render):

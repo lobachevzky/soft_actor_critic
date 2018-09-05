@@ -38,6 +38,7 @@
     <option cone="elliptic"/>
     <visual>
         <map znear=".03"/>
+        <global offwidth="1000" offheight="1000"/>
     </visual>
     <compiler coordinate="local" angle="degree" meshdir="../hsr_meshes/meshes/" inertiafromgeom="true"/>
     <size njmax="500" nconmax="100"/>

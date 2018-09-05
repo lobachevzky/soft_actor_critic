@@ -1,4 +1,4 @@
-<mujoco model="hsr">
+<mujoco model="pick_and_place">
     <option impratio="2.5" timestep="0.002"/>
     <default>
         <default class="wall">
@@ -38,7 +38,6 @@
     <option cone="elliptic"/>
     <visual>
         <map znear=".03"/>
-        <global offwidth="1000" offheight="1000"/>
     </visual>
     <compiler coordinate="local" angle="degree" meshdir="../hsr_meshes/meshes/" inertiafromgeom="true"/>
     <size njmax="500" nconmax="100"/>
@@ -108,10 +107,13 @@
                   ctrllimited="true" ctrlrange="3 3.5"/>
         <position gear="1" kp="1000" name="arm_flex_motor" joint="arm_flex_joint"
                   forcelimited="true" forcerange="-15 35"
-                  ctrllimited="true" ctrlrange="-1.09956 -.5"/>
+                  ctrllimited="true" ctrlrange="-1.5 -.5"/>
         <position gear="1" kp="1000" name="wrist_roll_motor" joint="wrist_roll_joint"
                   forcelimited="true" forcerange="-20 20"
                   ctrllimited="true" ctrlrange="-1.57 1.57"/>
+        <position gear="1" kp="1500" name="wrist_flex_motor" joint="wrist_flex_joint"
+                  forcelimited="true" forcerange="-20 20"
+                  ctrllimited="true" ctrlrange="0 .6"/>
         <position gear="1" kp="1000" name="hand_l_proximal_motor" joint="hand_l_proximal_joint"
                   forcelimited="true" forcerange="-20 20"
                   ctrllimited="true" ctrlrange="0 0.349066"/>

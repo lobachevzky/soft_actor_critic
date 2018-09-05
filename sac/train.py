@@ -140,7 +140,7 @@ class Trainer:
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
             a, s = self.get_actions(o1, s)
-            o2, r, t, info = self.step(a)
+            o2, r, t, info = self.step(a, render)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
             if 'log count' in info:
@@ -198,14 +198,16 @@ class Trainer:
         self.episode_count = None
         return self.env.reset()
 
-    def step(self, action: np.ndarray) -> Tuple[Obs, float, bool, dict]:
+    def step(self, action: np.ndarray, render: bool) -> Tuple[Obs, float, bool, dict]:
         """ Preprocess action before feeding to env """
-        if type(self.env.action_space) is spaces.Discrete:
+        if render:
+            self.env.render()
+        if type(self.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))
         else:
             action = np.tanh(action)
-            hi, lo = self.env.action_space.high, self.env.action_space.low
+            hi, lo = self.action_space.high, self.action_space.low
             # noinspection PyTypeChecker
             return self.env.step((action + 1) / 2 * (hi - lo) + lo)
 

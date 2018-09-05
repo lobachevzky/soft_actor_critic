@@ -6,12 +6,14 @@ import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
+from mujoco import MujocoError, ObjType
 
 
 class MujocoEnv:
     def __init__(self,
                  xml_filepath: Path,
                  steps_per_action: int,
+                 randomize_pose=False,
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
                  record_freq: int = 0,
@@ -35,7 +37,7 @@ class MujocoEnv:
             if not record_path:
                 record_path = Path('/tmp/training-video')
             if not image_dimensions:
-                image_dimensions = (400, 400)
+                image_dimensions = (800, 800)
             if not record_freq:
                 record_freq = 20
 
@@ -54,6 +56,7 @@ class MujocoEnv:
 
         self.sim = mujoco.Sim(str(xml_filepath), *image_dimensions, n_substeps=1)
 
+        self.randomize_pose = randomize_pose
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._image_dimensions = image_dimensions

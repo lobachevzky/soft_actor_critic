@@ -23,7 +23,7 @@ class ShiftEnv(LiftEnv):
         self.geofence = geofence
         self.goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
         self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
-        super().__init__(fixed_block=False, randomize_pose=randomize_pose, **kwargs)
+        super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         # goal_size = np.array([.0317, .0635, .0234]) * geofence
         intervals = [2, 3, 1]

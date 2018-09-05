@@ -121,14 +121,14 @@ class Trainer:
     def is_eval_period(self):
         return self.count['episode'] % 100 == 99
 
-    def trajectory(self, final_index=None) -> Optional[Step]:
+    def trajectory(self, time_steps: int, final_index=None) -> Optional[Step]:
         if final_index is None:
             final_index = 0  # points to current time step
         else:
-            final_index -= self.time_steps()  # relative to start of episode
+            final_index -= time_steps  # relative to start of episode
         if self.buffer.empty:
             return None
-        return Step(*self.buffer[-self.time_steps():final_index])
+        return Step(*self.buffer[-time_steps:final_index])
 
     def time_steps(self):
         return self.episode_count['time_steps']
@@ -257,22 +257,24 @@ class HindsightTrainer(Trainer):
         assert isinstance(self.hindsight_env, HindsightWrapper)
         super().__init__(env=env, **kwargs)
 
-    def add_hindsight_trajectories(self) -> None:
+    def add_hindsight_trajectories(self, time_steps: int) -> None:
         assert isinstance(self.hindsight_env, HindsightWrapper)
         if self.time_steps() > 0:
-            new_trajectory = self.hindsight_env.recompute_trajectory(self.trajectory())
+            trajectory = self.trajectory(time_steps=time_steps)
+            new_trajectory = self.hindsight_env.recompute_trajectory(trajectory)
             self.buffer.append(new_trajectory)
         if self.n_goals - 1 and self.time_steps() > 1:
             final_indexes = np.random.randint(1, self.time_steps(), size=self.n_goals - 1)
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:
-                traj = self.trajectory(final_index)
+                traj = self.trajectory(time_steps=time_steps,
+                                       final_index=final_index)
                 new_traj = self.hindsight_env.recompute_trajectory(traj)
                 self.buffer.append(new_traj)
 
     def reset(self) -> Obs:
-        self.add_hindsight_trajectories()
+        self.add_hindsight_trajectories(self.episode_count['time_steps'])
         return super().reset()
 
 

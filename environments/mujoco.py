@@ -96,7 +96,7 @@ class MujocoEnv:
             if self._record_video:
                 self.video_recorder.capture_frame()
         self.sim.reset()
-        qpos = self._reset_qpos()
+        qpos = self._reset_qpos(np.copy(self.init_qpos))
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0

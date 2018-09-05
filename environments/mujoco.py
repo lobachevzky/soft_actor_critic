@@ -37,7 +37,7 @@ class MujocoEnv:
             if not record_path:
                 record_path = Path('/tmp/training-video')
             if not image_dimensions:
-                image_dimensions = (400, 400)
+                image_dimensions = (800, 800)
             if not record_freq:
                 record_freq = 20
 
@@ -78,8 +78,8 @@ class MujocoEnv:
     def step(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         self._set_action(action)
-        done = self.compute_terminal(self.goal(), self._get_obs())
-        reward = self.compute_reward(self.goal(), self._get_obs())
+        done = self.compute_terminal()
+        reward = self.compute_reward()
         return self._get_obs(), reward, done, {}
 
     def _set_action(self, action):
@@ -99,18 +99,31 @@ class MujocoEnv:
             # if self._record_video:
                 # self.video_recorder.capture_frame()
         self.sim.reset()
-        self._step_num = 0
+        qpos = np.copy(self.init_qpos)
+        if self.randomize_pose:
+            for joint in [
+                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                'wrist_roll_joint', 'hand_l_proximal_joint'
+            ]:
+                qpos_idx = self.sim.get_jnt_qposadr(joint)
+                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
+                qpos[qpos_idx] = \
+                    np.random.uniform(
+                        *self.sim.jnt_range[jnt_range_idx])
+                # self.sim.jnt_range[jnt_range_idx][1]
 
-        self._set_new_goal()
-        qpos = self.reset_qpos()
-        assert qpos.shape == (self.sim.nq,)
+        r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
+        l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
+        qpos[r] = qpos[l]
+        qpos = self._reset_qpos(qpos)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
         return self._get_obs()
 
     @abstractmethod
-    def reset_qpos(self):
+    def _reset_qpos(self):
         raise NotImplemented
 
     def __enter__(self):
@@ -120,27 +133,15 @@ class MujocoEnv:
         self.sim.__exit__()
 
     @abstractmethod
-    def _set_new_goal(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _get_obs(self):
         raise NotImplementedError
 
     @abstractmethod
-    def goal(self):
+    def compute_terminal(self):
         raise NotImplementedError
 
     @abstractmethod
-    def goal_3d(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def compute_terminal(self, goal, obs):
-        raise NotImplementedError
-
-    @abstractmethod
-    def compute_reward(self, goal, obs):
+    def compute_reward(self):
         raise NotImplementedError
 
 
@@ -165,13 +166,6 @@ def quaternion2euler(w, x, y, z):
 
 def distance_between(pos1, pos2):
     return np.sqrt(np.sum(np.square(pos1 - pos2), axis=-1))
-
-
-def at_goal(pos, goal, geofence, verbose=False):
-    distance_to_goal = distance_between(pos, goal)
-    if verbose:
-        print(distance_to_goal)
-    return distance_to_goal < geofence
 
 
 def escaped(pos, world_upper_bound, world_lower_bound):

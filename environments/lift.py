@@ -151,17 +151,3 @@ class LiftEnv(MujocoEnv):
         return s, r, t, i
 
 
-def mat2euler(mat):
-    """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
-    mat = np.asarray(mat, dtype=np.float64)
-    assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
-
-    cy = np.sqrt(mat[..., 2, 2] * mat[..., 2, 2] + mat[..., 1, 2] * mat[..., 1, 2])
-    condition = cy > np.finfo(np.float64).eps * 4.
-    euler = np.empty(mat.shape[:-1], dtype=np.float64)
-    euler[..., 2] = np.where(condition, -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
-                             -np.arctan2(-mat[..., 1, 0], mat[..., 1, 1]))
-    euler[..., 1] = np.where(condition, -np.arctan2(-mat[..., 0, 2], cy),
-                             -np.arctan2(-mat[..., 0, 2], cy))
-    euler[..., 0] = np.where(condition, -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]), 0.0)
-    return euler

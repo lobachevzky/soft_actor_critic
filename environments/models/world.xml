@@ -85,7 +85,7 @@
         </body>
 
         <body name="block1" pos="0 0 .43">
-          <geom type="box" mass="1" size=".0635 .0317 .0234" rgba=".8 .1 .1 1" condim="6" solimp="0.99 0.99 0.01" solref="0.01 1"/>
+          <geom type="box" mass="1" size=".05 .025 .017" rgba=".8 .1 .1 1" condim="6" solimp="0.99 0.99 0.01" solref="0.01 1"/>
           <freejoint name='block1joint'/>
         </body>
 

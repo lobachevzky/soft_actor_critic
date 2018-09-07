@@ -80,6 +80,12 @@ class MujocoEnv:
         self._set_action(action)
         done = self.compute_terminal()
         reward = self.compute_reward()
+        if reward > 0 :
+            for _ in range(100):
+                if self.render_freq > 0:
+                    self.render()
+                if self._record_video:
+                    self.video_recorder.capture_frame()
         return self._get_obs(), reward, done, {}
 
     def _set_action(self, action):
@@ -93,11 +99,6 @@ class MujocoEnv:
                 self.video_recorder.capture_frame()
 
     def reset(self):
-        # for _ in range(100):
-            # if self.render_freq > 0:
-                # self.render()
-            # if self._record_video:
-                # self.video_recorder.capture_frame()
         self.sim.reset()
         qpos = np.copy(self.init_qpos)
         if self.randomize_pose:

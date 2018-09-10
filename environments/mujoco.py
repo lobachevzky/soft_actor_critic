@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
+from gym.utils import closer
 
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
@@ -20,6 +21,7 @@ class MujocoEnv:
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
+        self.episode = 0
         self.observation_space = self.action_space = None
 
         # required for OpenAI code
@@ -41,14 +43,9 @@ class MujocoEnv:
 
             print(f'Recording video to {record_path}.mp4')
             record_path.mkdir(exist_ok=True)
+            self._record_dir = record_path
             self._record_freq = record_freq
             self._image_dimensions = image_dimensions
-
-            self.video_recorder = VideoRecorder(
-                env=self,
-                base_path=str(record_path),
-                enabled=True,
-            )
         else:
             image_dimensions = image_dimensions or []
 
@@ -77,6 +74,12 @@ class MujocoEnv:
         self._set_action(action)
         done = self.compute_terminal()
         reward = self.compute_reward()
+        if reward > 0:
+            for _ in range(50):
+                if self.render_freq > 0:
+                    self.render()
+                if self._record_video:
+                    self.video_recorder.capture_frame()
         return self._get_obs(), reward, done, {}
 
     def _set_action(self, action):
@@ -90,22 +93,29 @@ class MujocoEnv:
                 self.video_recorder.capture_frame()
 
     def reset(self):
-        for _ in range(100):
-            if self.render_freq > 0:
-                self.render()
-            if self._record_video:
-                self.video_recorder.capture_frame()
         self.sim.reset()
         qpos = self._reset_qpos()
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
+        self.episode += 1
+        if self.video_recorder:
+            self.video_recorder.close()
+        base_path = Path(self._record_dir, str(self.episode))
+        base_path.mkdir(parents=True, exist_ok=True)
+        self.video_recorder = VideoRecorder(
+            env=self,
+            base_path=str(Path(base_path, 'video')),
+            metadata={'episode': self.episode},
+            enabled=True,
+        )
+        closer.Closer().register(self.video_recorder)
         return self._get_obs()
 
     @abstractmethod
     def _reset_qpos(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def __enter__(self):
         return self

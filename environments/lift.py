@@ -3,7 +3,7 @@ import random
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv
+from environments.mujoco import MujocoEnv, distance_between
 from mujoco import ObjType
 from sac.utils import vectorize
 
@@ -44,7 +44,8 @@ class LiftEnv(MujocoEnv):
                  block_xrange=None,
                  block_yrange=None,
                  fixed_block=False,
-                 min_lift_height=.02,
+                 min_lift_height=.08,
+                 geofence=.05,
                  cheat_prob=0,
                  obs_type='base-qvel',
                  **kwargs):
@@ -60,6 +61,7 @@ class LiftEnv(MujocoEnv):
         self._fixed_block = fixed_block
         self._block_name = 'block1'
         self.min_lift_height = min_lift_height
+        self.geofence = geofence
 
         super().__init__(**kwargs)
 
@@ -77,6 +79,10 @@ class LiftEnv(MujocoEnv):
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
+        
+    @property
+    def goal(self):
+        return self.initial_block_pos + np.array([0, 0, self.min_lift_height])
 
     def _reset_qpos(self, qpos):
         if np.random.uniform(0, 1) < self._cheat_prob:
@@ -136,7 +142,7 @@ class LiftEnv(MujocoEnv):
         return (finger1 + finger2) / 2.
 
     def _is_successful(self):
-        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
+        return distance_between(self.block_pos(), self.goal) < self.geofence
 
     def compute_terminal(self):
         return self._is_successful()

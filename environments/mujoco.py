@@ -7,7 +7,7 @@ import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import ObjType
+from mujoco import ObjType, MujocoError
 
 
 class MujocoEnv:
@@ -103,7 +103,10 @@ class MujocoEnv:
                 'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
                 'wrist_roll_joint', 'hand_l_proximal_joint'
             ]:
-                qpos_idx = self.sim.get_jnt_qposadr(joint)
+                try:
+                    qpos_idx = self.sim.get_jnt_qposadr(joint)
+                except MujocoError:
+                    continue
                 jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
                 qpos[qpos_idx] = \
                     np.random.uniform(

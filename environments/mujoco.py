@@ -6,7 +6,7 @@ import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import ObjType
+from mujoco import ObjType, MujocoError
 
 
 class MujocoEnv:

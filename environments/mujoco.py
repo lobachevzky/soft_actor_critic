@@ -6,7 +6,7 @@ import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import MujocoError, ObjType
+from mujoco import ObjType
 
 
 class MujocoEnv:
@@ -80,7 +80,7 @@ class MujocoEnv:
         self._set_action(action)
         done = self.compute_terminal()
         reward = self.compute_reward()
-        if reward > 0 :
+        if reward > 0:
             for _ in range(100):
                 if self.render_freq > 0:
                     self.render()
@@ -113,9 +113,9 @@ class MujocoEnv:
                         *self.sim.jnt_range[jnt_range_idx])
                 # self.sim.jnt_range[jnt_range_idx][1]
 
-        r = self.sim.get_jnt_qposadr('hand_r_proximal_joint')
-        l = self.sim.get_jnt_qposadr('hand_l_proximal_joint')
-        qpos[r] = qpos[l]
+        qpos[
+            self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
+            self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
         qpos = self._reset_qpos(qpos)
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
@@ -125,7 +125,7 @@ class MujocoEnv:
 
     @abstractmethod
     def _reset_qpos(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def __enter__(self):
         return self

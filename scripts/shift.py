@@ -5,12 +5,12 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
+from environments.hindsight_wrapper import ShiftHindsightWrapper
 from environments.shift import ShiftEnv
 from sac.networks import MlpAgent, SACXAgent
-from sac.train import ShiftTrainer, ShiftHindsightTrainer
+from sac.train import ShiftHindsightTrainer, ShiftTrainer
 from sac.utils import parse_double
 from scripts.lift import env_wrapper, put_in_xml_setter
-from environments.hindsight_wrapper import ShiftHindsightWrapper
 
 
 def parse_coordinate(ctx, param, string):
@@ -111,11 +111,12 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         trainer = ShiftHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
     else:
         trainer = ShiftTrainer(env=env, **kwargs)
-    trainer.train(load_path=load_path,
-                  save_path=save_path,
-                  logdir=logdir,
-                  render=False,  # because render is handled inside env
-                  )
+    trainer.train(
+        load_path=load_path,
+        save_path=save_path,
+        logdir=logdir,
+        render=False,  # because render is handled inside env
+    )
 
 
 if __name__ == '__main__':

@@ -123,7 +123,8 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--hindsight-geofence', default=.4, type=float)
-@click.option('--min-lift-height', default=.03, type=float)
+@click.option('--geofence', default=.05, type=float)
+@click.option('--min-lift-height', default=.08, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--randomize-pose', is_flag=True)
@@ -148,7 +149,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
 @env_wrapper
-def cli(max_steps, fixed_block, min_lift_height, hindsight_geofence, seed, device_num,
+def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         steps_per_action, logdir, save_path, load_path, render_freq, n_goals,
@@ -165,6 +166,7 @@ def cli(max_steps, fixed_block, min_lift_height, hindsight_geofence, seed, devic
             xml_filepath=temp_path,
             block_xrange=block_xrange,
             block_yrange=block_yrange,
+            geofence=geofence,
             render_freq=render_freq,
             record=record,
             record_path=record_path,

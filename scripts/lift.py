@@ -124,7 +124,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--n-goals', default=1, type=int)
 @click.option('--hindsight-geofence', default=.4, type=float)
 @click.option('--geofence', default=.05, type=float)
-@click.option('--min-lift-height', default=.08, type=float)
+@click.option('--min-lift-height', default=.03, type=float)
 @click.option('--grad-clip', default=4e4, type=float)
 @click.option('--fixed-block', is_flag=True)
 @click.option('--randomize-pose', is_flag=True)

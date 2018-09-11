@@ -62,6 +62,7 @@ class LiftEnv(MujocoEnv):
         self._block_name = 'block1'
         self.min_lift_height = min_lift_height + geofence
         self.geofence = geofence
+        self._goal = None
 
         super().__init__(**kwargs)
 
@@ -82,15 +83,15 @@ class LiftEnv(MujocoEnv):
 
     @property
     def goal(self):
-        return self.initial_block_pos + np.array([0, 0, self.min_lift_height])
+        return self._goal
 
     @property
     def goal3d(self):
-        return self.goal
+        return self._goal
 
     def reset(self):
         obs = super().reset()
-        self.initial_block_pos = self.block_pos()
+        self._goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
         self.sim.mocap_pos[:] = self.goal3d
         return obs
 

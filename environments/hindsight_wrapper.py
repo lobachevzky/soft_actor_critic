@@ -120,7 +120,7 @@ class LiftHindsightWrapper(HindsightWrapper):
 
     @property
     def goal_space(self):
-        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+        return self.lift_env.goal_space
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal).block
@@ -132,8 +132,7 @@ class LiftHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         assert isinstance(self.lift_env, LiftEnv)
-        goal = self.lift_env.initial_block_pos.copy()
-        goal[2] += self.lift_env.min_lift_height
+        goal = self.lift_env.goal
         return Goal(gripper=goal, block=goal)
 
 

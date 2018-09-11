@@ -141,10 +141,10 @@ class ShiftHindsightWrapper(LiftHindsightWrapper):
     def __init__(self, env, geofence):
         self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env, geofence)
-        # tack on gripper goal_space
+        # tack on block z-component and gripper goal_space
         self.observation_space = Box(
-            low=vectorize([env.observation_space.low, self.goal_space.low, -np.inf]),
-            high=vectorize([env.observation_space.high, self.goal_space.high, np.inf]))
+            low=vectorize([env.observation_space.low, -np.inf, self.goal_space.low]),
+            high=vectorize([env.observation_space.high, np.inf, self.goal_space.high]))
 
     def _desired_goal(self):
         assert isinstance(self.shift_env, ShiftEnv)

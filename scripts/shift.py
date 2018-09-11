@@ -5,9 +5,10 @@ import numpy as np
 import tensorflow as tf
 from gym.wrappers import TimeLimit
 
+from environments.hindsight_wrapper import ShiftHindsightWrapper
 from environments.shift import ShiftEnv
 from sac.networks import MlpAgent, SACXAgent
-from sac.train import ShiftTrainer
+from sac.train import ShiftHindsightTrainer, ShiftTrainer
 from sac.utils import parse_double
 from scripts.lift import env_wrapper, put_in_xml_setter
 
@@ -20,7 +21,6 @@ def parse_coordinate(ctx, param, string):
 
 @click.command()
 @click.option('--seed', default=0, type=int)
-@click.option('--n-networks', default=None, type=int)
 @click.option('--device-num', default=0, type=int)
 @click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
 @click.option('--sacx', 'agent', flag_value=SACXAgent)
@@ -53,6 +53,7 @@ def parse_coordinate(ctx, param, string):
 @click.option('--hindsight-geofence', default=None, type=float)
 @click.option('--fixed-block', default=None, callback=parse_coordinate)
 @click.option('--fixed-goal', default=None, callback=parse_coordinate)
+@click.option('--concat-recordings', is_flag=True)
 @click.option('--goal-x', default=None, callback=parse_coordinate)
 @click.option('--goal-y', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -68,8 +69,8 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         learning_rate, reward_scale, entropy_scale, grad_clip, batch_size,
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         temp_path, render_freq, record, record_path, record_freq, image_dims,
-        hindsight_geofence, geofence, n_networks, agent, fixed_block, fixed_goal,
-        randomize_pose, goal_x, goal_y):
+        hindsight_geofence, geofence, agent, fixed_block, fixed_goal,
+        randomize_pose, goal_x, goal_y, concat_recordings):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=ShiftEnv(
@@ -80,6 +81,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
             record=record,
             record_path=record_path,
             record_freq=record_freq,
+            concat_recordings=concat_recordings,
             image_dimensions=image_dims,
             fixed_block=fixed_block,
             fixed_goal=fixed_goal,
@@ -102,14 +104,20 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
-        load_path=load_path,
-        render=False,  # because render is handled inside env
         evaluation=eval,
     )
 
-    ShiftTrainer(env=env, **kwargs)
+    if hindsight_geofence:
+        env = ShiftHindsightWrapper(env=env, geofence=hindsight_geofence)
+        trainer = ShiftHindsightTrainer(env=env, n_goals=n_goals, **kwargs)
+    else:
+        trainer = ShiftTrainer(env=env, **kwargs)
+    trainer.train(
+        load_path=load_path,
+        save_path=save_path,
+        logdir=logdir,
+        render=False,  # because render is handled inside env
+    )
 
 
 if __name__ == '__main__':

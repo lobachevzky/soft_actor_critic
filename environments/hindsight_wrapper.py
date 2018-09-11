@@ -123,12 +123,9 @@ class LiftHindsightWrapper(HindsightWrapper):
         return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
 
     def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal)
-        desired_goal = Goal(*desired_goal)
-        block_distance = distance_between(achieved_goal.block, desired_goal.block)
-        gripper_distance = distance_between(achieved_goal.gripper, desired_goal.gripper)
-        return np.logical_and(block_distance < self._geofence,
-                              gripper_distance < self._geofence)
+        achieved_goal = Goal(*achieved_goal).block
+        desired_goal = Goal(*desired_goal).block
+        return distance_between(achieved_goal, desired_goal) < self._geofence
 
     def _achieved_goal(self):
         return Goal(gripper=self.lift_env.gripper_pos(), block=self.lift_env.block_pos())
@@ -144,10 +141,10 @@ class ShiftHindsightWrapper(LiftHindsightWrapper):
     def __init__(self, env, geofence):
         self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env, geofence)
-        # tack on gripper goal_space
+        # tack on block z-component and gripper goal_space
         self.observation_space = Box(
-            low=vectorize([env.observation_space.low, self.goal_space.low, -np.inf]),
-            high=vectorize([env.observation_space.high, self.goal_space.high, np.inf]))
+            low=vectorize([env.observation_space.low, -np.inf, self.goal_space.low]),
+            high=vectorize([env.observation_space.high, np.inf, self.goal_space.high]))
 
     def _desired_goal(self):
         assert isinstance(self.shift_env, ShiftEnv)

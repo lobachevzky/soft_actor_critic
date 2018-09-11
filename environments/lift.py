@@ -1,11 +1,11 @@
 import random
-from collections import namedtuple
 
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv
+from environments.mujoco import MujocoEnv, distance_between
 from mujoco import ObjType
+from sac.utils import vectorize
 
 CHEAT_STARTS = [[
     7.450e-05,
@@ -44,7 +44,8 @@ class LiftEnv(MujocoEnv):
                  block_xrange=None,
                  block_yrange=None,
                  fixed_block=False,
-                 min_lift_height=.02,
+                 min_lift_height=.08,
+                 geofence=.05,
                  cheat_prob=0,
                  obs_type='base-qvel',
                  **kwargs):
@@ -59,7 +60,8 @@ class LiftEnv(MujocoEnv):
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
         self._block_name = 'block1'
-        self.min_lift_height = min_lift_height
+        self.min_lift_height = min_lift_height + geofence
+        self.geofence = geofence
 
         super().__init__(**kwargs)
 
@@ -67,10 +69,9 @@ class LiftEnv(MujocoEnv):
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
-        obs_size = sum(map(np.size, self._get_obs()))
-        assert obs_size != 0
         self.observation_space = spaces.Box(
-            -np.inf, np.inf, shape=(obs_size,), dtype=np.float32)
+            low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
+
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -79,13 +80,26 @@ class LiftEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
+    @property
+    def goal(self):
+        return self.initial_block_pos + np.array([0, 0, self.min_lift_height])
+
+    @property
+    def goal3d(self):
+        return self.goal
+
+    def reset(self):
+        obs = super().reset()
+        self.initial_block_pos = self.block_pos()
+        self.sim.mocap_pos[:] = self.goal3d
+        return obs
+
     def _reset_qpos(self, qpos):
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True
             qpos = np.array(random.choice(CHEAT_STARTS))
         else:
             self._cheated = False
-            qpos = self.initial_qpos
         if not self._fixed_block:
             block_joint = self.sim.get_jnt_qposadr('block1joint')
             qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
@@ -94,9 +108,6 @@ class LiftEnv(MujocoEnv):
             qpos[block_joint + 6] = np.random.uniform(-1, 1)
 
         return qpos
-
-    def _set_new_goal(self):
-        pass
 
     def _get_obs_space(self):
         qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
@@ -141,10 +152,9 @@ class LiftEnv(MujocoEnv):
         return (finger1 + finger2) / 2.
 
     def _is_successful(self):
-        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
+        return distance_between(self.block_pos(), self.goal) < self.geofence
 
     def compute_terminal(self):
-        # return False
         return self._is_successful()
 
     def compute_reward(self):

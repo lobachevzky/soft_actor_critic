@@ -7,18 +7,20 @@ from pathlib import Path
 from typing import List, Optional
 
 import tensorflow as tf
+from tensorflow.python.framework.errors_impl import DataLossError
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('dirs', nargs='*', type=Path)
+    parser.add_argument('--base-dir', default='.runs/tensorboard', type=Path)
     parser.add_argument('--smoothing', type=int, default=2000)
     parser.add_argument('--tag', default='reward')
     parser.add_argument('--use-cache', action='store_true')
     parser.add_argument('--quiet', action='store_true')
     args = parser.parse_args()
     data_points = crawl(
-        dirs=args.dirs,
+        dirs=[Path(args.base_dir, d) for d in args.dirs],
         tag=args.tag,
         smoothing=args.smoothing,
         use_cache=args.use_cache,
@@ -62,7 +64,10 @@ def collect_data(tag: str, event_file_path: Path, n: int) -> Optional[float]:
     :param n: number of data points to average
     :return: average of last n data-points in events file or None if events file is empty
     """
-    length = sum(1 for _ in tf.train.summary_iterator(str(event_file_path)))
+    try:
+        length = sum(1 for _ in tf.train.summary_iterator(str(event_file_path)))
+    except DataLossError:
+        return None
     iterator = tf.train.summary_iterator(str(event_file_path))
     events = islice(iterator, max(length - n, 0), length)
 

@@ -62,6 +62,7 @@ class LiftEnv(MujocoEnv):
         self._block_name = 'block1'
         self.min_lift_height = min_lift_height + geofence
         self.geofence = geofence
+        self.goal = None
 
         super().__init__(**kwargs)
 
@@ -80,9 +81,10 @@ class LiftEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
-    @property
-    def goal(self):
-        return self.initial_block_pos + np.array([0, 0, self.min_lift_height])
+    def reset(self):
+        obs = super().reset()
+        self.goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
+        return obs
 
     def _reset_qpos(self, qpos):
         if np.random.uniform(0, 1) < self._cheat_prob:

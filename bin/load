@@ -1,4 +1,4 @@
-#! /usr/bin/env bash
+#! /usr/bin/env zsh
 
 task=$(echo $2 | sed 's/.runs\/tensorboard\///g')
 cmd=$(runs lookup command $task --porcelain)

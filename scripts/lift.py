@@ -137,6 +137,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--record-freq', type=int, default=0)
 @click.option('--record-path', type=Path)
 @click.option('--record', is_flag=True)
+@click.option('--concat-recordings', is_flag=True)
 @click.option('--block-xrange', type=str, default="-.1,.1", callback=parse_double)
 @click.option('--block-yrange', type=str, default="-.2,.2", callback=parse_double)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -152,9 +153,9 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed, device_num,
         buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
         entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
-        steps_per_action, logdir, save_path, load_path, render_freq, n_goals,
-        block_xrange, seq_len, block_yrange, agent, record, randomize_pose, image_dims,
-        record_freq, record_path, temp_path):
+        concat_recordings, steps_per_action, logdir, save_path, load_path, render_freq,
+        n_goals, block_xrange, seq_len, block_yrange, agent, record, randomize_pose,
+        image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=LiftEnv(
@@ -171,6 +172,7 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
             record=record,
             record_path=record_path,
             record_freq=record_freq,
+            concat_recordings=concat_recordings,
             image_dimensions=image_dims,
         ))
 

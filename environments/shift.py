@@ -93,9 +93,7 @@ class ShiftEnv(LiftEnv):
 
     def reset(self):
         if self.fixed_goal is None:
-            self.goal = self.goal_space.sample()
-            self.init_qpos[self.sim.get_jnt_qposadr('goal_x')] = self.goal[0]
-            self.init_qpos[self.sim.get_jnt_qposadr('goal_y')] = self.goal[1]
+            self._goal = self.goal_space.sample()
         return super().reset()
 
     def render(self, labels=None, **kwargs):

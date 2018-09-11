@@ -30,7 +30,7 @@ setup(
         'plot=scripts.plot:main',
         'tb=scripts.tensorboard:main',
     ]),
-    scripts=['bin/load', 'bin/filter', 'bin/new-tb'],
+    scripts=['bin/load', 'bin/filter', 'bin/correlate'],
     install_requires=[
         'tensorflow>=1.6.0', 'scipy==1.1.0', 'gym==0.10.4', 'pygame==1.9.3', 'click==6.7'
     ])

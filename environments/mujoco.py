@@ -1,12 +1,13 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
+from gym.utils import closer
 
 import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import ObjType
+from mujoco import ObjType, MujocoError
 
 
 class MujocoEnv:
@@ -17,11 +18,14 @@ class MujocoEnv:
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
                  record_freq: int = 0,
-                 record: bool = None,
+                 record: bool = False,
+                 concat_recordings: bool = False,
                  render_freq: int = 0):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
+        self._episode = 0
+        self._time_steps = 0
         self.observation_space = self.action_space = None
 
         # required for OpenAI code
@@ -31,26 +35,19 @@ class MujocoEnv:
         self.render_freq = render_freq
         self.steps_per_action = steps_per_action
 
-        self.video_recorder = None
-        self._record_video = any((record_path, record_freq, record))
+        self._video_recorder = None
+        self._concat_recordings = concat_recordings
+        self._record_video = any((concat_recordings,
+                                  record_path,
+                                  record_freq,
+                                  record))
         if self._record_video:
-            if not record_path:
-                record_path = Path('/tmp/training-video')
-            if not image_dimensions:
-                image_dimensions = (800, 800)
-            if not record_freq:
-                record_freq = 20
+            self._record_path = record_path or Path('/tmp/training-video')
+            image_dimensions = image_dimensions or (1000, 1000)
+            self._record_freq = record_freq or 20
 
-            print(f'Recording video to {record_path}.mp4')
-            record_path.mkdir(exist_ok=True)
-            self._record_freq = record_freq
-            self._image_dimensions = image_dimensions
-
-            self.video_recorder = VideoRecorder(
-                env=self,
-                base_path=str(record_path),
-                enabled=True,
-            )
+            if concat_recordings:
+                self._video_recorder = self.reset_recorder(self._record_path)
         else:
             image_dimensions = image_dimensions or []
 
@@ -76,16 +73,17 @@ class MujocoEnv:
         return self.sim.render_offscreen(camera_name)
 
     def step(self, action):
+        self._time_steps += 1
         assert np.shape(action) == np.shape(self.sim.ctrl)
         self._set_action(action)
         done = self.compute_terminal()
         reward = self.compute_reward()
         if reward > 0:
-            for _ in range(100):
+            for _ in range(50):
                 if self.render_freq > 0:
                     self.render()
                 if self._record_video:
-                    self.video_recorder.capture_frame()
+                    self._video_recorder.capture_frame()
         return self._get_obs(), reward, done, {}
 
     def _set_action(self, action):
@@ -96,7 +94,7 @@ class MujocoEnv:
             if self.render_freq > 0 and i % self.render_freq == 0:
                 self.render()
             if self._record_video and i % self._record_freq == 0:
-                self.video_recorder.capture_frame()
+                self._video_recorder.capture_frame()
 
     def reset(self):
         self.sim.reset()
@@ -124,7 +122,26 @@ class MujocoEnv:
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
+        if self._time_steps > 0:
+            self._episode += 1
+        if not self._concat_recordings:
+            if self._video_recorder:
+                self._video_recorder.close()
+            record_path = Path(self._record_path, str(self._episode))
+            self._video_recorder = self.reset_recorder(record_path)
         return self._get_obs()
+
+    def reset_recorder(self, record_path: Path):
+        record_path.mkdir(parents=True, exist_ok=True)
+        print(f'Recording video to {record_path}.mp4')
+        video_recorder = VideoRecorder(
+            env=self,
+            base_path=str(record_path),
+            metadata={'episode': self._episode},
+            enabled=True,
+        )
+        closer.Closer().register(video_recorder)
+        return video_recorder
 
     @abstractmethod
     def _reset_qpos(self):

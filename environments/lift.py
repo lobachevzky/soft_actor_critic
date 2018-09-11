@@ -55,6 +55,7 @@ class LiftEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
+        self.goal_space = spaces.Box(*map(np.array, zip(block_xrange, block_yrange, (.4, .43))))
         self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
@@ -91,7 +92,7 @@ class LiftEnv(MujocoEnv):
 
     def reset(self):
         obs = super().reset()
-        self._goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
+        self._goal = self.goal_space.sample()
         self.sim.mocap_pos[:] = self.goal3d
         return obs
 

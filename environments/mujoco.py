@@ -124,7 +124,7 @@ class MujocoEnv:
         self.sim.forward()
         if self._time_steps > 0:
             self._episode += 1
-        if not self._concat_recordings:
+        if self._record_video and not self._concat_recordings:
             if self._video_recorder:
                 self._video_recorder.close()
             record_path = Path(self._record_path, str(self._episode))

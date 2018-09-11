@@ -65,6 +65,7 @@ class LiftEnv(MujocoEnv):
 
         super().__init__(**kwargs)
 
+        self._goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
         self.initial_qpos = np.copy(self.init_qpos)
         self.initial_block_pos = np.copy(self.block_pos())
         left_finger_name = 'hand_l_distal_link'
@@ -82,7 +83,16 @@ class LiftEnv(MujocoEnv):
 
     @property
     def goal(self):
-        return self.initial_block_pos + np.array([0, 0, self.min_lift_height])
+        return self._goal
+
+    @property
+    def goal3d(self):
+        return self._goal
+
+    def reset(self):
+        obs = super().reset()
+        self.sim.mocap_pos[:] = self.goal3d
+        return obs
 
     def _reset_qpos(self, qpos):
         if np.random.uniform(0, 1) < self._cheat_prob:

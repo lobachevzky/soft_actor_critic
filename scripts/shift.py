@@ -53,6 +53,7 @@ def parse_coordinate(ctx, param, string):
 @click.option('--hindsight-geofence', default=None, type=float)
 @click.option('--fixed-block', default=None, callback=parse_coordinate)
 @click.option('--fixed-goal', default=None, callback=parse_coordinate)
+@click.option('--concat-recordings', is_flag=True)
 @click.option('--goal-x', default=None, callback=parse_coordinate)
 @click.option('--goal-y', default=None, callback=parse_coordinate)
 @click.option('--xml-file', type=Path, default='world.xml')
@@ -69,7 +70,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
         num_train_steps, steps_per_action, logdir, save_path, load_path, n_goals, eval,
         temp_path, render_freq, record, record_path, record_freq, image_dims,
         hindsight_geofence, geofence, agent, fixed_block, fixed_goal,
-        randomize_pose, goal_x, goal_y):
+        randomize_pose, goal_x, goal_y, concat_recordings):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=ShiftEnv(
@@ -80,6 +81,7 @@ def cli(max_steps, seed, device_num, buffer_size, activation, n_layers, layer_si
             record=record,
             record_path=record_path,
             record_freq=record_freq,
+            concat_recordings=concat_recordings,
             image_dimensions=image_dims,
             fixed_block=fixed_block,
             fixed_goal=fixed_goal,

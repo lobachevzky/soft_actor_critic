@@ -55,7 +55,6 @@ class LiftEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
-        self.goal_space = spaces.Box(*map(np.array, zip(block_xrange, block_yrange, (.4, .43))))
         self._obs_type = obs_type
         self._cheated = False
         self._cheat_prob = cheat_prob
@@ -69,6 +68,10 @@ class LiftEnv(MujocoEnv):
 
         self.initial_qpos = np.copy(self.init_qpos)
         self.initial_block_pos = np.copy(self.block_pos())
+        initial_z = self.initial_block_pos[2]
+        block_zrange = (initial_z, initial_z + self.min_lift_height)
+        self.goal_space = spaces.Box(*map(np.array,
+                                          zip(block_xrange, block_yrange, block_zrange)))
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self.observation_space = spaces.Box(

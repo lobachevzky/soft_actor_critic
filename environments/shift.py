@@ -38,6 +38,10 @@ class ShiftEnv(LiftEnv):
     def goal(self):
         return self._goal
 
+    @property
+    def goal3d(self):
+        return np.append(self._goal, self.initial_block_pos[2])
+
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
 
@@ -98,8 +102,6 @@ class ShiftEnv(LiftEnv):
     def reset(self):
         if self.fixed_goal is None:
             self._goal = self.goal_space.sample()
-            self.init_qpos[self.sim.get_jnt_qposadr('goal_x')] = self.goal[0]
-            self.init_qpos[self.sim.get_jnt_qposadr('goal_y')] = self.goal[1]
         return super().reset()
 
     def render(self, labels=None, **kwargs):

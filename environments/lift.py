@@ -147,7 +147,7 @@ class LiftEnv(MujocoEnv):
         return (finger1 + finger2) / 2.
 
     def _is_successful(self):
-        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
+        return distance_between(self.block_pos(), self.goal) < self.geofence
 
     def compute_terminal(self):
         return self._is_successful()

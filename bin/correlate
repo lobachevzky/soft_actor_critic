@@ -1,3 +1,3 @@
 #! /usr/bin/env zsh
 
-runs correlate $1/% ".runs/tensorboard/<path>/$2.${3:=reward}"|filter
+runs correlate $1/% ".runs/tensorboard/<path>/${2:=2000}.${3:=reward}"|filter

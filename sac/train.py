@@ -190,22 +190,30 @@ class Trainer:
             observation_space = self.observation_space
         if action_space is None:
             action_space = self.action_space
+
+        def space_to_size(space: gym.Space):
+            if isinstance(space, spaces.Discrete):
+                return space.n
+            elif isinstance(space, (spaces.Dict, spaces.Tuple)):
+                if isinstance(space, spaces.Dict):
+                    _spaces = list(space.spaces.values())
+                else:
+                    _spaces = list(space.spaces)
+                return sum(space_to_size(s) for s in _spaces)
+            else:
+                return space.shape[0]
+
         if isinstance(action_space, spaces.Discrete):
-            action_shape = [action_space.n]
             policy_type = CategoricalPolicy
         else:
-            action_shape = action_space.shape
             policy_type = GaussianPolicy
-
-        if isinstance(observation_space, spaces.Discrete):
-            state_shape = [observation_space.n]
-        else:
-            state_shape = observation_space.shape
 
         class Agent(policy_type, base_agent):
             def __init__(self):
                 super(Agent, self).__init__(
-                    o_shape=state_shape, a_shape=action_shape, **kwargs)
+                    o_shape=observation_space.shape,
+                    a_shape=[space_to_size(action_space)],
+                    **kwargs)
 
         return Agent()
 

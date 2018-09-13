@@ -85,8 +85,5 @@ class LiftEnv(MujocoEnv):
 
         return get_qvels(['slide_x', 'slide_x'])
 
-    def _get_obs(self):
-        return np.concatenate([self.sim.qpos, self._qvel_obs()])
-
     def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height

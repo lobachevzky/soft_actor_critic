@@ -2,7 +2,6 @@ import numpy as np
 from gym import spaces
 
 from environments.mujoco import MujocoEnv
-from sac.utils import vectorize
 
 
 def quaternion_multiply(quaternion1, quaternion0):

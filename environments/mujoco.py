@@ -92,6 +92,7 @@ class MujocoEnv:
 
     def _get_obs(self):
         obs = np.concatenate([self.sim.qpos, self._qvel_obs()])
+        assert self.mujoco_obs_space.contains(obs)
         return obs
 
     def _qvel_obs(self):

@@ -3,7 +3,7 @@ import random
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv
+from environments.mujoco import MujocoEnv, distance_between
 from mujoco import ObjType
 from sac.utils import vectorize
 
@@ -44,7 +44,8 @@ class LiftEnv(MujocoEnv):
                  block_xrange=None,
                  block_yrange=None,
                  fixed_block=False,
-                 min_lift_height=.02,
+                 min_lift_height=.08,
+                 geofence=.05,
                  cheat_prob=0,
                  obs_type='base-qvel',
                  **kwargs):
@@ -59,7 +60,9 @@ class LiftEnv(MujocoEnv):
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
         self._block_name = 'block1'
-        self.min_lift_height = min_lift_height
+        self.min_lift_height = min_lift_height + geofence
+        self.geofence = geofence
+        self._goal = None
 
         super().__init__(**kwargs)
 

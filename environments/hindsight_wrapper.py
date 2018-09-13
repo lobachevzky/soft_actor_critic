@@ -106,6 +106,14 @@ class MujocoHindsightWrapper(HindsightWrapper):
         self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, MujocoEnv))
         self._geofence = geofence
 
+    def _is_success(self, achieved_goal, desired_goal):
+        achieved_goal = Goal(*achieved_goal).block
+        desired_goal = Goal(*desired_goal).block
+        return distance_between(achieved_goal, desired_goal) < self._geofence
+
+    def _achieved_goal(self):
+        return Goal(gripper=self.mujoco_env.gripper_pos(), block=self.mujoco_env.block_pos())
+
 
 class LiftHindsightWrapper(MujocoHindsightWrapper):
     def __init__(self, env, geofence):
@@ -126,14 +134,6 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
     @property
     def goal_space(self):
         return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
-
-    def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal).block
-        desired_goal = Goal(*desired_goal).block
-        return distance_between(achieved_goal, desired_goal) < self._geofence
-
-    def _achieved_goal(self):
-        return Goal(gripper=self.lift_env.gripper_pos(), block=self.lift_env.block_pos())
 
     def _desired_goal(self):
         assert isinstance(self.lift_env, LiftEnv)

@@ -81,6 +81,20 @@ class LiftEnv(MujocoEnv):
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self
 
+    @property
+    def goal(self):
+        return self._goal
+
+    @property
+    def goal3d(self):
+        return self._goal
+
+    def reset(self):
+        obs = super().reset()
+        self._goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
+        self.sim.mocap_pos[:] = self.goal3d
+        return obs
+
     def _reset_qpos(self, qpos):
         if np.random.uniform(0, 1) < self._cheat_prob:
             self._cheated = True

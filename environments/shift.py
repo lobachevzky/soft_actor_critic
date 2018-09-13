@@ -22,7 +22,7 @@ class ShiftEnv(LiftEnv):
         self.fixed_goal = fixed_goal
         self.geofence = geofence
         self.goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
-        self.goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
+        self._goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         # goal_size = np.array([.0317, .0635, .0234]) * geofence
@@ -33,6 +33,14 @@ class ShiftEnv(LiftEnv):
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
         self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
+
+    @property
+    def goal(self):
+        return self._goal
+
+    @property
+    def goal3d(self):
+        return np.append(self._goal, self.initial_block_pos[2])
 
     def _is_successful(self):
         return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
@@ -93,9 +101,7 @@ class ShiftEnv(LiftEnv):
 
     def reset(self):
         if self.fixed_goal is None:
-            self.goal = self.goal_space.sample()
-            self.init_qpos[self.sim.get_jnt_qposadr('goal_x')] = self.goal[0]
-            self.init_qpos[self.sim.get_jnt_qposadr('goal_y')] = self.goal[1]
+            self._goal = self.goal_space.sample()
         return super().reset()
 
     def render(self, labels=None, **kwargs):

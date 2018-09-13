@@ -1,6 +1,8 @@
 from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
+
+from gym import spaces
 from gym.utils import closer
 
 import numpy as np
@@ -15,6 +17,7 @@ class MujocoEnv:
                  xml_filepath: Path,
                  steps_per_action: int,
                  randomize_pose=False,
+                 fixed_block=False,
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
                  record_freq: int = 0,
@@ -29,7 +32,7 @@ class MujocoEnv:
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._episode = 0
         self._time_steps = 0
-        self.observation_space = self.action_space = None
+        self._fixed_block = fixed_block
 
         # required for OpenAI code
         self.metadata = {'render.modes': 'rgb_array'}
@@ -60,6 +63,19 @@ class MujocoEnv:
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._image_dimensions = image_dimensions
+        self._base_joints = ['slide_x', 'slide_y']
+        n_base_joints = sum(int(self.sim.contains(ObjType.JOINT, j))
+                            for j in self._base_joints)
+        self.mujoco_obs_space = self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints,))
+
+        self.action_space = spaces.Box(
+            low=self.sim.actuator_ctrlrange[:-1, 0],
+            high=self.sim.actuator_ctrlrange[:-1, 1],
+            dtype=np.float32)
+
+        self.initial_qpos = np.copy(self.init_qpos)
+        self.initial_block_pos = np.copy(self.block_pos())
 
     def seed(self, seed=None):
         np.random.seed(seed)

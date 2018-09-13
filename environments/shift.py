@@ -4,7 +4,7 @@ from collections import namedtuple
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import distance_between, MujocoEnv
+from environments.mujoco import MujocoEnv, distance_between
 
 Observation = namedtuple('Obs', 'observation goal')
 
@@ -12,11 +12,11 @@ Observation = namedtuple('Obs', 'observation goal')
 class ShiftEnv(MujocoEnv):
     def __init__(self,
                  geofence: float,
+                 obs_type=None,
                  fixed_block=None,
                  fixed_goal=None,
                  goal_x=(-.11, .09),
                  goal_y=(-.19, .2),
-                 obs_type=None,
                  **kwargs):
         self._obs_type = obs_type
         self.fixed_block = fixed_block
@@ -24,7 +24,7 @@ class ShiftEnv(MujocoEnv):
         self.geofence = geofence
         self._goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
         self._goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
-        super().__init__(fixed_block=False, **kwargs)
+        super().__init__(**kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
         # goal_size = np.array([.0317, .0635, .0234]) * geofence
         intervals = [2, 3, 1]

@@ -194,6 +194,8 @@ class MujocoEnv:
                 self._video_recorder.close()
             record_path = Path(self._record_path, str(self._episode))
             self._video_recorder = self.reset_recorder(record_path)
+
+        self.sim.mocap_pos[:] = self.goal3d
         return self._get_obs()
 
     def block_pos(self):
@@ -234,6 +236,10 @@ class MujocoEnv:
     @property
     @abstractmethod
     def goal_space(self):
+        raise NotImplementedError
+
+    @property
+    def goal3d(self):
         raise NotImplementedError
 
     @abstractmethod

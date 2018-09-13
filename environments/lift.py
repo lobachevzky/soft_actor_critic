@@ -40,7 +40,6 @@ class LiftEnv(MujocoEnv):
     def reset(self):
         obs = super().reset()
         self._goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
-        self.sim.mocap_pos[:] = self.goal3d
         return obs
 
     def _get_obs_space(self):

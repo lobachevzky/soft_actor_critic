@@ -93,11 +93,6 @@ class LiftEnv(MujocoEnv):
         return obs
 
     def _reset_qpos(self, qpos):
-        if np.random.uniform(0, 1) < self._cheat_prob:
-            self._cheated = True
-            qpos = np.array(random.choice(CHEAT_STARTS))
-        else:
-            self._cheated = False
         if not self._fixed_block:
             block_joint = self.sim.get_jnt_qposadr('block1joint')
             qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)

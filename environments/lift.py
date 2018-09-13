@@ -17,18 +17,9 @@ def quaternion_multiply(quaternion1, quaternion0):
 
 class LiftEnv(MujocoEnv):
     def __init__(self,
-                 block_xrange=None,
-                 block_yrange=None,
                  min_lift_height=.08,
                  geofence=.05,
-                 cheat_prob=0,
                  **kwargs):
-        if block_xrange is None:
-            block_xrange = (0, 0)
-        if block_yrange is None:
-            block_yrange = (0, 0)
-        self.block_xrange = block_xrange
-        self.block_yrange = block_yrange
         self.min_lift_height = min_lift_height + geofence
         self._goal = None
 

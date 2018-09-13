@@ -11,6 +11,8 @@ from environments.lift import LiftEnv
 from environments.mujoco import print1
 from mujoco import ObjType
 
+from environments.shift import ShiftEnv
+
 saved_pos = None
 
 
@@ -24,16 +26,14 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
-    env = LiftEnv(
-        block_xrange=(-0, 0),
-        block_yrange=(-0, 0),
+    env = ShiftEnv(
         xml_filepath=xml_filepath,
-        # fixed_block=np.array([0, 0, .43]),
+        fixed_block=np.array([0, 0, .43]),
         # fixed_goal=np.array([.11, .22, .4]),
         randomize_pose=False,
         steps_per_action=300,
         geofence=.4,
-        min_lift_height=.43,
+        # min_lift_height=.43,
     )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()

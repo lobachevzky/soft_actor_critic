@@ -119,7 +119,6 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @click.option('--batch-size', default=32, type=int)
 @click.option('--reward-scale', default=7e3, type=float)
 @click.option('--entropy-scale', default=1, type=float)
-@click.option('--cheat-prob', default=0, type=float, callback=check_probability)
 @click.option('--max-steps', default=200, type=int)
 @click.option('--n-goals', default=1, type=int)
 @click.option('--hindsight-geofence', default=.4, type=float)
@@ -152,14 +151,13 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @env_wrapper
 def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed,
         device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+        reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps,
         concat_recordings, steps_per_action, logdir, save_path, load_path, render_freq,
         n_goals, block_xrange, seq_len, block_yrange, agent, record, randomize_pose,
         image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=LiftEnv(
-            cheat_prob=cheat_prob,
             steps_per_action=steps_per_action,
             fixed_block=fixed_block,
             randomize_pose=randomize_pose,

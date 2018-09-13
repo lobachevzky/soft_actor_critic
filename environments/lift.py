@@ -92,16 +92,6 @@ class LiftEnv(MujocoEnv):
         self.sim.mocap_pos[:] = self.goal3d
         return obs
 
-    def _reset_qpos(self, qpos):
-        if not self._fixed_block:
-            block_joint = self.sim.get_jnt_qposadr('block1joint')
-            qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
-            qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
-            qpos[block_joint + 3] = np.random.uniform(0, 1)
-            qpos[block_joint + 6] = np.random.uniform(-1, 1)
-
-        return qpos
-
     def _get_obs_space(self):
         qpos_limits = [(-np.inf, np.inf) for _ in self.sim.qpos]
         qvel_limits = [(-np.inf, np.inf) for _ in self._qvel_obs()]

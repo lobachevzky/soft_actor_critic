@@ -35,29 +35,15 @@ class ShiftEnv(MujocoEnv):
         goal_corners = np.array(list(itertools.product(x, y)))
         self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
 
-    @property
-    def goal_space(self):
-        return self._goal_space
-
-    @property
-    def goal(self):
-        return self._goal
-
-    @property
-    def goal3d(self):
-        return np.append(self._goal, self.initial_block_pos[2])
-
-    def _is_successful(self):
-        return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
-
-    def _get_obs(self):
+    def _get_raw_obs(self):
         if self._obs_type == 'openai':
 
             # positions
             grip_pos = self.gripper_pos()
             dt = self.sim.nsubsteps * self.sim.timestep
             object_pos = self.block_pos()
-            grip_velp = .5 * sum(self.sim.get_body_xvelp(name) for name in self._finger_names)
+            grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
+                                 for name in self._finger_names)
             # rotations
             object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
 
@@ -74,7 +60,7 @@ class ShiftEnv(MujocoEnv):
                 [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
             gripper_vel = dt * .5 * qvels
 
-            obs = np.concatenate([
+            return np.concatenate([
                 grip_pos,
                 object_pos.ravel(),
                 object_rel_pos.ravel(),
@@ -86,8 +72,28 @@ class ShiftEnv(MujocoEnv):
                 gripper_vel,
             ])
         else:
-            obs = super()._get_obs()
-        return Observation(observation=obs, goal=self.goal)
+            return super()._get_obs()
+
+    def _get_obs(self):
+        observation = Observation(observation=self._get_raw_obs(), goal=self.goal)
+        # assert self.observation_space.contains(observation)
+        return observation
+
+
+    @property
+    def goal_space(self):
+        return self._goal_space
+
+    @property
+    def goal(self):
+        return self._goal
+
+    @property
+    def goal3d(self):
+        return np.append(self._goal, self.initial_block_pos[2])
+
+    def _is_successful(self):
+        return distance_between(self.goal, self.block_pos()[:2]) < self.geofence
 
     def _reset_qpos(self, qpos):
         block_joint = self.sim.get_jnt_qposadr('block1joint')

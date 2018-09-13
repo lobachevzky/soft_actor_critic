@@ -1,31 +1,8 @@
-import random
-
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv, distance_between
-from mujoco import ObjType
+from environments.mujoco import MujocoEnv
 from sac.utils import vectorize
-
-CHEAT_STARTS = [[
-    7.450e-05,
-    -3.027e-03,
-    4.385e-01,
-    1.000e+00,
-    0,
-    0,
-    -6.184e-04,
-    -1.101e+00,
-    0,
-    3.573e-01,
-    3.574e-01,
-], [-0.005, 0.025, 0.447, 0.488, -0.488, -0.512, 0.512, -1.101, 1.575, 0.357, 0.357], [
-    4.636e-03, 8.265e-06, 4.385e-01, 7.126e-01, 2.072e-17, -2.088e-17, -7.015e-01,
-    -1.101e+00, -1.575e+00, 3.573e-01, 3.574e-01
-], [
-    5.449e-03, -4.032e-03, 4.385e-01, 3.795e-01, 1.208e-17, -2.549e-17, -9.252e-01,
-    -1.101e+00, -7.793e-01, 3.573e-01, 3.574e-01
-]]
 
 
 def quaternion_multiply(quaternion1, quaternion0):
@@ -129,4 +106,3 @@ class LiftEnv(MujocoEnv):
 
     def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
-

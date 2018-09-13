@@ -35,19 +35,18 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
+    def _add_goals(self, env_obs):
+        observation = Observation(observation=env_obs,
+                                  desired_goal=self._desired_goal(),
+                                  achieved_goal=self._achieved_goal())
+        return observation
+
     def step(self, action):
         o2, r, t, info = self.env.step(action)
-        new_o2 = Observation(
-            observation=o2,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-        return new_o2, r, t, info
+        return self._add_goals(o2), r, t, info
 
     def reset(self):
-        return Observation(
-            observation=self.env.reset(),
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
+        return self._add_goals(super().reset())
 
     def recompute_trajectory(self, trajectory: Step):
         trajectory = Step(*deepcopy(trajectory))

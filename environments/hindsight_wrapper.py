@@ -1,16 +1,16 @@
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
-from typing import Optional
 
 import gym
 import numpy as np
 from gym import spaces
-from gym.spaces import Box
+from gym.spaces import Box, Tuple
 
+from environments import shift
 from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
-from environments.mujoco import distance_between, MujocoEnv
+from environments.mujoco import MujocoEnv, distance_between
 from environments.shift import ShiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
@@ -124,7 +124,8 @@ class MujocoHindsightWrapper(HindsightWrapper):
         return distance_between(achieved_goal, desired_goal) < self._geofence
 
     def _achieved_goal(self):
-        return Goal(gripper=self.mujoco_env.gripper_pos(), block=self.mujoco_env.block_pos())
+        return Goal(gripper=self.mujoco_env.gripper_pos(),
+                    block=self.mujoco_env.block_pos())
 
     @property
     def goal_space(self):

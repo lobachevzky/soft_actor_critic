@@ -40,6 +40,7 @@ class HindsightWrapper(gym.Wrapper):
         observation = Observation(observation=env_obs,
                                   desired_goal=self._desired_goal(),
                                   achieved_goal=self._achieved_goal())
+        assert self.observation_space.contains(observation)
         return observation
 
     def step(self, action):

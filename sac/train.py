@@ -178,8 +178,10 @@ class Trainer:
         return counter
 
     def get_actions(self, o1, s):
+        obs = self.preprocess_obs(o1)
+        assert self.observation_space.contains(obs)
         return self.agents.act.get_actions(
-            self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
+            o=obs, state=s, sample=(not self.is_eval_period()))
 
     def build_agent(self,
                     base_agent: AbstractAgent,

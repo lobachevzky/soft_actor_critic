@@ -40,6 +40,7 @@ class HindsightWrapper(gym.Wrapper):
         observation = Observation(observation=env_obs,
                                   desired_goal=self._desired_goal(),
                                   achieved_goal=self._achieved_goal())
+        assert self.observation_space.contains(observation)
         return observation
 
     def step(self, action):
@@ -128,8 +129,8 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
         self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self.observation_space = spaces.Tuple(Observation(
             observation=self.lift_env.observation_space,
-            desired_goal=spaces.Tuple([self.goal_space, self.goal_space]),
-            achieved_goal=spaces.Tuple([self.goal_space, self.goal_space]),
+            desired_goal=self.goal_space,
+            achieved_goal=self.goal_space,
         ))
 
     def _desired_goal(self):
@@ -140,7 +141,11 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
 
     @property
     def goal_space(self):
-        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+        return spaces.Tuple(Goal(
+            gripper=Box(-np.inf, np.inf, (3,)),
+            block=Box(low=np.array([-.14, -.2240, .4]) - 1,
+                      high=np.array([.11, .2241, .921]) + 1)
+        ))
 
 
 class ShiftHindsightWrapper(MujocoHindsightWrapper):

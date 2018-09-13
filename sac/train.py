@@ -63,7 +63,7 @@ class Trainer:
             self.observation_space = observation_space
         else:
             self.observation_space = spaces.Box(*[
-                get_space_attrs(env.observation_space, attr)
+                self.preprocess_obs(get_space_attrs(env.observation_space, attr))
                 for attr in ['low', 'high']
             ])
 

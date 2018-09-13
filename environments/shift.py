@@ -33,7 +33,11 @@ class ShiftEnv(MujocoEnv):
             for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
-        self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
+        self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
+        self.observation_space = spaces.Dict(Observation(
+            observation=(spaces.Box(-np.inf, np.inf, np.shape(self._get_raw_obs()))),
+            goal=self.goal_space
+        )._asdict())
 
     def _get_raw_obs(self):
         if self._obs_type == 'openai':
@@ -75,8 +79,8 @@ class ShiftEnv(MujocoEnv):
             return super()._get_obs()
 
     def _get_obs(self):
-        observation = Observation(observation=self._get_raw_obs(), goal=self.goal)
-        # assert self.observation_space.contains(observation)
+        observation = Observation(observation=self._get_raw_obs(), goal=self.goal)._asdict()
+        assert self.observation_space.contains(observation)
         return observation
 
 

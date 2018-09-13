@@ -19,7 +19,7 @@ from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
-                       vectorize)
+                       vectorize, normalize)
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -49,7 +49,23 @@ class Trainer:
         self.buffer = ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
         self.action_space = action_space or env.action_space
-        self.observation_space = observation_space or env.observation_space
+
+        obs = env.reset()
+        self.preprocess_func = preprocess_func
+        if preprocess_func is None and not isinstance(obs, np.ndarray):
+            try:
+                self.preprocess_func = unwrap_env(
+                    env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
+            except RuntimeError:
+                self.preprocess_func = vectorize
+
+        if observation_space:
+            self.observation_space = observation_space
+        else:
+            self.observation_space = spaces.Box(*[
+                get_space_attrs(env.observation_space, attr)
+                for attr in ['low', 'high']
+            ])
 
         self.agents = Agents(
             act=self.build_agent(
@@ -71,15 +87,6 @@ class Trainer:
         self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-
-        obs = env.reset()
-        self.preprocess_func = preprocess_func
-        if preprocess_func is None and not isinstance(obs, np.ndarray):
-            try:
-                self.preprocess_func = unwrap_env(
-                    env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
-            except RuntimeError:
-                self.preprocess_func = vectorize
 
         # self.train(load_path, logdir, render, save_path)
 

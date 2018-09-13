@@ -294,12 +294,10 @@ class ShiftTrainer(Trainer):
         super().__init__(env=env, **kwargs)
 
     def run_episode(self, o1, perform_updates, render):
-        env = self.env.unwrapped
-        assert isinstance(env, ShiftEnv)
         if self.is_eval_period():
-            for goal_corner in env.goal_corners:
+            for goal_corner in self.shift_env.goal_corners:
                 o1 = self.reset()
-                env.goal = goal_corner + env.goal_size / 2
+                self.shift_env.goal = goal_corner + self.shift_env.goal_size / 2
                 count = super().run_episode(
                     o1=o1, perform_updates=perform_updates, render=render)
                 for k in count:

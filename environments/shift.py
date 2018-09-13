@@ -5,23 +5,25 @@ import numpy as np
 from gym import spaces
 
 from environments.lift import LiftEnv
-from environments.mujoco import distance_between
+from environments.mujoco import distance_between, MujocoEnv
 
 Observation = namedtuple('Obs', 'observation goal')
 
 
-class ShiftEnv(LiftEnv):
+class ShiftEnv(MujocoEnv):
     def __init__(self,
                  geofence: float,
                  fixed_block=None,
                  fixed_goal=None,
                  goal_x=(-.11, .09),
                  goal_y=(-.19, .2),
+                 obs_type=None,
                  **kwargs):
+        self._obs_type = obs_type
         self.fixed_block = fixed_block
         self.fixed_goal = fixed_goal
         self.geofence = geofence
-        self.goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
+        self._goal_space = spaces.Box(*map(np.array, zip(goal_x, goal_y)))
         self._goal = self.goal_space.sample() if fixed_goal is None else fixed_goal
         super().__init__(fixed_block=False, **kwargs)
         # low=np.array([-.14, -.22, .40]), high=np.array([.11, .22, .63]))
@@ -32,7 +34,11 @@ class ShiftEnv(LiftEnv):
             for l, h, n in zip(self.goal_space.low, self.goal_space.high, intervals)
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
-        self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
+        self.labels = {tuple(g) + (.41,): '.' for g in goal_corners}
+
+    @property
+    def goal_space(self):
+        return self._goal_space
 
     @property
     def goal(self):
@@ -84,8 +90,6 @@ class ShiftEnv(LiftEnv):
             obs = super()._get_obs()
         return Observation(observation=obs, goal=self.goal)
 
-
-
     def _reset_qpos(self, qpos):
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         if self.fixed_block is None:
@@ -96,7 +100,7 @@ class ShiftEnv(LiftEnv):
                 high=list(self.goal_space.high) + [1, 1])
         else:
             qpos[[block_joint + 0, block_joint + 1,
-                            block_joint + 2]] = self.fixed_block
+                  block_joint + 2]] = self.fixed_block
         return qpos
 
     def reset(self):

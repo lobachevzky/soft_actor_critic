@@ -5,6 +5,7 @@ from typing import Optional
 
 import gym
 import numpy as np
+from gym import spaces
 from gym.spaces import Box
 
 from environments.frozen_lake import FrozenLakeEnv
@@ -105,20 +106,6 @@ class MujocoHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, MujocoEnv))
         self._geofence = geofence
-
-    def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal).block
-        desired_goal = Goal(*desired_goal).block
-        return distance_between(achieved_goal, desired_goal) < self._geofence
-
-    def _achieved_goal(self):
-        return Goal(gripper=self.mujoco_env.gripper_pos(), block=self.mujoco_env.block_pos())
-
-
-class LiftHindsightWrapper(MujocoHindsightWrapper):
-    def __init__(self, env, geofence):
-        super().__init__(env, geofence)
-        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
         self.observation_space = Box(
             low=vectorize(
                 Observation(
@@ -131,9 +118,23 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
                     desired_goal=Goal(self.goal_space.high, self.goal_space.high),
                     achieved_goal=None)))
 
+    def _is_success(self, achieved_goal, desired_goal):
+        achieved_goal = Goal(*achieved_goal).block
+        desired_goal = Goal(*desired_goal).block
+        return distance_between(achieved_goal, desired_goal) < self._geofence
+
+    def _achieved_goal(self):
+        return Goal(gripper=self.mujoco_env.gripper_pos(), block=self.mujoco_env.block_pos())
+
     @property
     def goal_space(self):
         return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+
+
+class LiftHindsightWrapper(MujocoHindsightWrapper):
+    def __init__(self, env, geofence):
+        super().__init__(env, geofence)
+        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
 
     def _desired_goal(self):
         assert isinstance(self.lift_env, LiftEnv)
@@ -142,14 +143,10 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
         return Goal(gripper=goal, block=goal)
 
 
-class ShiftHindsightWrapper(LiftHindsightWrapper):
+class ShiftHindsightWrapper(MujocoHindsightWrapper):
     def __init__(self, env, geofence):
         self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
-        super().__init__(env, geofence)
-        # tack on block z-component and gripper goal_space
-        self.observation_space = Box(
-            low=vectorize([env.observation_space.low, -np.inf, self.goal_space.low]),
-            high=vectorize([env.observation_space.high, np.inf, self.goal_space.high]))
+        super().__init__(env, geofence=geofence)
 
     def _desired_goal(self):
         assert isinstance(self.shift_env, ShiftEnv)

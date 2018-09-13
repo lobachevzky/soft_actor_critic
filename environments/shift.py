@@ -4,7 +4,6 @@ from collections import namedtuple
 import numpy as np
 from gym import spaces
 
-from environments.lift import LiftEnv
 from environments.mujoco import distance_between, MujocoEnv
 
 Observation = namedtuple('Obs', 'observation goal')

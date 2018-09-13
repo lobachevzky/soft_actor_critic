@@ -134,7 +134,7 @@ class MujocoHindsightWrapper(HindsightWrapper):
 
 class LiftHindsightWrapper(MujocoHindsightWrapper):
     def __init__(self, env, geofence):
-        super().__init__(env, geofence)
+        super().__init__(env, geofence=geofence)
         self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
 
     def _desired_goal(self):

@@ -20,11 +20,9 @@ class LiftEnv(MujocoEnv):
     def __init__(self,
                  block_xrange=None,
                  block_yrange=None,
-                 fixed_block=False,
                  min_lift_height=.08,
                  geofence=.05,
                  cheat_prob=0,
-                 obs_type='base-qvel',
                  **kwargs):
         if block_xrange is None:
             block_xrange = (0, 0)
@@ -32,25 +30,11 @@ class LiftEnv(MujocoEnv):
             block_yrange = (0, 0)
         self.block_xrange = block_xrange
         self.block_yrange = block_yrange
-        self._obs_type = obs_type
-        self._cheated = False
-        self._cheat_prob = cheat_prob
-        self._fixed_block = fixed_block
         self.min_lift_height = min_lift_height + geofence
-        self.geofence = geofence
         self._goal = None
 
         super().__init__(**kwargs)
 
-        self.initial_qpos = np.copy(self.init_qpos)
-        self.initial_block_pos = np.copy(self.block_pos())
-        self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
-
-        self.action_space = spaces.Box(
-            low=self.sim.actuator_ctrlrange[:-1, 0],
-            high=self.sim.actuator_ctrlrange[:-1, 1],
-            dtype=np.float32)
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]
         self.unwrapped = self

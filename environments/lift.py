@@ -73,17 +73,5 @@ class LiftEnv(MujocoEnv):
             ]
         return spaces.Box(*map(np.array, zip(*qpos_limits + qvel_limits)))
 
-    def _qvel_obs(self):
-        def get_qvels(joints):
-            base_qvel = []
-            for joint in joints:
-                try:
-                    base_qvel.append(self.sim.get_joint_qvel(joint))
-                except RuntimeError:
-                    pass
-            return np.array(base_qvel)
-
-        return get_qvels(['slide_x', 'slide_x'])
-
     def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height

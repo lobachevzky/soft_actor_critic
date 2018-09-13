@@ -100,11 +100,11 @@ class MujocoEnv:
             for joint in joints:
                 try:
                     base_qvel.append(self.sim.get_joint_qvel(joint))
-                except MujocoError:
+                except RuntimeError:
                     pass
             return np.array(base_qvel)
 
-        return get_qvels(self._base_joints)
+        return get_qvels(['slide_x', 'slide_x'])
 
     def compute_terminal(self):
         return self._is_successful()

@@ -150,9 +150,9 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
         'hand_l_proximal_joint', 'hand_r_proximal_joint'
     ])
 @env_wrapper
-def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed, device_num,
-        buffer_size, activation, n_layers, layer_size, learning_rate, reward_scale,
-        entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
+def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed,
+        device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
+        reward_scale, entropy_scale, cheat_prob, grad_clip, batch_size, num_train_steps,
         concat_recordings, steps_per_action, logdir, save_path, load_path, render_freq,
         n_goals, block_xrange, seq_len, block_yrange, agent, record, randomize_pose,
         image_dims, record_freq, record_path, temp_path):

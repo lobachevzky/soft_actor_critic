@@ -439,7 +439,7 @@ class HierarchicalTrainer(Trainer):
         }
 
     def trajectory(self, final_index=None):
-        raise NotImplemented
+        raise NotImplementedError
 
     def add_to_buffer(self, step: Step):
         # boss

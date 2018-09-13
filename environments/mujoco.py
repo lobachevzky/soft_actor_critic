@@ -24,6 +24,9 @@ class MujocoEnv:
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
+        self._block_name = 'block1'
+        left_finger_name = 'hand_l_distal_link'
+        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._episode = 0
         self._time_steps = 0
         self.observation_space = self.action_space = None
@@ -71,6 +74,22 @@ class MujocoEnv:
 
     def image(self, camera_name='rgb'):
         return self.sim.render_offscreen(camera_name)
+
+    def block_pos(self):
+        return self.sim.get_body_xpos(self._block_name)
+
+    def gripper_pos(self):
+        finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
+        return (finger1 + finger2) / 2.
+
+    def compute_terminal(self):
+        return self._is_successful()
+
+    def compute_reward(self):
+        if self._is_successful():
+            return 1
+        else:
+            return 0
 
     def step(self, action):
         self._time_steps += 1
@@ -158,11 +177,7 @@ class MujocoEnv:
         raise NotImplementedError
 
     @abstractmethod
-    def compute_terminal(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def compute_reward(self):
+    def _is_successful(self):
         raise NotImplementedError
 
 

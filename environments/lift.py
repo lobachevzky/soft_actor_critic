@@ -59,7 +59,6 @@ class LiftEnv(MujocoEnv):
         self._cheated = False
         self._cheat_prob = cheat_prob
         self._fixed_block = fixed_block
-        self._block_name = 'block1'
         self.min_lift_height = min_lift_height + geofence
         self.geofence = geofence
         self._goal = None
@@ -68,8 +67,6 @@ class LiftEnv(MujocoEnv):
 
         self.initial_qpos = np.copy(self.init_qpos)
         self.initial_block_pos = np.copy(self.block_pos())
-        left_finger_name = 'hand_l_distal_link'
-        self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=np.shape(vectorize(self._get_obs())))
 
@@ -145,24 +142,8 @@ class LiftEnv(MujocoEnv):
     def _get_obs(self):
         return np.concatenate([self.sim.qpos, self._qvel_obs()])
 
-    def block_pos(self):
-        return self.sim.get_body_xpos(self._block_name)
-
-    def gripper_pos(self):
-        finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
-        return (finger1 + finger2) / 2.
-
     def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
-
-    def compute_terminal(self):
-        return self._is_successful()
-
-    def compute_reward(self):
-        if self._is_successful():
-            return 1
-        else:
-            return 0
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)

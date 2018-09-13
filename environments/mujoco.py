@@ -2,14 +2,13 @@ from abc import abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
+import numpy as np
 from gym import spaces
 from gym.utils import closer
-
-import numpy as np
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import ObjType, MujocoError
+from mujoco import MujocoError, ObjType
 
 
 class MujocoEnv:
@@ -91,12 +90,21 @@ class MujocoEnv:
     def image(self, camera_name='rgb'):
         return self.sim.render_offscreen(camera_name)
 
-    def block_pos(self):
-        return self.sim.get_body_xpos(self._block_name)
+    def _get_obs(self):
+        obs = np.concatenate([self.sim.qpos, self._qvel_obs()])
+        return obs
 
-    def gripper_pos(self):
-        finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
-        return (finger1 + finger2) / 2.
+    def _qvel_obs(self):
+        def get_qvels(joints):
+            base_qvel = []
+            for joint in joints:
+                try:
+                    base_qvel.append(self.sim.get_joint_qvel(joint))
+                except MujocoError:
+                    pass
+            return np.array(base_qvel)
+
+        return get_qvels(self._base_joints)
 
     def compute_terminal(self):
         return self._is_successful()
@@ -108,6 +116,19 @@ class MujocoEnv:
             return 0
 
     def step(self, action):
+        action = np.clip(action, self.action_space.low, self.action_space.high)
+
+        mirrored = 'hand_l_proximal_motor'
+        mirroring = 'hand_r_proximal_motor'
+
+        # insert mirrored values at the appropriate indexes
+        mirrored_index, mirroring_index = [
+            self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
+        ]
+        # necessary because np.insert can't append multiple values to end:
+        mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
+        action = np.insert(action, mirroring_index, action[mirrored_index])
+
         self._time_steps += 1
         assert np.shape(action) == np.shape(self.sim.ctrl)
         self._set_action(action)
@@ -166,6 +187,23 @@ class MujocoEnv:
             self._video_recorder = self.reset_recorder(record_path)
         return self._get_obs()
 
+    def block_pos(self):
+        return self.sim.get_body_xpos(self._block_name)
+
+    def gripper_pos(self):
+        finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
+        return (finger1 + finger2) / 2.
+
+    def _reset_qpos(self, qpos):
+        if not self._fixed_block:
+            block_joint = self.sim.get_jnt_qposadr('block1joint')
+            qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
+            qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
+            qpos[block_joint + 3] = np.random.uniform(0, 1)
+            qpos[block_joint + 6] = np.random.uniform(-1, 1)
+
+        return qpos
+
     def reset_recorder(self, record_path: Path):
         record_path.mkdir(parents=True, exist_ok=True)
         print(f'Recording video to {record_path}.mp4')
@@ -178,18 +216,15 @@ class MujocoEnv:
         closer.Closer().register(video_recorder)
         return video_recorder
 
-    @abstractmethod
-    def _reset_qpos(self):
-        raise NotImplementedError
-
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
         self.sim.__exit__()
 
+    @property
     @abstractmethod
-    def _get_obs(self):
+    def goal_space(self):
         raise NotImplementedError
 
     @abstractmethod

@@ -145,21 +145,3 @@ class LiftEnv(MujocoEnv):
     def _is_successful(self):
         return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
-    def step(self, action):
-        action = np.clip(action, self.action_space.low, self.action_space.high)
-
-        mirrored = 'hand_l_proximal_motor'
-        mirroring = 'hand_r_proximal_motor'
-
-        # insert mirrored values at the appropriate indexes
-        mirrored_index, mirroring_index = [
-            self.sim.name2id(ObjType.ACTUATOR, n) for n in [mirrored, mirroring]
-        ]
-        # necessary because np.insert can't append multiple values to end:
-        mirroring_index = np.minimum(mirroring_index, self.action_space.shape)
-        action = np.insert(action, mirroring_index, action[mirrored_index])
-
-        s, r, t, i = super().step(action)
-        if not self._cheated:
-            i['log count'] = {'successes': float(r > 0)}
-        return s, r, t, i

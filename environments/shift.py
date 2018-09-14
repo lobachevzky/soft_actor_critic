@@ -1,12 +1,9 @@
 import itertools
-from collections import namedtuple
 
 import numpy as np
 from gym import spaces
 
-from environments.hsr import HSREnv, distance_between
-
-Observation = namedtuple('Obs', 'observation goal')
+from environments.hsr import HSREnv, distance_between, Observation
 
 
 class ShiftEnv(HSREnv):

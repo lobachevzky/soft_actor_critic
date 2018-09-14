@@ -7,6 +7,7 @@ import numpy as np
 from gym import spaces
 from gym.spaces import Box
 
+import environments.hsr
 from environments import shift
 from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
@@ -178,7 +179,7 @@ class ShiftHindsightWrapper(MujocoHindsightWrapper):
                     high=np.append(self.shift_env.goal_space.high, np.inf))))
 
     def _add_goals(self, env_obs):
-        obs = shift.Observation(**env_obs)
+        obs = environments.hsr.Observation(**env_obs)
         return Observation(
             observation=obs.observation,
             desired_goal=self._desired_goal(),

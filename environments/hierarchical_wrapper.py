@@ -4,8 +4,7 @@ import numpy as np
 from gym import spaces
 
 from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
-                                            HindsightWrapper,
-                                            ShiftHindsightWrapper)
+                                            HindsightWrapper)
 from sac.utils import vectorize
 
 
@@ -15,33 +14,6 @@ class HierarchicalWrapper(HindsightWrapper):
 
     def boss_action_to_goal_space(self, goal: np.array) -> np.ndarray:
         return goal
-
-
-class ShiftHierarchicalWrapper(HierarchicalWrapper, ShiftHindsightWrapper):
-    def __init__(self, env, **kwargs):
-        super().__init__(env, **kwargs)
-        obs = super().reset()
-
-        self.observation_space = Hierarchical(
-            boss=spaces.Box(
-                low=-np.inf,
-                high=np.inf,
-                shape=(np.shape(vectorize([obs.achieved_goal, obs.desired_goal])))),
-            worker=spaces.Box(
-                low=-np.inf,
-                high=np.inf,
-                shape=(np.shape(vectorize([obs.observation, obs.desired_goal])))))
-
-        self.action_space = Hierarchical(
-            boss=self.shift_env.goal_space,
-            worker=self.shift_env.action_space,
-        )
-
-    def _achieved_goal(self):
-        return np.copy(self.lift_env.block_pos()[:2])
-
-    def _desired_goal(self):
-        return self.shift_env.goal
 
 
 class FrozenLakeHierarchicalWrapper(HierarchicalWrapper, FrozenLakeHindsightWrapper):

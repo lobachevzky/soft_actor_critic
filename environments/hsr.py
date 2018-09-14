@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from collections.__init__ import namedtuple
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -285,3 +286,6 @@ def point_inside_object(point, object):
 
 def print1(*strings):
     print('\r', *strings, end='')
+
+
+Observation = namedtuple('Obs', 'observation goal')

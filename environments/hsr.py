@@ -17,6 +17,7 @@ class HSREnv:
                  xml_filepath: Path,
                  steps_per_action: int,
                  block_space: spaces.Box,
+                 goal_space: spaces.Box,
                  randomize_pose=False,
                  fixed_block=False,
                  image_dimensions: Optional[Tuple[int]] = None,

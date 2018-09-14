@@ -160,7 +160,6 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed,
         max_episode_steps=max_steps,
         env=LiftEnv(
             steps_per_action=steps_per_action,
-            fixed_block=False,
             randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,
             xml_filepath=temp_path,

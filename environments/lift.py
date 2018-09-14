@@ -20,7 +20,7 @@ class LiftEnv(HSREnv):
         self.min_lift_height = min_lift_height + geofence
         self._goal = None
 
-        super().__init__(**kwargs)
+        super().__init__(geofence=geofence, **kwargs)
 
         self._table_height = self.sim.get_body_xpos('pan')[2]
         self._rotation_actuators = ["arm_flex_motor"]  # , "wrist_roll_motor"]

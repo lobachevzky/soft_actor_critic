@@ -34,10 +34,10 @@ class ShiftEnv(MujocoEnv):
         ]
         goal_corners = np.array(list(itertools.product(x, y)))
         self.labels = {tuple(g) + (.41, ): '.' for g in goal_corners}
-        self.observation_space = spaces.Dict(Observation(
-            observation=(spaces.Box(-np.inf, np.inf, np.shape(self._get_raw_obs()))),
-            goal=self.goal_space
-        )._asdict())
+        self.observation_space = spaces.Dict(
+            Observation(
+                observation=(spaces.Box(-np.inf, np.inf, np.shape(self._get_raw_obs()))),
+                goal=self.goal_space)._asdict())
 
     def _get_raw_obs(self):
         if self._obs_type == 'openai':
@@ -46,8 +46,8 @@ class ShiftEnv(MujocoEnv):
             grip_pos = self.gripper_pos()
             dt = self.sim.nsubsteps * self.sim.timestep
             object_pos = self.block_pos()
-            grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
-                                 for name in self._finger_names)
+            grip_velp = .5 * sum(
+                self.sim.get_body_xvelp(name) for name in self._finger_names)
             # rotations
             object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
 
@@ -79,10 +79,10 @@ class ShiftEnv(MujocoEnv):
             return super()._get_obs()
 
     def _get_obs(self):
-        observation = Observation(observation=self._get_raw_obs(), goal=self.goal)._asdict()
+        observation = Observation(
+            observation=self._get_raw_obs(), goal=self.goal)._asdict()
         assert self.observation_space.contains(observation)
         return observation
-
 
     @property
     def goal_space(self):
@@ -102,14 +102,12 @@ class ShiftEnv(MujocoEnv):
     def _reset_qpos(self, qpos):
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         if self.fixed_block is None:
-            qpos[[
-                block_joint + 0, block_joint + 1, block_joint + 3, block_joint + 6
-            ]] = np.random.uniform(
-                low=list(self.goal_space.low) + [0, -1],
-                high=list(self.goal_space.high) + [1, 1])
+            qpos[[block_joint + 0, block_joint + 1, block_joint + 3,
+                  block_joint + 6]] = np.random.uniform(
+                      low=list(self.goal_space.low) + [0, -1],
+                      high=list(self.goal_space.high) + [1, 1])
         else:
-            qpos[[block_joint + 0, block_joint + 1,
-                  block_joint + 2]] = self.fixed_block
+            qpos[[block_joint + 0, block_joint + 1, block_joint + 2]] = self.fixed_block
         return qpos
 
     def reset(self):

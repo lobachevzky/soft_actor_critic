@@ -5,7 +5,7 @@ from copy import deepcopy
 import gym
 import numpy as np
 from gym import spaces
-from gym.spaces import Box, Tuple
+from gym.spaces import Box
 
 from environments import shift
 from environments.frozen_lake import FrozenLakeEnv
@@ -37,9 +37,10 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def _add_goals(self, env_obs):
-        observation = Observation(observation=env_obs,
-                                  desired_goal=self._desired_goal(),
-                                  achieved_goal=self._achieved_goal())
+        observation = Observation(
+            observation=env_obs,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
         assert self.observation_space.contains(observation)
         return observation
 
@@ -114,8 +115,8 @@ class MujocoHindsightWrapper(HindsightWrapper):
         return distance_between(achieved_goal, desired_goal) < self._geofence
 
     def _achieved_goal(self):
-        return Goal(gripper=self.mujoco_env.gripper_pos(),
-                    block=self.mujoco_env.block_pos())
+        return Goal(
+            gripper=self.mujoco_env.gripper_pos(), block=self.mujoco_env.block_pos())
 
     @property
     @abstractmethod
@@ -127,11 +128,12 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env, geofence=geofence)
         self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
-        self.observation_space = spaces.Tuple(Observation(
-            observation=self.lift_env.observation_space,
-            desired_goal=self.goal_space,
-            achieved_goal=self.goal_space,
-        ))
+        self.observation_space = spaces.Tuple(
+            Observation(
+                observation=self.lift_env.observation_space,
+                desired_goal=self.goal_space,
+                achieved_goal=self.goal_space,
+            ))
 
     def _desired_goal(self):
         assert isinstance(self.lift_env, LiftEnv)
@@ -141,22 +143,24 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
 
     @property
     def goal_space(self):
-        return spaces.Tuple(Goal(
-            gripper=Box(-np.inf, np.inf, (3,)),
-            block=Box(low=np.array([-.14, -.2240, .4]) - 1,
-                      high=np.array([.11, .2241, .921]) + 1)
-        ))
+        return spaces.Tuple(
+            Goal(
+                gripper=Box(-np.inf, np.inf, (3, )),
+                block=Box(
+                    low=np.array([-.14, -.2240, .4]) - 1,
+                    high=np.array([.11, .2241, .921]) + 1)))
 
 
 class ShiftHindsightWrapper(MujocoHindsightWrapper):
     def __init__(self, env, geofence):
         self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env, geofence=geofence)
-        self.observation_space = spaces.Tuple(Observation(
-            observation=self.shift_env.observation_space.spaces['observation'],
-            desired_goal=self.goal_space,
-            achieved_goal=self.goal_space,
-        ))
+        self.observation_space = spaces.Tuple(
+            Observation(
+                observation=self.shift_env.observation_space.spaces['observation'],
+                desired_goal=self.goal_space,
+                achieved_goal=self.goal_space,
+            ))
 
     def _desired_goal(self):
         assert isinstance(self.shift_env, ShiftEnv)
@@ -166,11 +170,12 @@ class ShiftHindsightWrapper(MujocoHindsightWrapper):
 
     @property
     def goal_space(self):
-        return spaces.Tuple(Goal(
-            gripper=Box(-np.inf, np.inf, (3,)),
-            block=Box(low=np.append(self.shift_env.goal_space.low, -np.inf),
-                      high=np.append(self.shift_env.goal_space.high, np.inf))
-        ))
+        return spaces.Tuple(
+            Goal(
+                gripper=Box(-np.inf, np.inf, (3, )),
+                block=Box(
+                    low=np.append(self.shift_env.goal_space.low, -np.inf),
+                    high=np.append(self.shift_env.goal_space.high, np.inf))))
 
     def _add_goals(self, env_obs):
         obs = shift.Observation(**env_obs)

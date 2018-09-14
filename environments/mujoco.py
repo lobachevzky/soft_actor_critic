@@ -50,10 +50,7 @@ class MujocoEnv:
 
         self._video_recorder = None
         self._concat_recordings = concat_recordings
-        self._record_video = any((concat_recordings,
-                                  record_path,
-                                  record_freq,
-                                  record))
+        self._record_video = any((concat_recordings, record_path, record_freq, record))
         if self._record_video:
             self._record_path = record_path or Path('/tmp/training-video')
             image_dimensions = image_dimensions or (1000, 1000)
@@ -71,10 +68,10 @@ class MujocoEnv:
         self.init_qvel = self.sim.qvel.ravel().copy()
         self._image_dimensions = image_dimensions
         self._base_joints = ['slide_x', 'slide_y']
-        n_base_joints = sum(int(self.sim.contains(ObjType.JOINT, j))
-                            for j in self._base_joints)
+        n_base_joints = sum(
+            int(self.sim.contains(ObjType.JOINT, j)) for j in self._base_joints)
         self.mujoco_obs_space = self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints,))
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints, ))
 
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
@@ -166,8 +163,8 @@ class MujocoEnv:
         qpos = np.copy(self.init_qpos)
         if self.randomize_pose:
             for joint in [
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint'
+                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                    'wrist_roll_joint', 'hand_l_proximal_joint'
             ]:
                 try:
                     qpos_idx = self.sim.get_jnt_qposadr(joint)
@@ -179,8 +176,7 @@ class MujocoEnv:
                         *self.sim.jnt_range[jnt_range_idx])
                 # self.sim.jnt_range[jnt_range_idx][1]
 
-        qpos[
-            self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
+        qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
         qpos = self._reset_qpos(qpos)
         assert qpos.shape == (self.sim.nq, )

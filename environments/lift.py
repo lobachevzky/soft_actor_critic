@@ -16,10 +16,7 @@ def quaternion_multiply(quaternion1, quaternion0):
 
 
 class LiftEnv(MujocoEnv):
-    def __init__(self,
-                 min_lift_height=.08,
-                 geofence=.05,
-                 **kwargs):
+    def __init__(self, min_lift_height=.08, geofence=.05, **kwargs):
         self.min_lift_height = min_lift_height + geofence
         self._goal = None
 

@@ -7,7 +7,6 @@ import ipdb
 import numpy as np
 from click._unicodefun import click
 
-from environments.lift import LiftEnv
 from environments.mujoco import print1
 from environments.shift import ShiftEnv
 from mujoco import ObjType

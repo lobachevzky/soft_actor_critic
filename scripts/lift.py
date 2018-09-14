@@ -8,17 +8,59 @@ from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
 
+import numpy as np
+import tensorflow as tf
+from gym import spaces
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
-from scripts.hsr import parse_space, parse_vector, cast_to_int, parse_activation, ACTIVATIONS
 
 
-def put_in_xml_setter(ctx, param, value: str):
-    setters = [XMLSetter(*v.split(',')) for v in value]
+def parse_space(dim: int):
+    def _parse_space(arg: str):
+        regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)(?:$|,)')
+        matches = regex.findall(arg)
+        if len(matches) != dim:
+            raise argparse.ArgumentTypeError(
+                f'Arg {arg} must have {dim} substrings '
+                f'matching pattern {regex}.')
+        low, high = map(np.array, zip(*[(map(float, m)) for m in matches]))
+        return spaces.Box(low=low, high=high)
+
+    return _parse_space
+
+
+def parse_vector(length: int, delim: str):
+    def _parse_vector(arg: str):
+        vector = tuple(map(float, arg.split(delim)))
+        if len(vector) != length:
+            raise argparse.ArgumentError(
+                f'Arg {arg} must include {length} float values'
+                f'delimited by "{delim}".'
+            )
+        return vector
+
+    return _parse_vector
+
+
+def cast_to_int(arg: str):
+    return int(float(arg))
+
+
+ACTIVATIONS = dict(
+    relu=tf.nn.relu
+)
+
+
+def parse_activation(arg: str):
+    return ACTIVATIONS[arg]
+
+
+def put_in_xml_setter(arg: str):
+    setters = [XMLSetter(*v.split(',')) for v in arg]
     mirroring = [XMLSetter(p.replace('_l_', '_r_'), v)
                  for p, v in setters if '_l_' in p] \
                 + [XMLSetter(p.replace('_r_', '_l_'), v)
@@ -33,15 +75,15 @@ def env_wrapper(func):
             render_freq = 20
         xml_filepath = Path(
             Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
-        if not set_xml:
+        if set_xml is None:
             set_xml = []
         site_size = ' '.join([str(geofence)] * 3)
         path = Path('worldbody', 'body[@name="goal"]', 'site[@name="goal"]', 'size')
         set_xml += [XMLSetter(path=f'./{path}', value=site_size)]
         with mutate_xml(
                 changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-            return func(temp_path=temp_path, render_freq=render_freq, geofence=geofence,
-                        **kwargs)
+            return func(geofence=geofence, temp_path=temp_path,
+                        render_freq=render_freq, **kwargs)
 
     return _wrapper
 
@@ -106,7 +148,6 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
     finally:
         for f in temp.values():
             f.close()
-
 
 @env_wrapper
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed,

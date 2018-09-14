@@ -28,16 +28,20 @@ def put_in_xml_setter(ctx, param, value: str):
 
 def env_wrapper(func):
     @wraps(func)
-    def _wrapper(render, render_freq, set_xml, use_dof, xml_file, **kwargs):
+    def _wrapper(render, render_freq, set_xml, use_dof, xml_file, geofence, **kwargs):
         if render and not render_freq:
             render_freq = 20
         xml_filepath = Path(
             Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
         if not set_xml:
             set_xml = []
+        site_size = ' '.join([str(geofence)] * 3)
+        path = Path('worldbody', 'body[@name="goal"]', 'site[@name="goal"]', 'size')
+        set_xml += [XMLSetter(path=f'./{path}', value=site_size)]
         with mutate_xml(
                 changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-            return func(temp_path=temp_path, render_freq=render_freq, **kwargs)
+            return func(temp_path=temp_path, render_freq=render_freq, geofence=geofence,
+                        **kwargs)
 
     return _wrapper
 

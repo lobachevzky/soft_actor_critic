@@ -14,7 +14,7 @@ import mujoco
 from mujoco import MujocoError, ObjType
 
 
-class MujocoEnv:
+class HSREnv:
     def __init__(self,
                  xml_filepath: Path,
                  steps_per_action: int,
@@ -26,7 +26,7 @@ class MujocoEnv:
                  obs_type: str=None,
                  image_dimensions: Tuple[int] = None,
                  record_path: Path = None,
-                 record_freq: int = 0,
+                 record_freq: int = None,
                  record: bool = False,
                  concat_recordings: bool = False,
                  render_freq: int = 0):
@@ -45,17 +45,17 @@ class MujocoEnv:
         self.metadata = {'render.modes': 'rgb_array'}
         self.reward_range = -np.inf, np.inf
         self.spec = None
-        self.render_freq = render_freq
+        self.render_freq = render_freq or 20
         self.steps_per_action = steps_per_action
 
         # record stuff
         self._video_recorder = None
         self._concat_recordings = concat_recordings
-        self._record_video = any((concat_recordings,
-                                  record_path,
-                                  record_freq,
-                                  record))
-        if self._record_video:
+        self._record = any((concat_recordings,
+                            record_path,
+                            record_freq,
+                            record))
+        if self._record:
             self._record_path = record_path or Path('/tmp/training-video')
             image_dimensions = image_dimensions or (1000, 1000)
             self._record_freq = record_freq or 20
@@ -96,16 +96,20 @@ class MujocoEnv:
         # block space
         z = self.initial_block_pos[2]
         self._block_space = Box(
-            low=np.concatenate([block_space.low, z, -1]),
-            high=np.concatenate([block_space.high, z, 1])
+            low=np.concatenate([block_space.low, [z, -1]]),
+            high=np.concatenate([block_space.high, [z, 1]])
         )
 
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
 
         self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
-        self._mujoco_obs_space = self.observation_space = spaces.Box(
+        raw_obs_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
+        self.observation_space = spaces.Tuple(Observation(
+            observation=raw_obs_space,
+            goal=self.goal_space
+        ))
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         self._block_qposadrs = block_joint + np.append(np.arange(3), 6)
@@ -115,7 +119,7 @@ class MujocoEnv:
                       'wrist_roll_joint', 'hand_l_proximal_joint']
         self._joints = list(filter(using_joint, all_joints))
         jnt_range_idx = [self.sim.name2id(ObjType.JOINT, j) for j in self._joints]
-        self._joint_space = Box(*self.sim.jnt_range[jnt_range_idx])
+        self._joint_space = Box(*map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
         self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
         self.randomize_pose = randomize_pose
 
@@ -182,9 +186,11 @@ class MujocoEnv:
                 gripper_vel,
             ])
         else:
-            obs = np.concatenate([self.sim.qpos,
-                                  self.sim.get_joint_qvel(self._base_joints)])
-        return Observation(observation=obs, goal=self.goal)
+            base_qvels = [self.sim.get_joint_qvel(j) for j in self._base_joints]
+            obs = np.concatenate([self.sim.qpos, base_qvels])
+        observation = Observation(observation=obs, goal=self.goal)
+        assert self.observation_space.contains(observation)
+        return observation
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
@@ -209,7 +215,7 @@ class MujocoEnv:
             self.sim.step()
             if self.render_freq > 0 and i % self.render_freq == 0:
                 self.render()
-            if self._record_video and i % self._record_freq == 0:
+            if self._record and i % self._record_freq == 0:
                 self._video_recorder.capture_frame()
 
         done = self.compute_terminal()
@@ -220,7 +226,7 @@ class MujocoEnv:
             for _ in range(50):
                 if self.render_freq > 0:
                     self.render()
-                if self._record_video:
+                if self._record:
                     self._video_recorder.capture_frame()
 
         return self._get_obs(), reward, done, {}
@@ -249,7 +255,7 @@ class MujocoEnv:
             self._episode += 1
 
         # if necessary, reset VideoRecorder
-        if self._record_video and not self._concat_recordings:
+        if self._record and not self._concat_recordings:
             if self._video_recorder:
                 self._video_recorder.close()
             record_path = Path(self._record_path, str(self._episode))

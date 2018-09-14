@@ -14,12 +14,11 @@ from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
                                                HierarchicalAgents,
                                                HierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
-from environments.shift import ShiftEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
-                       vectorize, normalize)
+                       vectorize)
 
 Agents = namedtuple('Agents', 'train act')
 

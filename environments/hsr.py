@@ -35,7 +35,6 @@ class HSREnv:
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._episode = 0
         self._time_steps = 0
-        self._fixed_block = fixed_block
 
         # required for OpenAI code
         self.metadata = {'render.modes': 'rgb_array'}
@@ -174,7 +173,14 @@ class HSREnv:
 
         qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
-        qpos = self._reset_qpos(qpos)
+
+        # sample block_space
+        block_joint = self.sim.get_jnt_qposadr('block1joint')
+        qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
+        qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
+        qpos[block_joint + 3] = np.random.uniform(0, 1)
+        qpos[block_joint + 6] = np.random.uniform(-1, 1)
+
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
@@ -196,16 +202,6 @@ class HSREnv:
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
-
-    def _reset_qpos(self, qpos):
-        if not self._fixed_block:
-            block_joint = self.sim.get_jnt_qposadr('block1joint')
-            qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
-            qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
-            qpos[block_joint + 3] = np.random.uniform(0, 1)
-            qpos[block_joint + 6] = np.random.uniform(-1, 1)
-
-        return qpos
 
     def reset_recorder(self, record_path: Path):
         record_path.mkdir(parents=True, exist_ok=True)

@@ -25,7 +25,7 @@ class HSREnv:
                  record_freq: int = 0,
                  record: bool = False,
                  concat_recordings: bool = False,
-                 render_freq: int = 0):
+                 render_freq: int = None):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
@@ -143,7 +143,7 @@ class HSREnv:
         reward = self.compute_reward()
         if reward > 0:
             for _ in range(50):
-                if self.render_freq > 0:
+                if self.render_freq is not None:
                     self.render()
                 if self._record_video:
                     self._video_recorder.capture_frame()
@@ -154,7 +154,7 @@ class HSREnv:
         for i in range(self.steps_per_action):
             self.sim.ctrl[:] = action
             self.sim.step()
-            if self.render_freq > 0 and i % self.render_freq == 0:
+            if self.render_freq is not None and i % self.render_freq == 0:
                 self.render()
             if self._record_video and i % self._record_freq == 0:
                 self._video_recorder.capture_frame()

@@ -38,10 +38,9 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def _add_goals(self, env_obs):
-        observation = Observation(
-            observation=env_obs,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
+        observation = Observation(observation=env_obs,
+                                  desired_goal=self._desired_goal(),
+                                  achieved_goal=self._achieved_goal())
         assert self.observation_space.contains(observation)
         return observation
 
@@ -104,7 +103,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return achieved_goal >= desired_goal
 
 
-class MujocoHindsightWrapper(HindsightWrapper):
+class HSRHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
         self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
@@ -125,7 +124,7 @@ class MujocoHindsightWrapper(HindsightWrapper):
         raise NotImplementedError
 
 
-class LiftHindsightWrapper(MujocoHindsightWrapper):
+class LiftHindsightWrapper(HSRHindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env, geofence=geofence)
         self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
@@ -152,7 +151,7 @@ class LiftHindsightWrapper(MujocoHindsightWrapper):
                     high=np.array([.11, .2241, .921]) + 1)))
 
 
-class ShiftHindsightWrapper(MujocoHindsightWrapper):
+class ShiftHindsightWrapper(HSRHindsightWrapper):
     def __init__(self, env, geofence):
         self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
         super().__init__(env, geofence=geofence)

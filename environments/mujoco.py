@@ -1,9 +1,12 @@
 from abc import abstractmethod
+from collections.__init__ import namedtuple
 from pathlib import Path
 from typing import Optional, Tuple
 
+import gym
 import numpy as np
 from gym import spaces
+from gym.spaces import Box
 from gym.utils import closer
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
@@ -15,12 +18,14 @@ class MujocoEnv:
     def __init__(self,
                  xml_filepath: Path,
                  steps_per_action: int,
-                 randomize_pose=False,
-                 fixed_block=False,
-                 block_xrange=None,
-                 block_yrange=None,
-                 image_dimensions: Optional[Tuple[int]] = None,
-                 record_path: Optional[Path] = None,
+                 geofence: float,
+                 goal_space: Box,
+                 block_space: Box,
+                 min_lift_height: float = None,
+                 randomize_pose: bool=False,
+                 obs_type: str=None,
+                 image_dimensions: Tuple[int] = None,
+                 record_path: Path = None,
                  record_freq: int = 0,
                  record: bool = False,
                  concat_recordings: bool = False,
@@ -28,18 +33,13 @@ class MujocoEnv:
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
-        if block_xrange is None:
-            block_xrange = (0, 0)
-        if block_yrange is None:
-            block_yrange = (0, 0)
-        self.block_xrange = block_xrange
-        self.block_yrange = block_yrange
+        self.geofence = geofence
+        self._obs_type = obs_type
         self._block_name = 'block1'
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._episode = 0
         self._time_steps = 0
-        self._fixed_block = fixed_block
 
         # required for OpenAI code
         self.metadata = {'render.modes': 'rgb_array'}
@@ -48,6 +48,7 @@ class MujocoEnv:
         self.render_freq = render_freq
         self.steps_per_action = steps_per_action
 
+        # record stuff
         self._video_recorder = None
         self._concat_recordings = concat_recordings
         self._record_video = any((concat_recordings,
@@ -63,32 +64,69 @@ class MujocoEnv:
                 self._video_recorder = self.reset_recorder(self._record_path)
         else:
             image_dimensions = image_dimensions or []
+        self._image_dimensions = image_dimensions
 
         self.sim = mujoco.Sim(str(xml_filepath), *image_dimensions, n_substeps=1)
 
-        self.randomize_pose = randomize_pose
-        self.init_qpos = self.sim.qpos.ravel().copy()
-        self.init_qvel = self.sim.qvel.ravel().copy()
-        self._image_dimensions = image_dimensions
-        self._base_joints = ['slide_x', 'slide_y']
-        n_base_joints = sum(int(self.sim.contains(ObjType.JOINT, j))
-                            for j in self._base_joints)
-        self.mujoco_obs_space = self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints,))
+        # initial values
+        self.initial_qpos = self.sim.qpos.ravel().copy()
+        self.initial_qvel = self.sim.qvel.ravel().copy()
+        self.initial_block_pos = np.copy(self.block_pos())
 
+        def adjust_dim(space: spaces.Box, offset: Tuple, dim: int):
+            low_offset = np.zeros(space.shape)
+            high_offset = np.zeros(space.shape)
+            low_offset[dim] = offset[0]
+            high_offset[dim] = offset[1]
+            return Box(
+                low=space.low + low_offset,
+                high=space.high + high_offset,
+            )
+
+        # goal space
+        if min_lift_height:
+            min_lift_height += geofence
+            self.goal_space = adjust_dim(space=goal_space,
+                                         offset=(min_lift_height, min_lift_height),
+                                         dim=2)
+        else:
+            self.goal_space = goal_space
+        self.goal = None
+
+        # block space
+        z = self.initial_block_pos[2]
+        self._block_space = Box(
+            low=np.concatenate([block_space.low, z, -1]),
+            high=np.concatenate([block_space.high, z, 1])
+        )
+
+        def using_joint(name):
+            return self.sim.contains(ObjType.JOINT, name)
+
+        self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
+        self._mujoco_obs_space = self.observation_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
+
+        block_joint = self.sim.get_jnt_qposadr('block1joint')
+        self._block_qposadrs = block_joint + np.append(np.arange(3), 6)
+
+        # joint space
+        all_joints = ['slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                      'wrist_roll_joint', 'hand_l_proximal_joint']
+        self._joints = list(filter(using_joint, all_joints))
+        jnt_range_idx = [self.sim.name2id(ObjType.JOINT, j) for j in self._joints]
+        self._joint_space = Box(*self.sim.jnt_range[jnt_range_idx])
+        self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
+        self.randomize_pose = randomize_pose
+
+        # action space
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
             dtype=np.float32)
 
-        self.initial_qpos = np.copy(self.init_qpos)
-        self.initial_block_pos = np.copy(self.block_pos())
-
     def seed(self, seed=None):
         np.random.seed(seed)
-
-    def server_values(self):
-        return self.sim.qpos, self.sim.qvel
 
     def render(self, mode=None, camera_name=None, labels=None):
         if mode == 'rgb_array':
@@ -98,23 +136,6 @@ class MujocoEnv:
     def image(self, camera_name='rgb'):
         return self.sim.render_offscreen(camera_name)
 
-    def _get_obs(self):
-        obs = np.concatenate([self.sim.qpos, self._qvel_obs()])
-        assert self.mujoco_obs_space.contains(obs)
-        return obs
-
-    def _qvel_obs(self):
-        def get_qvels(joints):
-            base_qvel = []
-            for joint in joints:
-                try:
-                    base_qvel.append(self.sim.get_joint_qvel(joint))
-                except RuntimeError:
-                    pass
-            return np.array(base_qvel)
-
-        return get_qvels(['slide_x', 'slide_x'])
-
     def compute_terminal(self):
         return self._is_successful()
 
@@ -123,6 +144,47 @@ class MujocoEnv:
             return 1
         else:
             return 0
+
+    def _get_obs(self):
+        if self._obs_type == 'openai':
+
+            # positions
+            grip_pos = self.gripper_pos()
+            dt = self.sim.nsubsteps * self.sim.timestep
+            object_pos = self.block_pos()
+            grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
+                                 for name in self._finger_names)
+            # rotations
+            object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+
+            # velocities
+            object_velp = self.sim.get_body_xvelp(self._block_name) * dt
+            object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+
+            # gripper state
+            object_rel_pos = object_pos - grip_pos
+            object_velp -= grip_velp
+            gripper_state = np.array(
+                [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
+            qvels = np.array(
+                [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
+            gripper_vel = dt * .5 * qvels
+
+            obs = np.concatenate([
+                grip_pos,
+                object_pos.ravel(),
+                object_rel_pos.ravel(),
+                gripper_state,
+                object_rot.ravel(),
+                object_velp.ravel(),
+                object_velr.ravel(),
+                grip_velp,
+                gripper_vel,
+            ])
+        else:
+            obs = np.concatenate([self.sim.qpos,
+                                  self.sim.get_joint_qvel(self._base_joints)])
+        return Observation(observation=obs, goal=self.goal)
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
@@ -140,18 +202,7 @@ class MujocoEnv:
 
         self._time_steps += 1
         assert np.shape(action) == np.shape(self.sim.ctrl)
-        self._set_action(action)
-        done = self.compute_terminal()
-        reward = self.compute_reward()
-        if reward > 0:
-            for _ in range(50):
-                if self.render_freq > 0:
-                    self.render()
-                if self._record_video:
-                    self._video_recorder.capture_frame()
-        return self._get_obs(), reward, done, {}
 
-    def _set_action(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         for i in range(self.steps_per_action):
             self.sim.ctrl[:] = action
@@ -161,41 +212,49 @@ class MujocoEnv:
             if self._record_video and i % self._record_freq == 0:
                 self._video_recorder.capture_frame()
 
-    def reset(self):
-        self.sim.reset()
-        qpos = np.copy(self.init_qpos)
-        if self.randomize_pose:
-            for joint in [
-                'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                'wrist_roll_joint', 'hand_l_proximal_joint'
-            ]:
-                try:
-                    qpos_idx = self.sim.get_jnt_qposadr(joint)
-                except MujocoError:
-                    continue
-                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                qpos[qpos_idx] = \
-                    np.random.uniform(
-                        *self.sim.jnt_range[jnt_range_idx])
-                # self.sim.jnt_range[jnt_range_idx][1]
+        done = self.compute_terminal()
+        reward = self.compute_reward()
 
+        # pause when goal is achieved
+        if reward > 0:
+            for _ in range(50):
+                if self.render_freq > 0:
+                    self.render()
+                if self._record_video:
+                    self._video_recorder.capture_frame()
+
+        return self._get_obs(), reward, done, {}
+
+    def _sync_grippers(self, qpos):
         qpos[
             self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
-        qpos = self._reset_qpos(qpos)
-        assert qpos.shape == (self.sim.nq, )
+
+    def reset(self):
+        self.sim.reset()
+        qpos = np.copy(self.initial_qpos)
+
+        if self.randomize_pose:
+            qpos[self._joint_qposadrs] = self._joint_space.sample()
+        qpos[self._block_qposadrs] = self._block_space.sample()
+        self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
+
+        # forward sim
+        assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
+
         if self._time_steps > 0:
             self._episode += 1
+
+        # if necessary, reset VideoRecorder
         if self._record_video and not self._concat_recordings:
             if self._video_recorder:
                 self._video_recorder.close()
             record_path = Path(self._record_path, str(self._episode))
             self._video_recorder = self.reset_recorder(record_path)
 
-        self.sim.mocap_pos[:] = self.goal3d
         return self._get_obs()
 
     def block_pos(self):
@@ -204,16 +263,6 @@ class MujocoEnv:
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]
         return (finger1 + finger2) / 2.
-
-    def _reset_qpos(self, qpos):
-        if not self._fixed_block:
-            block_joint = self.sim.get_jnt_qposadr('block1joint')
-            qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
-            qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
-            qpos[block_joint + 3] = np.random.uniform(0, 1)
-            qpos[block_joint + 6] = np.random.uniform(-1, 1)
-
-        return qpos
 
     def reset_recorder(self, record_path: Path):
         record_path.mkdir(parents=True, exist_ok=True)
@@ -233,18 +282,8 @@ class MujocoEnv:
     def __exit__(self, *args):
         self.sim.__exit__()
 
-    @property
-    @abstractmethod
-    def goal_space(self):
-        raise NotImplementedError
-
-    @property
-    def goal3d(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _is_successful(self):
-        raise NotImplementedError
+        return distance_between(self.goal, self.block_pos()) < self.geofence
 
 
 def quaternion2euler(w, x, y, z):
@@ -289,3 +328,22 @@ def point_inside_object(point, object):
 
 def print1(*strings):
     print('\r', *strings, end='')
+
+
+def mat2euler(mat):
+    """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
+    mat = np.asarray(mat, dtype=np.float64)
+    assert mat.shape[-2:] == (3, 3), "Invalid shape matrix {}".format(mat)
+
+    cy = np.sqrt(mat[..., 2, 2] * mat[..., 2, 2] + mat[..., 1, 2] * mat[..., 1, 2])
+    condition = cy > np.finfo(np.float64).eps * 4.
+    euler = np.empty(mat.shape[:-1], dtype=np.float64)
+    euler[..., 2] = np.where(condition, -np.arctan2(mat[..., 0, 1], mat[..., 0, 0]),
+                             -np.arctan2(-mat[..., 1, 0], mat[..., 1, 1]))
+    euler[..., 1] = np.where(condition, -np.arctan2(-mat[..., 0, 2], cy),
+                             -np.arctan2(-mat[..., 0, 2], cy))
+    euler[..., 0] = np.where(condition, -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]), 0.0)
+    return euler
+
+
+Observation = namedtuple('Obs', 'observation goal')

@@ -7,6 +7,7 @@ import numpy as np
 from gym import spaces
 from gym.spaces import Box, Tuple
 
+import environments.mujoco
 from environments import shift
 from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
@@ -107,6 +108,11 @@ class MujocoHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, MujocoEnv))
         self._geofence = geofence
+        self.observation_space = spaces.Tuple(Observation(
+            observation=self.mujoco_env.observation_space.observation,
+            desired_goal=self.goal_space,
+            achieved_goal=self.goal_space,
+        ))
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal).block
@@ -117,10 +123,12 @@ class MujocoHindsightWrapper(HindsightWrapper):
         return Goal(gripper=self.mujoco_env.gripper_pos(),
                     block=self.mujoco_env.block_pos())
 
+    def _desired_goal(self):
+        return self.mujoco_env.goal
+
     @property
-    @abstractmethod
     def goal_space(self):
-        raise NotImplementedError
+        return self.mujoco_env.goal_space
 
 
 class LiftHindsightWrapper(MujocoHindsightWrapper):
@@ -173,7 +181,7 @@ class ShiftHindsightWrapper(MujocoHindsightWrapper):
         ))
 
     def _add_goals(self, env_obs):
-        obs = shift.Observation(**env_obs)
+        obs = environments.mujoco.Observation(**env_obs)
         return Observation(
             observation=obs.observation,
             desired_goal=self._desired_goal(),

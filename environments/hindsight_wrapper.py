@@ -36,9 +36,10 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def _add_goals(self, env_obs):
-        observation = Observation(observation=env_obs,
-                                  desired_goal=self._desired_goal(),
-                                  achieved_goal=self._achieved_goal())
+        observation = Observation(
+            observation=env_obs,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
         assert self.observation_space.contains(observation)
         return observation
 
@@ -107,11 +108,12 @@ class HSRHindsightWrapper(HindsightWrapper):
         self.hsr_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
         self._geofence = geofence
         hsr_spaces = hsr.Observation(*self.hsr_env.observation_space.spaces)
-        self.observation_space = spaces.Tuple(Observation(
-            observation=hsr_spaces.observation,
-            desired_goal=self.goal_space,
-            achieved_goal=self.goal_space,
-        ))
+        self.observation_space = spaces.Tuple(
+            Observation(
+                observation=hsr_spaces.observation,
+                desired_goal=self.goal_space,
+                achieved_goal=self.goal_space,
+            ))
 
     def _add_goals(self, env_obs):
         observation = Observation(

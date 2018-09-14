@@ -4,7 +4,6 @@ from typing import Any, Callable, Optional, Union
 import gym
 import numpy as np
 import tensorflow as tf
-from gym import spaces
 
 
 def leaky_relu(x, alpha=0.2):
@@ -113,8 +112,7 @@ def get_space_attrs(space: gym.Space, attr: str):
     if hasattr(space, attr):
         return getattr(space, attr)
     elif isinstance(space, gym.spaces.Dict):
-        return {k: get_space_attrs(v, attr)
-                for k, v in space.spaces.items()}
+        return {k: get_space_attrs(v, attr) for k, v in space.spaces.items()}
     elif isinstance(space, gym.spaces.Tuple):
         return [get_space_attrs(s, attr) for s in space.spaces]
     raise RuntimeError(f'{space} does not have attribute {attr}.')

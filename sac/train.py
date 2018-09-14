@@ -120,8 +120,8 @@ class Trainer:
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
                     for k in self.episode_count:
-                        summary.value.add(tag=k.replace('_', ' '),
-                                          simple_value=self.episode_count[k])
+                        summary.value.add(
+                            tag=k.replace('_', ' '), simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, self.count['time_steps'])
                 tb_writer.flush()
 
@@ -289,8 +289,7 @@ class HindsightTrainer(Trainer):
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:
-                traj = self.trajectory(time_steps=time_steps,
-                                       final_index=final_index)
+                traj = self.trajectory(time_steps=time_steps, final_index=final_index)
                 new_traj = self.hindsight_env.recompute_trajectory(traj)
                 self.buffer.append(new_traj)
 

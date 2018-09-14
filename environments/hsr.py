@@ -1,9 +1,7 @@
-from abc import abstractmethod
 from collections.__init__ import namedtuple
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Tuple
 
-import gym
 import numpy as np
 from gym import spaces
 from gym.spaces import Box
@@ -11,7 +9,7 @@ from gym.utils import closer
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import MujocoError, ObjType
+from mujoco import ObjType
 
 
 class HSREnv:
@@ -22,8 +20,8 @@ class HSREnv:
                  goal_space: Box,
                  block_space: Box,
                  min_lift_height: float = None,
-                 randomize_pose: bool=False,
-                 obs_type: str=None,
+                 randomize_pose: bool = False,
+                 obs_type: str = None,
                  image_dimensions: Tuple[int] = None,
                  record_path: Path = None,
                  record_freq: int = None,
@@ -51,10 +49,7 @@ class HSREnv:
         # record stuff
         self._video_recorder = None
         self._concat_recordings = concat_recordings
-        self._record = any((concat_recordings,
-                            record_path,
-                            record_freq,
-                            record))
+        self._record = any((concat_recordings, record_path, record_freq, record))
         if self._record:
             self._record_path = record_path or Path('/tmp/training-video')
             image_dimensions = image_dimensions or (1000, 1000)
@@ -86,9 +81,8 @@ class HSREnv:
         # goal space
         if min_lift_height:
             min_lift_height += geofence
-            self.goal_space = adjust_dim(space=goal_space,
-                                         offset=(min_lift_height, min_lift_height),
-                                         dim=2)
+            self.goal_space = adjust_dim(
+                space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
         else:
             self.goal_space = goal_space
         self.goal = None
@@ -97,26 +91,25 @@ class HSREnv:
         z = self.initial_block_pos[2]
         self._block_space = Box(
             low=np.concatenate([block_space.low, [z, -1]]),
-            high=np.concatenate([block_space.high, [z, 1]])
-        )
+            high=np.concatenate([block_space.high, [z, 1]]))
 
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
 
         self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
         raw_obs_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
-        self.observation_space = spaces.Tuple(Observation(
-            observation=raw_obs_space,
-            goal=self.goal_space
-        ))
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ))
+        self.observation_space = spaces.Tuple(
+            Observation(observation=raw_obs_space, goal=self.goal_space))
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         self._block_qposadrs = block_joint + np.append(np.arange(3), 6)
 
         # joint space
-        all_joints = ['slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                      'wrist_roll_joint', 'hand_l_proximal_joint']
+        all_joints = [
+            'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+            'hand_l_proximal_joint'
+        ]
         self._joints = list(filter(using_joint, all_joints))
         jnt_range_idx = [self.sim.name2id(ObjType.JOINT, j) for j in self._joints]
         self._joint_space = Box(*map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
@@ -156,8 +149,8 @@ class HSREnv:
             grip_pos = self.gripper_pos()
             dt = self.sim.nsubsteps * self.sim.timestep
             object_pos = self.block_pos()
-            grip_velp = .5 * sum(self.sim.get_body_xvelp(name)
-                                 for name in self._finger_names)
+            grip_velp = .5 * sum(
+                self.sim.get_body_xvelp(name) for name in self._finger_names)
             # rotations
             object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
 
@@ -232,8 +225,7 @@ class HSREnv:
         return self._get_obs(), reward, done, {}
 
     def _sync_grippers(self, qpos):
-        qpos[
-            self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
+        qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
     def reset(self):
@@ -246,7 +238,7 @@ class HSREnv:
         self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
 
         # forward sim
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()

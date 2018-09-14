@@ -1,3 +1,4 @@
+import argparse
 import re
 import tempfile
 from collections import namedtuple
@@ -7,15 +8,13 @@ from pathlib import Path
 from typing import List
 from xml.etree import ElementTree as ET
 
-import click
-import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
-from sac.utils import parse_double
+from scripts.hsr import parse_space, parse_vector, cast_to_int, parse_activation, ACTIVATIONS
 
 
 def put_in_xml_setter(ctx, param, value: str):
@@ -34,6 +33,8 @@ def env_wrapper(func):
             render_freq = 20
         xml_filepath = Path(
             Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
+        if not set_xml:
+            set_xml = []
         with mutate_xml(
                 changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
             return func(temp_path=temp_path, render_freq=render_freq, **kwargs)
@@ -103,60 +104,18 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
             f.close()
 
 
-@click.command()
-@click.option('--seed', default=0, type=int)
-@click.option('--device-num', default=0, type=int)
-@click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
-@click.option('--mlp', 'agent', flag_value=MlpAgent, default=True)
-@click.option('--seq-len', default=8, type=int)
-@click.option('--n-layers', default=3, type=int)
-@click.option('--layer-size', default=256, type=int)
-@click.option('--learning-rate', default=2e-4, type=float)
-@click.option('--buffer-size', default=1e5, type=int)
-@click.option('--num-train-steps', default=4, type=int)
-@click.option('--steps-per-action', default=300, type=int)
-@click.option('--batch-size', default=32, type=int)
-@click.option('--reward-scale', default=7e3, type=float)
-@click.option('--entropy-scale', default=1, type=float)
-@click.option('--max-steps', default=200, type=int)
-@click.option('--n-goals', default=1, type=int)
-@click.option('--hindsight-geofence', default=.4, type=float)
-@click.option('--geofence', default=.05, type=float)
-@click.option('--min-lift-height', default=.03, type=float)
-@click.option('--grad-clip', default=4e4, type=float)
-@click.option('--fixed-block', is_flag=True)
-@click.option('--randomize-pose', is_flag=True)
-@click.option('--logdir', default=None, type=str)
-@click.option('--save-path', default=None, type=str)
-@click.option('--load-path', default=None, type=str)
-@click.option('--image-dims', type=str, callback=parse_double)
-@click.option('--render-freq', type=int, default=None)
-@click.option('--render', is_flag=True)
-@click.option('--record-freq', type=int, default=None)
-@click.option('--record-path', type=Path)
-@click.option('--record', is_flag=True)
-@click.option('--concat-recordings', is_flag=True)
-@click.option('--xml-file', type=Path, default='world.xml')
-@click.option('--set-xml', multiple=True, callback=put_in_xml_setter)
-@click.option(
-    '--use-dof',
-    multiple=True,
-    default=[
-        'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
-        'hand_l_proximal_joint', 'hand_r_proximal_joint'
-    ])
 @env_wrapper
-def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, seed,
-        device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps,
-        concat_recordings, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, seq_len, agent, record, randomize_pose,
-        image_dims, record_freq, record_path, temp_path):
+def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed,
+         buffer_size, activation, n_layers, layer_size, learning_rate,
+         reward_scale, entropy_scale, goal_space, block_space, grad_clip, batch_size, num_train_steps,
+         concat_record, steps_per_action, logdir, save_path, load_path, render_freq,
+         n_goals, record, randomize_pose,
+         image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=LiftEnv(
             steps_per_action=steps_per_action,
-            fixed_block=fixed_block,
+            fixed_block=False,
             randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,
             xml_filepath=temp_path,
@@ -167,15 +126,15 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
             record=record,
             record_path=record_path,
             record_freq=record_freq,
-            concat_recordings=concat_recordings,
+            concat_recordings=concat_record,
             image_dimensions=image_dims,
         ))
 
     kwargs = dict(
-        seq_len=seq_len,
-        base_agent=agent,
+        seq_len=None,
+        base_agent=MlpAgent,
         seed=seed,
-        device_num=device_num,
+        device_num=1,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,
@@ -202,5 +161,52 @@ def cli(max_steps, fixed_block, min_lift_height, geofence, hindsight_geofence, s
     )
 
 
+def cli():
+    p = argparse.ArgumentParser()
+    p.add_argument('--seed', type=int, required=True)
+    p.add_argument('--activation', type=parse_activation,
+                   default='relu', choices=ACTIVATIONS.keys())
+    p.add_argument('--n-layers', type=int, required=True)
+    p.add_argument('--layer-size', type=int, required=True)
+    p.add_argument('--buffer-size', type=cast_to_int, required=True)
+    p.add_argument('--num-train-steps', type=int, required=True)
+    p.add_argument('--steps-per-action', type=int, required=True)
+    p.add_argument('--batch-size', type=int, required=True)
+    scales = p.add_mutually_exclusive_group(required=True)
+    scales.add_argument('--reward-scale', type=float, default=1)
+    scales.add_argument('--entropy-scale', type=float, default=1)
+    p.add_argument('--learning-rate', type=float, required=True)
+    p.add_argument('--max-steps', type=int, required=True)
+    p.add_argument('--n-goals', type=int, required=True)
+    p.add_argument('--min-lift-height', type=float, default=None, required=True)
+    p.add_argument('--grad-clip', type=float, required=True)
+    p.add_argument('--goal-space', type=parse_space(dim=3), default=None)  # TODO
+    p.add_argument('--block-space', type=parse_space(dim=2), required=True)
+    p.add_argument('--geofence', type=float, required=True)
+    p.add_argument('--hindsight-geofence', type=float)
+    p.add_argument('--randomize-pose', action='store_true')
+    p.add_argument('--logdir', type=str, default=None)
+    p.add_argument('--save-path', type=str, default=None)
+    p.add_argument('--load-path', type=str, default=None)
+    p.add_argument('--image-dims',
+                   type=parse_vector(length=2, delim=','),
+                   default='800,800')
+    p.add_argument('--render', action='store_true')
+    p.add_argument('--render-freq', type=int, default=None)
+    p.add_argument('--record', action='store_true')
+    p.add_argument('--concat-record', action='store_true')
+    p.add_argument('--record-freq', type=int, default=None)
+    p.add_argument('--record-path', type=int, default=None)
+    p.add_argument('--xml-file', type=Path, default='world.xml')
+    p.add_argument('--set-xml', type=put_in_xml_setter,
+                   action='append', nargs='*')
+    p.add_argument('--use-dof', action='append', nargs='*',
+                   default=[
+                       'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+                       'hand_l_proximal_joint', 'hand_r_proximal_joint'
+                   ])
+    main(**vars(p.parse_args()))
+
 if __name__ == '__main__':
     cli()
+

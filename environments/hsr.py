@@ -47,10 +47,14 @@ class HSREnv:
         self.render_freq = render_freq
         self.steps_per_action = steps_per_action
 
+        # record stuff
         self._video_recorder = None
         self._concat_recordings = concat_recordings
-        self._record_video = any((concat_recordings, record_path, record_freq, record))
-        if self._record_video:
+        self._record = any((concat_recordings,
+                            record_path,
+                            record_freq,
+                            record))
+        if self._record:
             self._record_path = record_path or Path('/tmp/training-video')
             image_dimensions = image_dimensions or (1000, 1000)
             self._record_freq = record_freq or 20
@@ -126,6 +130,7 @@ class HSREnv:
         self.mujoco_obs_space = self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints, ))
 
+        # action space
         self.action_space = spaces.Box(
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
@@ -136,9 +141,6 @@ class HSREnv:
 
     def seed(self, seed=None):
         np.random.seed(seed)
-
-    def server_values(self):
-        return self.sim.qpos, self.sim.qvel
 
     def render(self, mode=None, camera_name=None, labels=None):
         if mode == 'rgb_array':
@@ -197,7 +199,7 @@ class HSREnv:
             for _ in range(50):
                 if self.render_freq is not None:
                     self.render()
-                if self._record_video:
+                if self._record:
                     self._video_recorder.capture_frame()
         return self._get_obs(), reward, done, {}
 
@@ -208,7 +210,7 @@ class HSREnv:
             self.sim.step()
             if self.render_freq is not None and i % self.render_freq == 0:
                 self.render()
-            if self._record_video and i % self._record_freq == 0:
+            if self._record and i % self._record_freq == 0:
                 self._video_recorder.capture_frame()
 
     def reset(self):
@@ -245,7 +247,7 @@ class HSREnv:
         self.sim.forward()
         if self._time_steps > 0:
             self._episode += 1
-        if self._record_video and not self._concat_recordings:
+        if self._record and not self._concat_recordings:
             if self._video_recorder:
                 self._video_recorder.close()
             record_path = Path(self._record_path, str(self._episode))

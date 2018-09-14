@@ -16,10 +16,9 @@ class HSREnv:
     def __init__(self,
                  xml_filepath: Path,
                  steps_per_action: int,
+                 block_space: spaces.Box,
                  randomize_pose=False,
                  fixed_block=False,
-                 block_xrange=None,
-                 block_yrange=None,
                  image_dimensions: Optional[Tuple[int]] = None,
                  record_path: Optional[Path] = None,
                  record_freq: int = 0,
@@ -29,12 +28,7 @@ class HSREnv:
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
-        if block_xrange is None:
-            block_xrange = (0, 0)
-        if block_yrange is None:
-            block_yrange = (0, 0)
-        self.block_xrange = block_xrange
-        self.block_yrange = block_yrange
+        self.block_xrange, self.block_yrange = zip(block_space.low, block_space.high)
         self._block_name = 'block1'
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]

@@ -18,8 +18,8 @@ from environments.shift import ShiftEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
-                       vectorize, normalize)
+from sac.utils import (Obs, Step, create_sess, get_space_attrs, normalize,
+                       unwrap_env, vectorize)
 
 Agents = namedtuple('Agents', 'train act')
 

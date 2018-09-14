@@ -16,7 +16,6 @@ from environments.lift import LiftEnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 from sac.utils import parse_double
-from scripts.gym_env import check_probability
 
 
 def put_in_xml_setter(ctx, param, value: str):

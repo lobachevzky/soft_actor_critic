@@ -1,6 +1,5 @@
 import argparse
 import re
-import sys
 import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
@@ -14,8 +13,7 @@ import tensorflow as tf
 from gym import spaces
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import HSRHindsightWrapper, LiftHindsightWrapper
-from environments.hsr import HSREnv
+from environments.hindsight_wrapper import LiftHindsightWrapper
 from environments.lift import LiftEnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
@@ -151,22 +149,23 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
         for f in temp.values():
             f.close()
 
-
 @env_wrapper
-def main(max_steps, goal_space, block_space, min_lift_height, geofence, hindsight_geofence, seed,
-        buffer_size, activation, n_layers, layer_size, learning_rate,
-        reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps,
-        concat_record, steps_per_action, logdir, save_path, load_path, render_freq,
-        n_goals, record, randomize_pose, image_dims, record_freq, record_path, temp_path):
+def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed,
+         buffer_size, activation, n_layers, layer_size, learning_rate,
+         reward_scale, entropy_scale, goal_space, block_space, grad_clip, batch_size, num_train_steps,
+         concat_record, steps_per_action, logdir, save_path, load_path, render_freq,
+         n_goals, record, randomize_pose,
+         image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=LiftEnv(
-            goal_space=goal_space,
-            block_space=block_space,
             steps_per_action=steps_per_action,
+            fixed_block=False,
             randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,
             xml_filepath=temp_path,
+            block_space=block_space,
+            goal_space=goal_space,
             geofence=geofence,
             render_freq=render_freq,
             record=record,
@@ -180,6 +179,7 @@ def main(max_steps, goal_space, block_space, min_lift_height, geofence, hindsigh
         seq_len=None,
         base_agent=MlpAgent,
         seed=seed,
+        device_num=1,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,
@@ -254,3 +254,4 @@ def cli():
 
 if __name__ == '__main__':
     cli()
+

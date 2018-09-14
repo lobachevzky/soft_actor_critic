@@ -10,7 +10,7 @@ from gym.spaces import Box
 from environments import shift
 from environments.frozen_lake import FrozenLakeEnv
 from environments.lift import LiftEnv
-from environments.mujoco import MujocoEnv, distance_between
+from environments.hsr import HSREnv, distance_between
 from environments.shift import ShiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
@@ -106,7 +106,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 class MujocoHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, MujocoEnv))
+        self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
         self._geofence = geofence
 
     def _is_success(self, achieved_goal, desired_goal):

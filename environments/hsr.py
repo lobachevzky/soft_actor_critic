@@ -11,7 +11,7 @@ import mujoco
 from mujoco import MujocoError, ObjType
 
 
-class MujocoEnv:
+class HSREnv:
     def __init__(self,
                  xml_filepath: Path,
                  steps_per_action: int,

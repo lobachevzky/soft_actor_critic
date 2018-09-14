@@ -4,12 +4,12 @@ from collections import namedtuple
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv, distance_between
+from environments.hsr import HSREnv, distance_between
 
 Observation = namedtuple('Obs', 'observation goal')
 
 
-class ShiftEnv(MujocoEnv):
+class ShiftEnv(HSREnv):
     def __init__(self,
                  geofence: float,
                  obs_type=None,

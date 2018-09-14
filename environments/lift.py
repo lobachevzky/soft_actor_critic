@@ -1,7 +1,7 @@
 import numpy as np
 from gym import spaces
 
-from environments.mujoco import MujocoEnv
+from environments.hsr import HSREnv
 
 
 def quaternion_multiply(quaternion1, quaternion0):
@@ -15,7 +15,7 @@ def quaternion_multiply(quaternion1, quaternion0):
         dtype=np.float64)
 
 
-class LiftEnv(MujocoEnv):
+class LiftEnv(HSREnv):
     def __init__(self, min_lift_height=.08, geofence=.05, **kwargs):
         self.min_lift_height = min_lift_height + geofence
         self._goal = None

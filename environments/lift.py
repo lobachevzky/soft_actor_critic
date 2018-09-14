@@ -18,7 +18,6 @@ def quaternion_multiply(quaternion1, quaternion0):
 class LiftEnv(HSREnv):
     def __init__(self, min_lift_height=.08, geofence=.05, **kwargs):
         self.min_lift_height = min_lift_height + geofence
-        self._goal = None
 
         super().__init__(geofence=geofence, **kwargs)
 
@@ -27,16 +26,12 @@ class LiftEnv(HSREnv):
         self.unwrapped = self
 
     @property
-    def goal(self):
-        return self._goal
-
-    @property
     def goal3d(self):
-        return self._goal
+        return self.goal
 
     def reset(self):
         obs = super().reset()
-        self._goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
+        self.goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
         return obs
 
     def _get_obs_space(self):

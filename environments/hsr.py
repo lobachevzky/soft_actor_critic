@@ -31,6 +31,8 @@ class HSREnv:
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
+        self.geofence = geofence
+        self._obs_type = obs_type
         self.block_xrange, self.block_yrange = zip(block_space.low, block_space.high)
         self._block_name = 'block1'
         left_finger_name = 'hand_l_distal_link'
@@ -57,9 +59,63 @@ class HSREnv:
                 self._video_recorder = self.reset_recorder(self._record_path)
         else:
             image_dimensions = image_dimensions or []
+        self._image_dimensions = image_dimensions
 
         self.sim = mujoco.Sim(str(xml_filepath), *image_dimensions, n_substeps=1)
 
+        # initial values
+        self.initial_qpos = self.sim.qpos.ravel().copy()
+        self.initial_qvel = self.sim.qvel.ravel().copy()
+        self.initial_block_pos = np.copy(self.block_pos())
+
+        def adjust_dim(space: spaces.Box, offset: Tuple, dim: int):
+            low_offset = np.zeros(space.shape)
+            high_offset = np.zeros(space.shape)
+            low_offset[dim] = offset[0]
+            high_offset[dim] = offset[1]
+            return spaces.Box(
+                low=space.low + low_offset,
+                high=space.high + high_offset,
+            )
+
+        # goal space
+        if min_lift_height:
+            min_lift_height += geofence
+            self.goal_space = adjust_dim(space=goal_space,
+                                         offset=(min_lift_height, min_lift_height),
+                                         dim=2)
+        else:
+            self.goal_space = goal_space
+        self.goal = None
+
+        # block space
+        z = self.initial_block_pos[2]
+        self._block_space = spaces.Box(
+            low=np.concatenate([block_space.low, [z, -1]]),
+            high=np.concatenate([block_space.high, [z, 1]])
+        )
+
+        def using_joint(name):
+            return self.sim.contains(ObjType.JOINT, name)
+
+        self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
+        raw_obs_space = spaces.Box(
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
+        self.observation_space = spaces.Tuple(Observation(
+            observation=raw_obs_space,
+            goal=self.goal_space
+        ))
+
+        block_joint = self.sim.get_jnt_qposadr('block1joint')
+        self._block_qposadrs = block_joint + np.append(np.arange(3), 6)
+
+        # joint space
+        all_joints = ['slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                      'wrist_roll_joint', 'hand_l_proximal_joint']
+        self._joints = list(filter(using_joint, all_joints))
+        jnt_range_idx = [self.sim.name2id(ObjType.JOINT, j) for j in self._joints]
+        self._joint_space = spaces.Box(*map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
+        self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
         self.randomize_pose = randomize_pose
         self.init_qpos = self.sim.qpos.ravel().copy()
         self.init_qvel = self.sim.qvel.ravel().copy()
@@ -222,11 +278,6 @@ class HSREnv:
 
     def __exit__(self, *args):
         self.sim.__exit__()
-
-    @property
-    @abstractmethod
-    def goal_space(self):
-        raise NotImplementedError
 
     @property
     def goal3d(self):

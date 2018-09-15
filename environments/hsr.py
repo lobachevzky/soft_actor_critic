@@ -17,17 +17,17 @@ class HSREnv:
                  xml_filepath: Path,
                  steps_per_action: int,
                  geofence: float,
-                 goal_space: Box,
-                 block_space: Box,
+                 goal_space: spaces.Box,
+                 block_space: spaces.Box,
                  min_lift_height: float = None,
-                 randomize_pose: bool = False,
-                 obs_type: str = None,
+                 randomize_pose: bool=False,
+                 obs_type: str=None,
                  image_dimensions: Tuple[int] = None,
                  record_path: Path = None,
                  record_freq: int = None,
                  record: bool = False,
                  concat_recordings: bool = False,
-                 render_freq: int = 0):
+                 render_freq: int = None):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
@@ -73,7 +73,7 @@ class HSREnv:
             high_offset = np.zeros(space.shape)
             low_offset[dim] = offset[0]
             high_offset[dim] = offset[1]
-            return Box(
+            return spaces.Box(
                 low=space.low + low_offset,
                 high=space.high + high_offset,
             )
@@ -81,17 +81,19 @@ class HSREnv:
         # goal space
         if min_lift_height:
             min_lift_height += geofence
-            self.goal_space = adjust_dim(
-                space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
+            self.goal_space = adjust_dim(space=goal_space,
+                                         offset=(min_lift_height, min_lift_height),
+                                         dim=2)
         else:
             self.goal_space = goal_space
         self.goal = None
 
         # block space
         z = self.initial_block_pos[2]
-        self._block_space = Box(
+        self._block_space = spaces.Box(
             low=np.concatenate([block_space.low, [z, -1]]),
-            high=np.concatenate([block_space.high, [z, 1]]))
+            high=np.concatenate([block_space.high, [z, 1]])
+        )
 
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
@@ -106,13 +108,11 @@ class HSREnv:
         self._block_qposadrs = block_joint + np.append(np.arange(3), 6)
 
         # joint space
-        all_joints = [
-            'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
-            'hand_l_proximal_joint'
-        ]
+        all_joints = ['slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
+                      'wrist_roll_joint', 'hand_l_proximal_joint']
         self._joints = list(filter(using_joint, all_joints))
         jnt_range_idx = [self.sim.name2id(ObjType.JOINT, j) for j in self._joints]
-        self._joint_space = Box(*map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
+        self._joint_space = spaces.Box(*map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
         self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
         self.randomize_pose = randomize_pose
 

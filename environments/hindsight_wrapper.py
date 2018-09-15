@@ -36,10 +36,9 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def _add_goals(self, env_obs):
-        observation = Observation(
-            observation=env_obs,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
+        observation = Observation(observation=env_obs,
+                                  desired_goal=self._desired_goal(),
+                                  achieved_goal=self._achieved_goal())
         assert self.observation_space.contains(observation)
         return observation
 

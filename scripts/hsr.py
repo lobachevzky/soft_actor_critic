@@ -220,7 +220,7 @@ def cli():
     p.add_argument('--min-lift-height', type=float, default=None, required=True)
     p.add_argument('--grad-clip', type=float, required=True)
     p.add_argument('--goal-space', type=parse_space(dim=3), default=None)  # TODO
-    p.add_argument('--block-space', type=parse_space(dim=2), required=True)
+    p.add_argument('--block-space', type=parse_space(dim=4), required=True)
     p.add_argument('--geofence', type=float, required=True)
     p.add_argument('--hindsight-geofence', type=float)
     p.add_argument('--randomize-pose', action='store_true')

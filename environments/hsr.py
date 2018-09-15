@@ -90,9 +90,7 @@ class HSREnv:
 
         # block space
         z = self.initial_block_pos[2]
-        self._block_space = spaces.Box(
-            low=np.concatenate([block_space.low, [z, -1]]),
-            high=np.concatenate([block_space.high, [z, 1]]))
+        self._block_space = block_space
 
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
@@ -104,7 +102,7 @@ class HSREnv:
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
-        self._block_qposadrs = block_joint + np.append(np.arange(3), 6)
+        self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])  # x, y, z-axis rotation
 
         # joint space
         all_joints = [
@@ -241,13 +239,7 @@ class HSREnv:
         qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
-        block_joint = self.sim.get_jnt_qposadr('block1joint')
-        block_xrange, block_yrange, _, _ = zip(self._block_space.low, self._block_space.high)
-        qpos[block_joint + 0] = np.random.uniform(*block_xrange)
-        qpos[block_joint + 1] = np.random.uniform(*block_yrange)
-        qpos[block_joint + 3] = np.random.uniform(0, 1)
-        qpos[block_joint + 6] = np.random.uniform(-1, 1)
-        # qpos[self._block_qposadrs] = self._block_space.sample()
+        qpos[self._block_qposadrs] = self._block_space.sample()
         self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
 
         assert qpos.shape == (self.sim.nq, )

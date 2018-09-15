@@ -107,12 +107,21 @@ class HSRHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.hsr_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
         self._geofence = geofence
+        hsr_spaces = hsr.Observation(*self.hsr_env.observation_space.spaces)
         self.observation_space = spaces.Tuple(
             Observation(
-                observation=hsr.Observation(*self.hsr_env.observation_space.spaces).observation,
+                observation=hsr_spaces.observation,
                 desired_goal=self.goal_space,
                 achieved_goal=self.goal_space,
             ))
+
+    def _add_goals(self, env_obs):
+        observation = Observation(
+            observation=environments.hsr.Observation(*env_obs).observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        assert self.observation_space.contains(observation)
+        return observation
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal).block
@@ -131,21 +140,13 @@ class HSRHindsightWrapper(HindsightWrapper):
 
     @property
     def goal_space(self):
-        return spaces.Tuple(
-            Goal(
-                gripper=Box(-np.inf, np.inf, (3,)),
-                block=Box(
-                    low=np.array([-.14, -.2240, .4]) - 1,
-                    high=np.array([.11, .2241, .921]) + 1)))
-
-    def _add_goals(self, env_obs):
-        assert isinstance(env_obs, hsr.Observation)
-        observation = Observation(
-            observation=env_obs.observation,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-        assert self.observation_space.contains(observation)
-        return observation
+        low = self.hsr_env.goal_space.low.copy()
+        low[2] = self.hsr_env.initial_block_pos[2]
+        epsilon = 1e-5
+        return spaces.Tuple(Goal(
+            gripper=Box(-np.inf, np.inf, (3,)),
+            block=Box(low=low - epsilon, high=self.hsr_env.goal_space.high)
+        ))
 
 
 class FrozenLakeHindsightWrapper(HindsightWrapper):

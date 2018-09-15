@@ -106,7 +106,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 class HSRHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.mujoco_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
+        self.hsr_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
         self._geofence = geofence
 
     def _is_success(self, achieved_goal, desired_goal):
@@ -116,7 +116,7 @@ class HSRHindsightWrapper(HindsightWrapper):
 
     def _achieved_goal(self):
         return Goal(
-            gripper=self.mujoco_env.gripper_pos(), block=self.mujoco_env.block_pos())
+            gripper=self.hsr_env.gripper_pos(), block=self.hsr_env.block_pos())
 
     @property
     @abstractmethod

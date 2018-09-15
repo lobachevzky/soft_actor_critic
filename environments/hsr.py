@@ -101,7 +101,7 @@ class HSREnv:
 
         self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
         raw_obs_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ))
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
@@ -239,11 +239,14 @@ class HSREnv:
         if self.randomize_pose:
             qpos[self._joint_qposadrs] = self._joint_space.sample()
         self._sync_grippers(qpos)
-        qpos[self._block_qposadrs] = self._block_space.sample()
-        self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
+        block_pos = self._block_space.sample()
+        qpos[self._block_qposadrs] = block_pos
+        sample = self.goal_space.sample()
+        sample[[0, 1]] = block_pos[[0, 1]]
+        self.goal = self.sim.mocap_pos[:] = sample
 
         # forward sim
-        assert qpos.shape == (self.sim.nq, )
+        assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()

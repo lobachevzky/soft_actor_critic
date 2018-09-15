@@ -40,7 +40,7 @@ class HindsightWrapper(gym.Wrapper):
             observation=env_obs,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        assert self.observation_space.contains(observation)
+        # assert self.observation_space.contains(observation)
         return observation
 
     def step(self, action):
@@ -120,7 +120,7 @@ class HSRHindsightWrapper(HindsightWrapper):
             observation=environments.hsr.Observation(*env_obs).observation,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        assert self.observation_space.contains(observation)
+        # assert self.observation_space.contains(observation)
         return observation
 
     def _is_success(self, achieved_goal, desired_goal):

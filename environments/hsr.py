@@ -146,23 +146,6 @@ class HSREnv:
     def image(self, camera_name='rgb'):
         return self.sim.render_offscreen(camera_name)
 
-    def _get_obs(self):
-        obs = np.concatenate([self.sim.qpos, self._qvel_obs()])
-        assert self.mujoco_obs_space.contains(obs)
-        return obs
-
-    def _qvel_obs(self):
-        def get_qvels(joints):
-            base_qvel = []
-            for joint in joints:
-                try:
-                    base_qvel.append(self.sim.get_joint_qvel(joint))
-                except RuntimeError:
-                    pass
-            return np.array(base_qvel)
-
-        return get_qvels(['slide_x', 'slide_x'])
-
     def compute_terminal(self):
         return self._is_successful()
 
@@ -171,6 +154,49 @@ class HSREnv:
             return 1
         else:
             return 0
+
+    def _get_obs(self):
+        if self._obs_type == 'openai':
+
+            # positions
+            grip_pos = self.gripper_pos()
+            dt = self.sim.nsubsteps * self.sim.timestep
+            object_pos = self.block_pos()
+            grip_velp = .5 * sum(
+                self.sim.get_body_xvelp(name) for name in self._finger_names)
+            # rotations
+            object_rot = mat2euler(self.sim.get_body_xmat(self._block_name))
+
+            # velocities
+            object_velp = self.sim.get_body_xvelp(self._block_name) * dt
+            object_velr = self.sim.get_body_xvelr(self._block_name) * dt
+
+            # gripper state
+            object_rel_pos = object_pos - grip_pos
+            object_velp -= grip_velp
+            gripper_state = np.array(
+                [self.sim.get_joint_qpos(f'hand_{x}_proximal_joint') for x in 'lr'])
+            qvels = np.array(
+                [self.sim.get_joint_qvel(f'hand_{x}_proximal_joint') for x in 'lr'])
+            gripper_vel = dt * .5 * qvels
+
+            obs = np.concatenate([
+                grip_pos,
+                object_pos.ravel(),
+                object_rel_pos.ravel(),
+                gripper_state,
+                object_rot.ravel(),
+                object_velp.ravel(),
+                object_velr.ravel(),
+                grip_velp,
+                gripper_vel,
+            ])
+        else:
+            base_qvels = [self.sim.get_joint_qvel(j) for j in ['slide_x', 'slide_x']]
+            obs = np.concatenate([self.sim.qpos, base_qvels])
+        # observation = Observation(observation=obs, goal=self.goal)
+        assert self.observation_space.contains(obs)
+        return obs
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)

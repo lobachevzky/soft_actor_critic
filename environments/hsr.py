@@ -117,13 +117,11 @@ class HSREnv:
             *map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
         self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
         self.randomize_pose = randomize_pose
-        self.init_qpos = self.sim.qpos.ravel().copy()
-        self.init_qvel = self.sim.qvel.ravel().copy()
-        self._image_dimensions = image_dimensions
-        self._base_joints = ['slide_x', 'slide_y']
+
+        self._base_joints = ['slide_x', 'slide_x']
         n_base_joints = sum(
             int(self.sim.contains(ObjType.JOINT, j)) for j in self._base_joints)
-        self.mujoco_obs_space = self.observation_space = spaces.Box(
+        self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints, ))
 
         # action space
@@ -131,9 +129,6 @@ class HSREnv:
             low=self.sim.actuator_ctrlrange[:-1, 0],
             high=self.sim.actuator_ctrlrange[:-1, 1],
             dtype=np.float32)
-
-        self.initial_qpos = np.copy(self.init_qpos)
-        self.initial_block_pos = np.copy(self.block_pos())
 
     def seed(self, seed=None):
         np.random.seed(seed)
@@ -192,7 +187,7 @@ class HSREnv:
                 gripper_vel,
             ])
         else:
-            base_qvels = [self.sim.get_joint_qvel(j) for j in ['slide_x', 'slide_x']]
+            base_qvels = [self.sim.get_joint_qvel(j) for j in self._base_joints]
             obs = np.concatenate([self.sim.qpos, base_qvels])
         # observation = Observation(observation=obs, goal=self.goal)
         assert self.observation_space.contains(obs)
@@ -237,7 +232,7 @@ class HSREnv:
 
     def reset(self):
         self.sim.reset()
-        qpos = np.copy(self.init_qpos)
+        qpos = np.copy(self.initial_qpos)
         if self.randomize_pose:
             for joint in [
                     'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',

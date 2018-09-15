@@ -33,7 +33,6 @@ class HSREnv:
 
         self.geofence = geofence
         self._obs_type = obs_type
-        self.block_xrange, self.block_yrange = zip(block_space.low, block_space.high)
         self._block_name = 'block1'
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
@@ -236,30 +235,20 @@ class HSREnv:
     def reset(self):
         self.sim.reset()
         qpos = np.copy(self.initial_qpos)
-        if self.randomize_pose:
-            for joint in [
-                    'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint',
-                    'wrist_roll_joint', 'hand_l_proximal_joint'
-            ]:
-                try:
-                    qpos_idx = self.sim.get_jnt_qposadr(joint)
-                except MujocoError:
-                    continue
-                jnt_range_idx = self.sim.name2id(ObjType.JOINT, joint)
-                qpos[qpos_idx] = \
-                    np.random.uniform(
-                        *self.sim.jnt_range[jnt_range_idx])
-                # self.sim.jnt_range[jnt_range_idx][1]
 
+        if self.randomize_pose:
+            qpos[self._joint_qposadrs] = self._joint_space.sample()
         qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
-        # sample block_space
         block_joint = self.sim.get_jnt_qposadr('block1joint')
-        qpos[block_joint + 0] = np.random.uniform(*self.block_xrange)
-        qpos[block_joint + 1] = np.random.uniform(*self.block_yrange)
+        block_xrange, block_yrange, _, _ = zip(self._block_space.low, self._block_space.high)
+        qpos[block_joint + 0] = np.random.uniform(*block_xrange)
+        qpos[block_joint + 1] = np.random.uniform(*block_yrange)
         qpos[block_joint + 3] = np.random.uniform(0, 1)
         qpos[block_joint + 6] = np.random.uniform(-1, 1)
+        # qpos[self._block_qposadrs] = self._block_space.sample()
+        self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
 
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()

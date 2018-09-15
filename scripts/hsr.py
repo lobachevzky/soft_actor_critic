@@ -173,7 +173,6 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         seq_len=None,
         base_agent=MlpAgent,
         seed=seed,
-        device_num=1,
         buffer_size=buffer_size,
         activation=activation,
         n_layers=n_layers,

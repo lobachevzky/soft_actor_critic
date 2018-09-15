@@ -24,7 +24,7 @@ class AbstractAgent:
                  layer_size: int,
                  learning_rate: float,
                  grad_clip: float,
-                 device_num: int,
+                 device_num: int = 1,
                  reuse=False,
                  name='agent') -> None:
 

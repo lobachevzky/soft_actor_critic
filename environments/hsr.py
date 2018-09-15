@@ -331,9 +331,6 @@ def print1(*strings):
     print('\r', *strings, end='')
 
 
-Observation = namedtuple('Obs', 'observation goal')
-
-
 def mat2euler(mat):
     """ Convert Rotation Matrix to Euler Angles.  See rotation.py for notes """
     mat = np.asarray(mat, dtype=np.float64)
@@ -348,3 +345,6 @@ def mat2euler(mat):
                              -np.arctan2(-mat[..., 0, 2], cy))
     euler[..., 0] = np.where(condition, -np.arctan2(mat[..., 1, 2], mat[..., 2, 2]), 0.0)
     return euler
+
+
+Observation = namedtuple('Obs', 'observation goal')

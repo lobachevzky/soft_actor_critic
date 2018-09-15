@@ -206,18 +206,7 @@ class HSREnv:
 
         self._time_steps += 1
         assert np.shape(action) == np.shape(self.sim.ctrl)
-        self._set_action(action)
-        done = self.compute_terminal()
-        reward = self.compute_reward()
-        if reward > 0:
-            for _ in range(50):
-                if self.render_freq is not None:
-                    self.render()
-                if self._record:
-                    self._video_recorder.capture_frame()
-        return self._get_obs(), reward, done, {}
 
-    def _set_action(self, action):
         assert np.shape(action) == np.shape(self.sim.ctrl)
         for i in range(self.steps_per_action):
             self.sim.ctrl[:] = action
@@ -226,6 +215,23 @@ class HSREnv:
                 self.render()
             if self._record and i % self._record_freq == 0:
                 self._video_recorder.capture_frame()
+
+        done = self.compute_terminal()
+        reward = self.compute_reward()
+
+        # pause when goal is achieved
+        if reward > 0:
+            for _ in range(50):
+                if self.render_freq is not None:
+                    self.render()
+                if self._record:
+                    self._video_recorder.capture_frame()
+
+        return self._get_obs(), reward, done, {}
+
+    def _sync_grippers(self, qpos):
+        qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
+            self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
     def reset(self):
         self.sim.reset()

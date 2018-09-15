@@ -3,7 +3,7 @@ import itertools
 import numpy as np
 from gym import spaces
 
-from environments.hsr import HSREnv, distance_between, Observation, mat2euler
+from environments.hsr import HSREnv, Observation, distance_between, mat2euler
 
 
 class ShiftEnv(HSREnv):
@@ -120,5 +120,3 @@ class ShiftEnv(HSREnv):
         # labels[tuple(self.goal_space.high) + z] = ']'
         # labels[tuple(self.goal) + z] = '|'
         return super().render(labels=labels, **kwargs)
-
-

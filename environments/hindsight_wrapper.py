@@ -8,10 +8,9 @@ from gym import spaces
 from gym.spaces import Box
 
 import environments.hsr
-from environments import shift
 from environments.frozen_lake import FrozenLakeEnv
-from environments.lift import LiftEnv
 from environments.hsr import HSREnv, distance_between
+from environments.lift import LiftEnv
 from environments.shift import ShiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
@@ -38,9 +37,10 @@ class HindsightWrapper(gym.Wrapper):
         raise NotImplementedError
 
     def _add_goals(self, env_obs):
-        observation = Observation(observation=env_obs,
-                                  desired_goal=self._desired_goal(),
-                                  achieved_goal=self._achieved_goal())
+        observation = Observation(
+            observation=env_obs,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
         assert self.observation_space.contains(observation)
         return observation
 

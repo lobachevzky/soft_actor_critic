@@ -24,9 +24,8 @@ def parse_space(dim: int):
         regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)(?:$|,)')
         matches = regex.findall(arg)
         if len(matches) != dim:
-            raise argparse.ArgumentTypeError(
-                f'Arg {arg} must have {dim} substrings '
-                f'matching pattern {regex}.')
+            raise argparse.ArgumentTypeError(f'Arg {arg} must have {dim} substrings '
+                                             f'matching pattern {regex}.')
         low, high = map(np.array, zip(*[(map(float, m)) for m in matches]))
         return spaces.Box(low=low, high=high)
 
@@ -37,10 +36,8 @@ def parse_vector(length: int, delim: str):
     def _parse_vector(arg: str):
         vector = tuple(map(float, arg.split(delim)))
         if len(vector) != length:
-            raise argparse.ArgumentError(
-                f'Arg {arg} must include {length} float values'
-                f'delimited by "{delim}".'
-            )
+            raise argparse.ArgumentError(f'Arg {arg} must include {length} float values'
+                                         f'delimited by "{delim}".')
         return vector
 
     return _parse_vector
@@ -50,9 +47,7 @@ def cast_to_int(arg: str):
     return int(float(arg))
 
 
-ACTIVATIONS = dict(
-    relu=tf.nn.relu
-)
+ACTIVATIONS = dict(relu=tf.nn.relu)
 
 
 def parse_activation(arg: str):
@@ -82,8 +77,8 @@ def env_wrapper(func):
         set_xml += [XMLSetter(path=f'./{path}', value=site_size)]
         with mutate_xml(
                 changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
-            return func(geofence=geofence, temp_path=temp_path,
-                        render_freq=render_freq, **kwargs)
+            return func(
+                geofence=geofence, temp_path=temp_path, render_freq=render_freq, **kwargs)
 
     return _wrapper
 
@@ -149,13 +144,13 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
         for f in temp.values():
             f.close()
 
+
 @env_wrapper
-def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed,
-         buffer_size, activation, n_layers, layer_size, learning_rate,
-         reward_scale, entropy_scale, goal_space, block_space, grad_clip, batch_size, num_train_steps,
-         concat_record, steps_per_action, logdir, save_path, load_path, render_freq,
-         n_goals, record, randomize_pose,
-         image_dims, record_freq, record_path, temp_path):
+def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
+         activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
+         goal_space, block_space, grad_clip, batch_size, num_train_steps, concat_record,
+         steps_per_action, logdir, save_path, load_path, render_freq, n_goals, record,
+         randomize_pose, image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=LiftEnv(
@@ -208,8 +203,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed,
 def cli():
     p = argparse.ArgumentParser()
     p.add_argument('--seed', type=int, required=True)
-    p.add_argument('--activation', type=parse_activation,
-                   default='relu', choices=ACTIVATIONS.keys())
+    p.add_argument(
+        '--activation', type=parse_activation, default='relu', choices=ACTIVATIONS.keys())
     p.add_argument('--n-layers', type=int, required=True)
     p.add_argument('--layer-size', type=int, required=True)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)
@@ -232,9 +227,8 @@ def cli():
     p.add_argument('--logdir', type=str, default=None)
     p.add_argument('--save-path', type=str, default=None)
     p.add_argument('--load-path', type=str, default=None)
-    p.add_argument('--image-dims',
-                   type=parse_vector(length=2, delim=','),
-                   default='800,800')
+    p.add_argument(
+        '--image-dims', type=parse_vector(length=2, delim=','), default='800,800')
     p.add_argument('--render', action='store_true')
     p.add_argument('--render-freq', type=int, default=None)
     p.add_argument('--record', action='store_true')
@@ -242,15 +236,17 @@ def cli():
     p.add_argument('--record-freq', type=int, default=None)
     p.add_argument('--record-path', type=int, default=None)
     p.add_argument('--xml-file', type=Path, default='world.xml')
-    p.add_argument('--set-xml', type=put_in_xml_setter,
-                   action='append', nargs='*')
-    p.add_argument('--use-dof', action='append', nargs='*',
-                   default=[
-                       'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
-                       'hand_l_proximal_joint', 'hand_r_proximal_joint'
-                   ])
+    p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
+    p.add_argument(
+        '--use-dof',
+        action='append',
+        nargs='*',
+        default=[
+            'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
+            'hand_l_proximal_joint', 'hand_r_proximal_joint'
+        ])
     main(**vars(p.parse_args()))
+
 
 if __name__ == '__main__':
     cli()
-

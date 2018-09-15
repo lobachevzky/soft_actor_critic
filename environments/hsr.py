@@ -120,10 +120,6 @@ class HSREnv:
         self.randomize_pose = randomize_pose
 
         self._base_joints = ['slide_x', 'slide_x']
-        n_base_joints = sum(
-            int(self.sim.contains(ObjType.JOINT, j)) for j in self._base_joints)
-        self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + n_base_joints, ))
 
         # action space
         self.action_space = spaces.Box(
@@ -190,9 +186,9 @@ class HSREnv:
         else:
             base_qvels = [self.sim.get_joint_qvel(j) for j in self._base_joints]
             obs = np.concatenate([self.sim.qpos, base_qvels])
-        # observation = Observation(observation=obs, goal=self.goal)
-        assert self.observation_space.contains(obs)
-        return obs
+        observation = Observation(observation=obs, goal=self.goal)
+        assert self.observation_space.contains(observation)
+        return observation
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)

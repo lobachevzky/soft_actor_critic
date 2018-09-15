@@ -109,7 +109,7 @@ class HSRHindsightWrapper(HindsightWrapper):
         self._geofence = geofence
         self.observation_space = spaces.Tuple(
             Observation(
-                observation=self.hsr_env.observation_space,
+                observation=hsr.Observation(*self.hsr_env.observation_space.spaces).observation,
                 desired_goal=self.goal_space,
                 achieved_goal=self.goal_space,
             ))
@@ -137,6 +137,15 @@ class HSRHindsightWrapper(HindsightWrapper):
                 block=Box(
                     low=np.array([-.14, -.2240, .4]) - 1,
                     high=np.array([.11, .2241, .921]) + 1)))
+
+    def _add_goals(self, env_obs):
+        assert isinstance(env_obs, hsr.Observation)
+        observation = Observation(
+            observation=env_obs.observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        assert self.observation_space.contains(observation)
+        return observation
 
 
 class FrozenLakeHindsightWrapper(HindsightWrapper):

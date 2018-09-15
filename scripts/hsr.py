@@ -14,7 +14,7 @@ from gym import spaces
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import HSRHindsightWrapper
-from environments.lift import LiftEnv
+from environments.hsr import HSREnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 
@@ -153,7 +153,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          randomize_pose, image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=LiftEnv(
+        env=HSREnv(
             steps_per_action=steps_per_action,
             randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,

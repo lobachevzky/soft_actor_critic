@@ -14,7 +14,6 @@ from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
                                                HierarchicalAgents,
                                                HierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
-from environments.shift import ShiftEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -298,41 +297,6 @@ class HindsightTrainer(Trainer):
         self.add_hindsight_trajectories(self.episode_count['time_steps'])
         return super().reset()
 
-
-class ShiftTrainer(Trainer):
-    def __init__(self, evaluation, env, **kwargs):
-        self.eval = evaluation
-        self.n = 50000
-        self.last_n_rewards = deque(maxlen=self.n)
-        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
-        super().__init__(env=env, **kwargs)
-
-    def run_episode(self, o1, perform_updates, render):
-        if self.is_eval_period():
-            for goal_corner in self.shift_env.goal_corners:
-                o1 = self.reset()
-                self.shift_env.goal = goal_corner + self.shift_env.goal_size / 2
-                count = super().run_episode(
-                    o1=o1, perform_updates=perform_updates, render=render)
-                for k in count:
-                    print(f'{k}: {count[k]}')
-            print('Evaluation complete.')
-            exit()
-        else:
-            episode_count = super().run_episode(o1, perform_updates, render)
-            self.last_n_rewards.append(episode_count['reward'])
-            average_reward = sum(self.last_n_rewards) / self.n
-            if average_reward > .96:
-                print(f'Reward for last {self.n} episodes: {average_reward}')
-                exit()
-            return episode_count
-
-    def is_eval_period(self):
-        return self.eval
-
-
-class ShiftHindsightTrainer(ShiftTrainer, HindsightTrainer):
-    pass
 
 
 BossState = namedtuple('BossState', 'goal action o1')

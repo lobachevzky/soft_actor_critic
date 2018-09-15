@@ -79,13 +79,14 @@ class HSREnv:
                 high=space.high + high_offset,
             )
 
+        self.min_lift_height = min_lift_height + geofence
         # goal space
         if min_lift_height:
             min_lift_height += geofence
-            self.goal_space = adjust_dim(
-                space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
-        else:
-            self.goal_space = goal_space
+            # self.goal_space = adjust_dim(
+            #     space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
+        # else:
+        self.goal_space = goal_space
         self.goal = None
 
         # block space
@@ -271,6 +272,7 @@ class HSREnv:
             self._video_recorder = self.reset_recorder(record_path)
 
         self.sim.mocap_pos[:] = self.goal
+        self.goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
         return self._get_obs()
 
     def block_pos(self):
@@ -299,7 +301,7 @@ class HSREnv:
         self.sim.__exit__()
 
     def _is_successful(self):
-        raise NotImplementedError
+        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
 
 
 def quaternion2euler(w, x, y, z):

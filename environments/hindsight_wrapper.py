@@ -8,10 +8,9 @@ from gym import spaces
 from gym.spaces import Box
 
 import environments.hsr
+from environments import hsr
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hsr import HSREnv, distance_between
-from environments.lift import LiftEnv
-from environments.shift import ShiftEnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -125,7 +124,7 @@ class HSRHindsightWrapper(HindsightWrapper):
             gripper=self.hsr_env.gripper_pos(), block=self.hsr_env.block_pos())
 
     def _desired_goal(self):
-        assert isinstance(self.hsr_env, LiftEnv)
+        assert isinstance(self.hsr_env, HSREnv)
         goal = self.hsr_env.initial_block_pos.copy()
         goal[2] += self.hsr_env.min_lift_height
         return Goal(gripper=goal, block=goal)

@@ -270,7 +270,7 @@ class HSREnv:
             record_path = Path(self._record_path, str(self._episode))
             self._video_recorder = self.reset_recorder(record_path)
 
-        self.sim.mocap_pos[:] = self.goal3d
+        self.sim.mocap_pos[:] = self.goal
         return self._get_obs()
 
     def block_pos(self):
@@ -298,11 +298,6 @@ class HSREnv:
     def __exit__(self, *args):
         self.sim.__exit__()
 
-    @property
-    def goal3d(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _is_successful(self):
         raise NotImplementedError
 

@@ -13,7 +13,7 @@ import tensorflow as tf
 from gym import spaces
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import LiftHindsightWrapper
+from environments.hindsight_wrapper import HSRHindsightWrapper
 from environments.lift import LiftEnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
@@ -187,7 +187,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
 
     if hindsight_geofence:
         trainer = HindsightTrainer(
-            env=LiftHindsightWrapper(env=env, geofence=hindsight_geofence),
+            env=HSRHindsightWrapper(env=env, geofence=hindsight_geofence),
             n_goals=n_goals,
             **kwargs)
     else:

@@ -108,6 +108,12 @@ class HSRHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.hsr_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
         self._geofence = geofence
+        self.observation_space = spaces.Tuple(
+            Observation(
+                observation=self.hsr_env.observation_space,
+                desired_goal=self.goal_space,
+                achieved_goal=self.goal_space,
+            ))
 
     def _is_success(self, achieved_goal, desired_goal):
         achieved_goal = Goal(*achieved_goal).block
@@ -118,34 +124,17 @@ class HSRHindsightWrapper(HindsightWrapper):
         return Goal(
             gripper=self.hsr_env.gripper_pos(), block=self.hsr_env.block_pos())
 
-    @property
-    @abstractmethod
-    def goal_space(self):
-        raise NotImplementedError
-
-
-class LiftHindsightWrapper(HSRHindsightWrapper):
-    def __init__(self, env, geofence):
-        super().__init__(env, geofence=geofence)
-        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
-        self.observation_space = spaces.Tuple(
-            Observation(
-                observation=self.lift_env.observation_space,
-                desired_goal=self.goal_space,
-                achieved_goal=self.goal_space,
-            ))
-
     def _desired_goal(self):
-        assert isinstance(self.lift_env, LiftEnv)
-        goal = self.lift_env.initial_block_pos.copy()
-        goal[2] += self.lift_env.min_lift_height
+        assert isinstance(self.hsr_env, LiftEnv)
+        goal = self.hsr_env.initial_block_pos.copy()
+        goal[2] += self.hsr_env.min_lift_height
         return Goal(gripper=goal, block=goal)
 
     @property
     def goal_space(self):
         return spaces.Tuple(
             Goal(
-                gripper=Box(-np.inf, np.inf, (3, )),
+                gripper=Box(-np.inf, np.inf, (3,)),
                 block=Box(
                     low=np.array([-.14, -.2240, .4]) - 1,
                     high=np.array([.11, .2241, .921]) + 1)))
@@ -172,7 +161,7 @@ class ShiftHindsightWrapper(HSRHindsightWrapper):
     def goal_space(self):
         return spaces.Tuple(
             Goal(
-                gripper=Box(-np.inf, np.inf, (3, )),
+                gripper=Box(-np.inf, np.inf, (3,)),
                 block=Box(
                     low=np.append(self.shift_env.goal_space.low, -np.inf),
                     high=np.append(self.shift_env.goal_space.high, np.inf))))

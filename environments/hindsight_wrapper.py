@@ -140,40 +140,6 @@ class HSRHindsightWrapper(HindsightWrapper):
                     high=np.array([.11, .2241, .921]) + 1)))
 
 
-class ShiftHindsightWrapper(HSRHindsightWrapper):
-    def __init__(self, env, geofence):
-        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
-        super().__init__(env, geofence=geofence)
-        self.observation_space = spaces.Tuple(
-            Observation(
-                observation=self.shift_env.observation_space.spaces['observation'],
-                desired_goal=self.goal_space,
-                achieved_goal=self.goal_space,
-            ))
-
-    def _desired_goal(self):
-        assert isinstance(self.shift_env, ShiftEnv)
-        block_height = self.shift_env.initial_block_pos[2]
-        goal = np.append(self.shift_env.goal, block_height)
-        return Goal(goal, goal)
-
-    @property
-    def goal_space(self):
-        return spaces.Tuple(
-            Goal(
-                gripper=Box(-np.inf, np.inf, (3,)),
-                block=Box(
-                    low=np.append(self.shift_env.goal_space.low, -np.inf),
-                    high=np.append(self.shift_env.goal_space.high, np.inf))))
-
-    def _add_goals(self, env_obs):
-        obs = environments.hsr.Observation(**env_obs)
-        return Observation(
-            observation=obs.observation,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-
-
 class FrozenLakeHindsightWrapper(HindsightWrapper):
     def __init__(self, env):
         self.frozen_lake_env = unwrap_env(env, lambda e: isinstance(e, FrozenLakeEnv))

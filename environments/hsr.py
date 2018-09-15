@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from collections.__init__ import namedtuple
 from pathlib import Path
 from typing import Tuple
@@ -9,7 +8,7 @@ from gym.utils import closer
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import MujocoError, ObjType
+from mujoco import ObjType
 
 
 class HSREnv:
@@ -95,7 +94,7 @@ class HSREnv:
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
 
-        self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
+        self._base_joints = list(filter(using_joint, ['slide_x', 'slide_x']))
         raw_obs_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ))
         self.observation_space = spaces.Tuple(
@@ -115,8 +114,6 @@ class HSREnv:
             *map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
         self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
         self.randomize_pose = randomize_pose
-
-        self._base_joints = ['slide_x', 'slide_x']
 
         # action space
         self.action_space = spaces.Box(
@@ -236,18 +233,20 @@ class HSREnv:
 
         if self.randomize_pose:
             qpos[self._joint_qposadrs] = self._joint_space.sample()
-        qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
-            self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
-
+        self._sync_grippers(qpos)
         qpos[self._block_qposadrs] = self._block_space.sample()
         self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
 
+        # forward sim
         assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
+
         if self._time_steps > 0:
             self._episode += 1
+
+        # if necessary, reset VideoRecorder
         if self._record and not self._concat_recordings:
             if self._video_recorder:
                 self._video_recorder.close()

@@ -142,10 +142,9 @@ class HSRHindsightWrapper(HindsightWrapper):
     def goal_space(self):
         low = self.hsr_env.goal_space.low.copy()
         low[2] = self.hsr_env.initial_block_pos[2]
-        epsilon = 1e-5
         return spaces.Tuple(Goal(
             gripper=Box(-np.inf, np.inf, (3,)),
-            block=Box(low=low - epsilon, high=self.hsr_env.goal_space.high)
+            block=Box(low=low, high=self.hsr_env.goal_space.high)
         ))
 
 

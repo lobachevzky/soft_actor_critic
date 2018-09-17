@@ -72,6 +72,7 @@ class HSREnv:
             high_offset = np.zeros(space.shape)
             low_offset[dim] = offset[0]
             high_offset[dim] = offset[1]
+
             return spaces.Box(
                 low=space.low + low_offset,
                 high=space.high + high_offset,
@@ -81,10 +82,15 @@ class HSREnv:
         # goal space
         if min_lift_height:
             min_lift_height += geofence
-            # self.goal_space = adjust_dim(
-            #     space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
-        # else:
-        self.goal_space = goal_space
+            self.goal_space = adjust_dim(
+                space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
+        else:
+            self.goal_space = goal_space
+
+        epsilon = .0001
+        too_close = self.goal_space.high - self.goal_space.low < 2 * epsilon
+        self.goal_space.high[too_close] += epsilon
+        self.goal_space.low[too_close] -= epsilon
         self.goal = None
 
         # block space

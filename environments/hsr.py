@@ -259,8 +259,8 @@ class HSREnv:
             record_path = Path(self._record_path, str(self._episode))
             self._video_recorder = self.reset_recorder(record_path)
 
-        self.sim.mocap_pos[:] = self.goal
         self.goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
+        self.sim.mocap_pos[:] = self.goal
         return self._get_obs()
 
     def block_pos(self):

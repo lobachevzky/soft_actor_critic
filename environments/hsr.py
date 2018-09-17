@@ -100,9 +100,9 @@ class HSREnv:
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
 
-        self._base_joints = list(filter(using_joint, ['slide_x', 'slide_x']))
+        self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
         raw_obs_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ))
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
 

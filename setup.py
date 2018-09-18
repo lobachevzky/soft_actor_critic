@@ -22,6 +22,7 @@ setup(
         'hmt=scripts.hierarchical_shift:cli',
         'lift=scripts.lift:cli',
         'shift=scripts.shift:cli',
+        'hsr=scripts.hsr:cli',
         'mountaincar=scripts.mountaincar:cli',
         'unsupervised=scripts.unsupervised:cli',
         'mouse-control=scripts.mouse_control:cli',

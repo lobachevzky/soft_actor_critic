@@ -77,7 +77,7 @@
         <geom name="floor" type="plane" size="2 2 2" pos="0 0 0" class="floor"/>
 
         <body name="goal" pos="0 0 0" mocap="true">
-            <site name="goal" size=".01 .01 .01" pos="0 0 0" rgba="0 1 0 .5"/>
+            <site name="goal" size=".01 .01 .01" pos="0 0 0" rgba="0 1 0 .2"/>
         </body>
 
         <body name="pan" pos="0 0 .4">

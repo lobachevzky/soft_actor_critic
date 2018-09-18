@@ -108,6 +108,16 @@ def normalize(vector: np.ndarray, low: np.ndarray, high: np.ndarray):
     return (vector - mean) / dev
 
 
+def get_space_attrs(space: gym.Space, attr: str):
+    if hasattr(space, attr):
+        return getattr(space, attr)
+    elif isinstance(space, gym.spaces.Dict):
+        return {k: get_space_attrs(v, attr) for k, v in space.spaces.items()}
+    elif isinstance(space, gym.spaces.Tuple):
+        return [get_space_attrs(s, attr) for s in space.spaces]
+    raise RuntimeError(f'{space} does not have attribute {attr}.')
+
+
 def unwrap_env(env: gym.Env, condition: Callable[[gym.Env], bool]):
     while not condition(env):
         try:

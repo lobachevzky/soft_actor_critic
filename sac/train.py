@@ -14,11 +14,11 @@ from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
                                                HierarchicalAgents,
                                                HierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
-from environments.shift import ShiftEnv
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess, normalize, unwrap_env, vectorize
+from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
+                       vectorize)
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -48,7 +48,23 @@ class Trainer:
         self.buffer = ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
         self.action_space = action_space or env.action_space
-        self.observation_space = observation_space or env.observation_space
+
+        obs = env.reset()
+        self.preprocess_func = preprocess_func
+        if preprocess_func is None and not isinstance(obs, np.ndarray):
+            try:
+                self.preprocess_func = unwrap_env(
+                    env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
+            except RuntimeError:
+                self.preprocess_func = vectorize
+
+        if observation_space:
+            self.observation_space = observation_space
+        else:
+            self.observation_space = spaces.Box(*[
+                self.preprocess_obs(get_space_attrs(env.observation_space, attr))
+                for attr in ['low', 'high']
+            ])
 
         self.agents = Agents(
             act=self.build_agent(
@@ -70,15 +86,6 @@ class Trainer:
         self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
-
-        obs = env.reset()
-        self.preprocess_func = preprocess_func
-        if preprocess_func is None and not isinstance(obs, np.ndarray):
-            try:
-                self.preprocess_func = unwrap_env(
-                    env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
-            except RuntimeError:
-                self.preprocess_func = vectorize
 
         # self.train(load_path, logdir, render, save_path)
 
@@ -113,8 +120,8 @@ class Trainer:
                     summary.value.add(tag='eval reward', simple_value=episode_reward)
                 else:
                     for k in self.episode_count:
-                        summary.value.add(tag=k.replace('_', ' '),
-                                          simple_value=self.episode_count[k])
+                        summary.value.add(
+                            tag=k.replace('_', ' '), simple_value=self.episode_count[k])
                 tb_writer.add_summary(summary, self.count['time_steps'])
                 tb_writer.flush()
 
@@ -170,8 +177,10 @@ class Trainer:
         return counter
 
     def get_actions(self, o1, s):
+        obs = self.preprocess_obs(o1)
+        # assert self.observation_space.contains(obs)
         return self.agents.act.get_actions(
-            self.preprocess_obs(o1), state=s, sample=(not self.is_eval_period()))
+            o=obs, state=s, sample=(not self.is_eval_period()))
 
     def build_agent(self,
                     base_agent: AbstractAgent,
@@ -182,22 +191,30 @@ class Trainer:
             observation_space = self.observation_space
         if action_space is None:
             action_space = self.action_space
+
+        def space_to_size(space: gym.Space):
+            if isinstance(space, spaces.Discrete):
+                return space.n
+            elif isinstance(space, (spaces.Dict, spaces.Tuple)):
+                if isinstance(space, spaces.Dict):
+                    _spaces = list(space.spaces.values())
+                else:
+                    _spaces = list(space.spaces)
+                return sum(space_to_size(s) for s in _spaces)
+            else:
+                return space.shape[0]
+
         if isinstance(action_space, spaces.Discrete):
-            action_shape = [action_space.n]
             policy_type = CategoricalPolicy
         else:
-            action_shape = action_space.shape
             policy_type = GaussianPolicy
-
-        if isinstance(observation_space, spaces.Discrete):
-            state_shape = [observation_space.n]
-        else:
-            state_shape = observation_space.shape
 
         class Agent(policy_type, base_agent):
             def __init__(self):
                 super(Agent, self).__init__(
-                    o_shape=state_shape, a_shape=action_shape, **kwargs)
+                    o_shape=observation_space.shape,
+                    a_shape=[space_to_size(action_space)],
+                    **kwargs)
 
         return Agent()
 
@@ -221,10 +238,7 @@ class Trainer:
     def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
-        return normalize(
-            vector=obs,
-            low=self.env.observation_space.low,
-            high=self.env.observation_space.high)
+        return obs
 
     def add_to_buffer(self, step: Step) -> None:
         assert isinstance(step, Step)
@@ -275,8 +289,7 @@ class HindsightTrainer(Trainer):
             assert isinstance(final_indexes, np.ndarray)
 
             for final_index in final_indexes:
-                traj = self.trajectory(time_steps=time_steps,
-                                       final_index=final_index)
+                traj = self.trajectory(time_steps=time_steps, final_index=final_index)
                 new_traj = self.hindsight_env.recompute_trajectory(traj)
                 self.buffer.append(new_traj)
 
@@ -284,43 +297,6 @@ class HindsightTrainer(Trainer):
         self.add_hindsight_trajectories(self.episode_count['time_steps'])
         return super().reset()
 
-
-class ShiftTrainer(Trainer):
-    def __init__(self, evaluation, env, **kwargs):
-        self.eval = evaluation
-        self.n = 50000
-        self.last_n_rewards = deque(maxlen=self.n)
-        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
-        super().__init__(env=env, **kwargs)
-
-    def run_episode(self, o1, perform_updates, render):
-        env = self.env.unwrapped
-        assert isinstance(env, ShiftEnv)
-        if self.is_eval_period():
-            for goal_corner in env.goal_corners:
-                o1 = self.reset()
-                env.goal = goal_corner + env.goal_size / 2
-                count = super().run_episode(
-                    o1=o1, perform_updates=perform_updates, render=render)
-                for k in count:
-                    print(f'{k}: {count[k]}')
-            print('Evaluation complete.')
-            exit()
-        else:
-            episode_count = super().run_episode(o1, perform_updates, render)
-            self.last_n_rewards.append(episode_count['reward'])
-            average_reward = sum(self.last_n_rewards) / self.n
-            if average_reward > .96:
-                print(f'Reward for last {self.n} episodes: {average_reward}')
-                exit()
-            return episode_count
-
-    def is_eval_period(self):
-        return self.eval
-
-
-class ShiftHindsightTrainer(ShiftTrainer, HindsightTrainer):
-    pass
 
 
 BossState = namedtuple('BossState', 'goal action o1')
@@ -425,7 +401,7 @@ class HierarchicalTrainer(Trainer):
         }
 
     def trajectory(self, final_index=None):
-        raise NotImplemented
+        raise NotImplementedError
 
     def add_to_buffer(self, step: Step):
         # boss

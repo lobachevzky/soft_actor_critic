@@ -1,16 +1,16 @@
 from abc import abstractmethod
 from collections import namedtuple
 from copy import deepcopy
-from typing import Optional
 
 import gym
 import numpy as np
+from gym import spaces
 from gym.spaces import Box
 
+import environments.hsr
+from environments import hsr
 from environments.frozen_lake import FrozenLakeEnv
-from environments.lift import LiftEnv
-from environments.mujoco import distance_between
-from environments.shift import ShiftEnv
+from environments.hsr import HSREnv, distance_between
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -35,19 +35,20 @@ class HindsightWrapper(gym.Wrapper):
     def _desired_goal(self):
         raise NotImplementedError
 
+    def _add_goals(self, env_obs):
+        observation = Observation(
+            observation=env_obs,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        # assert self.observation_space.contains(observation)
+        return observation
+
     def step(self, action):
         o2, r, t, info = self.env.step(action)
-        new_o2 = Observation(
-            observation=o2,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-        return new_o2, r, t, info
+        return self._add_goals(o2), r, t, info
 
     def reset(self):
-        return Observation(
-            observation=self.env.reset(),
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
+        return self._add_goals(super().reset())
 
     def recompute_trajectory(self, trajectory: Step):
         trajectory = Step(*deepcopy(trajectory))
@@ -101,70 +102,42 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return achieved_goal >= desired_goal
 
 
-class LiftHindsightWrapper(HindsightWrapper):
+class HSRHindsightWrapper(HindsightWrapper):
     def __init__(self, env, geofence):
         super().__init__(env)
-        self.lift_env = unwrap_env(env, lambda e: isinstance(e, LiftEnv))
+        self.hsr_env = unwrap_env(env, lambda e: isinstance(e, HSREnv))
         self._geofence = geofence
-        self.observation_space = Box(
-            low=vectorize(
-                Observation(
-                    observation=env.observation_space.low,
-                    desired_goal=Goal(self.goal_space.low, self.goal_space.low),
-                    achieved_goal=None)),
-            high=vectorize(
-                Observation(
-                    observation=env.observation_space.high,
-                    desired_goal=Goal(self.goal_space.high, self.goal_space.high),
-                    achieved_goal=None)))
+        hsr_spaces = hsr.Observation(*self.hsr_env.observation_space.spaces)
+        self.observation_space = spaces.Tuple(
+            Observation(
+                observation=hsr_spaces.observation,
+                desired_goal=self.goal_space,
+                achieved_goal=self.goal_space,
+            ))
 
-    @property
-    def goal_space(self):
-        return Box(low=np.array([-.14, -.2240, .4]), high=np.array([.11, .2241, .921]))
+    def _add_goals(self, env_obs):
+        observation = Observation(
+            observation=environments.hsr.Observation(*env_obs).observation,
+            desired_goal=self._desired_goal(),
+            achieved_goal=self._achieved_goal())
+        # assert self.observation_space.contains(observation)
+        return observation
 
     def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal).block
-        desired_goal = Goal(*desired_goal).block
         return distance_between(achieved_goal, desired_goal) < self._geofence
 
     def _achieved_goal(self):
-        return Goal(gripper=self.lift_env.gripper_pos(), block=self.lift_env.block_pos())
+        return self.hsr_env.block_pos()
 
     def _desired_goal(self):
-        assert isinstance(self.lift_env, LiftEnv)
-        goal = self.lift_env.initial_block_pos.copy()
-        goal[2] += self.lift_env.min_lift_height
-        return Goal(gripper=goal, block=goal)
+        assert isinstance(self.hsr_env, HSREnv)
+        return self.hsr_env.goal
 
-
-class ShiftHindsightWrapper(LiftHindsightWrapper):
-    def __init__(self, env, geofence):
-        self.shift_env = unwrap_env(env, lambda e: isinstance(e, ShiftEnv))
-        super().__init__(env, geofence)
-        # tack on block z-component and gripper goal_space
-        self.observation_space = Box(
-            low=vectorize([env.observation_space.low, -np.inf, self.goal_space.low]),
-            high=vectorize([env.observation_space.high, np.inf, self.goal_space.high]))
-
-    def _desired_goal(self):
-        assert isinstance(self.shift_env, ShiftEnv)
-        block_height = self.shift_env.initial_block_pos[2]
-        goal = np.append(self.shift_env.goal, block_height)
-        return Goal(goal, goal)
-
-    def step(self, action):
-        o2, r, t, info = self.env.step(action)
-        new_o2 = Observation(
-            observation=o2.observation,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
-        return new_o2, r, t, info
-
-    def reset(self):
-        return Observation(
-            observation=self.env.reset().observation,
-            desired_goal=self._desired_goal(),
-            achieved_goal=self._achieved_goal())
+    @property
+    def goal_space(self):
+        low = self.hsr_env.goal_space.low.copy()
+        low[2] = self.hsr_env.initial_block_pos[2]
+        return Box(low=low, high=self.hsr_env.goal_space.high)
 
 
 class FrozenLakeHindsightWrapper(HindsightWrapper):

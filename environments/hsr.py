@@ -93,7 +93,6 @@ class HSREnv:
         self.goal = None
 
         # block space
-        z = self.initial_block_pos[2]
         self._block_space = block_space
 
         def using_joint(name):

@@ -79,12 +79,8 @@ class HSREnv:
             )
 
         # goal space
-        if min_lift_height:
-            min_lift_height += geofence
-            self.goal_space = adjust_dim(
-                space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
-        else:
-            self.goal_space = goal_space
+        self._min_lift_height = min_lift_height
+        self.goal_space = goal_space
 
         epsilon = .0001
         too_close = self.goal_space.high - self.goal_space.low < 2 * epsilon
@@ -105,7 +101,8 @@ class HSREnv:
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
-        self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])  # x, y, z-axis rotation
+        self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
+        # x, y, z-axis rotation
 
         # joint space
         all_joints = [
@@ -185,7 +182,7 @@ class HSREnv:
             base_qvels = [self.sim.get_joint_qvel(j) for j in self._base_joints]
             obs = np.concatenate([self.sim.qpos, base_qvels])
         observation = Observation(observation=obs, goal=self.goal)
-        assert self.observation_space.contains(observation)
+        # assert self.observation_space.contains(observation)
         return observation
 
     def step(self, action):
@@ -238,11 +235,12 @@ class HSREnv:
         if self.randomize_pose:
             qpos[self._joint_qposadrs] = self._joint_space.sample()
         self._sync_grippers(qpos)
-        block_pos = self._block_space.sample()
-        qpos[self._block_qposadrs] = block_pos
-        sample = self.goal_space.sample()
-        sample[[0, 1]] = block_pos[[0, 1]]
-        self.goal = self.sim.mocap_pos[:] = sample
+        qpos[self._block_qposadrs] = self._block_space.sample()
+        if self._min_lift_height:
+            self.goal = self.block_pos() + np.array([0, 0, self._min_lift_height])
+        else:
+            self.goal = self.goal_space.sample()
+        self.sim.mocap_pos[:] = self.goal
 
         # forward sim
         assert qpos.shape == (self.sim.nq,)
@@ -288,7 +286,9 @@ class HSREnv:
         self.sim.__exit__()
 
     def _is_successful(self):
-        return distance_between(self.goal, self.block_pos()) < self.geofence
+        if self._min_lift_height:
+            return self.block_pos()[2] > self.initial_block_pos[2] + self._min_lift_height
+        return distance_between(self.block_pos(), self.goal) < self.geofence
 
 
 def quaternion2euler(w, x, y, z):

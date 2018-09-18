@@ -216,7 +216,7 @@ def cli():
     p.add_argument('--learning-rate', type=float, required=True)
     p.add_argument('--max-steps', type=int, required=True)
     p.add_argument('--n-goals', type=int, required=True)
-    p.add_argument('--min-lift-height', type=float, default=None, required=True)
+    p.add_argument('--min-lift-height', type=float, default=None)
     p.add_argument('--grad-clip', type=float, required=True)
     p.add_argument('--goal-space', type=parse_space(dim=3), default=None)  # TODO
     p.add_argument('--block-space', type=parse_space(dim=4), required=True)

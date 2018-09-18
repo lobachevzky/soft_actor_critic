@@ -40,7 +40,7 @@ class HindsightWrapper(gym.Wrapper):
             observation=env_obs,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        assert self.observation_space.contains(observation)
+        # assert self.observation_space.contains(observation)
         return observation
 
     def step(self, action):
@@ -120,31 +120,24 @@ class HSRHindsightWrapper(HindsightWrapper):
             observation=environments.hsr.Observation(*env_obs).observation,
             desired_goal=self._desired_goal(),
             achieved_goal=self._achieved_goal())
-        assert self.observation_space.contains(observation)
+        # assert self.observation_space.contains(observation)
         return observation
 
     def _is_success(self, achieved_goal, desired_goal):
-        achieved_goal = Goal(*achieved_goal).block
-        desired_goal = Goal(*desired_goal).block
         return distance_between(achieved_goal, desired_goal) < self._geofence
 
     def _achieved_goal(self):
-        return Goal(
-            gripper=self.hsr_env.gripper_pos(), block=self.hsr_env.block_pos())
+        return self.hsr_env.block_pos()
 
     def _desired_goal(self):
         assert isinstance(self.hsr_env, HSREnv)
-        goal = self.hsr_env.goal
-        return Goal(gripper=goal, block=goal)
+        return self.hsr_env.goal
 
     @property
     def goal_space(self):
         low = self.hsr_env.goal_space.low.copy()
         low[2] = self.hsr_env.initial_block_pos[2]
-        return spaces.Tuple(Goal(
-            gripper=Box(-np.inf, np.inf, (3,)),
-            block=Box(-np.inf, np.inf, (3,)),
-        ))
+        return Box(low=low, high=self.hsr_env.goal_space.high)
 
 
 class FrozenLakeHindsightWrapper(HindsightWrapper):

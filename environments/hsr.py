@@ -78,14 +78,9 @@ class HSREnv:
                 high=space.high + high_offset,
             )
 
-        self.min_lift_height = min_lift_height + geofence
         # goal space
-        if min_lift_height:
-            min_lift_height += geofence
-            self.goal_space = adjust_dim(
-                space=goal_space, offset=(min_lift_height, min_lift_height), dim=2)
-        else:
-            self.goal_space = goal_space
+        self._min_lift_height = min_lift_height
+        self.goal_space = goal_space
 
         epsilon = .0001
         too_close = self.goal_space.high - self.goal_space.low < 2 * epsilon
@@ -94,7 +89,6 @@ class HSREnv:
         self.goal = None
 
         # block space
-        z = self.initial_block_pos[2]
         self._block_space = block_space
 
         def using_joint(name):
@@ -107,7 +101,8 @@ class HSREnv:
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
-        self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])  # x, y, z-axis rotation
+        self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
+        # x, y, z-axis rotation
 
         # joint space
         all_joints = [
@@ -241,7 +236,11 @@ class HSREnv:
             qpos[self._joint_qposadrs] = self._joint_space.sample()
         self._sync_grippers(qpos)
         qpos[self._block_qposadrs] = self._block_space.sample()
-        self.goal = self.sim.mocap_pos[:] = self.goal_space.sample()
+        if self._min_lift_height:
+            self.goal = self.block_pos() + np.array([0, 0, self._min_lift_height])
+        else:
+            self.goal = self.goal_space.sample()
+        self.sim.mocap_pos[:] = self.goal
 
         # forward sim
         assert qpos.shape == (self.sim.nq, )
@@ -259,8 +258,6 @@ class HSREnv:
             record_path = Path(self._record_path, str(self._episode))
             self._video_recorder = self.reset_recorder(record_path)
 
-        self.goal = self.block_pos() + np.array([0, 0, self.min_lift_height])
-        self.sim.mocap_pos[:] = self.goal
         return self._get_obs()
 
     def block_pos(self):
@@ -289,7 +286,9 @@ class HSREnv:
         self.sim.__exit__()
 
     def _is_successful(self):
-        return self.block_pos()[2] > self.initial_block_pos[2] + self.min_lift_height
+        if self._min_lift_height:
+            return self.block_pos()[2] > self.initial_block_pos[2] + self._min_lift_height
+        return distance_between(self.block_pos(), self.goal) < self.geofence
 
 
 def quaternion2euler(w, x, y, z):

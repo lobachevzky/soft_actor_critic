@@ -98,16 +98,25 @@ class Trainer:
         if logdir:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.sess.graph)
 
+        last_50_rewards = deque(maxlen=50)
+        best_average = -np.inf
+
         for episodes in itertools.count(1):
-            if save_path and episodes % 25 == 1:
-                print("model saved in path:", saver.save(self.sess, save_path=save_path))
-                saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
                 perform_updates=not self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
+
+            # save model
+            last_50_rewards.append(episode_reward)
+            new_average = np.mean(last_50_rewards)
+            if save_path and episodes % 50 == 1 and new_average > best_average:
+                print("model saved in path:", saver.save(self.sess, save_path=save_path))
+                saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
+                best_average = new_average
+
             episode_time_steps = self.episode_count['time_steps']
             self.count.update(
                 Counter(reward=episode_reward, episode=1, time_steps=episode_time_steps))
@@ -296,7 +305,6 @@ class HindsightTrainer(Trainer):
     def reset(self) -> Obs:
         self.add_hindsight_trajectories(self.episode_count['time_steps'])
         return super().reset()
-
 
 
 BossState = namedtuple('BossState', 'goal action o1')

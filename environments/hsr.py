@@ -79,8 +79,7 @@ class HSREnv:
             )
 
         # goal space
-        if min_lift_height:
-            self._min_lift_height = min_lift_height
+        self._min_lift_height = min_lift_height
         self.goal_space = goal_space
 
         epsilon = .0001
@@ -244,7 +243,7 @@ class HSREnv:
         self.sim.mocap_pos[:] = self.goal
 
         # forward sim
-        assert qpos.shape == (self.sim.nq, )
+        assert qpos.shape == (self.sim.nq,)
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
@@ -289,7 +288,7 @@ class HSREnv:
     def _is_successful(self):
         if self._min_lift_height:
             return self.block_pos()[2] > self.initial_block_pos[2] + self._min_lift_height
-        return distance_between(self.block_pos, self.goal) < self.geofence
+        return distance_between(self.block_pos(), self.goal) < self.geofence
 
 
 def quaternion2euler(w, x, y, z):

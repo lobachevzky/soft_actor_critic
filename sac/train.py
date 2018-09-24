@@ -307,6 +307,7 @@ class HindsightTrainer(Trainer):
         return super().reset()
 
 
+
 BossState = namedtuple('BossState', 'goal action o1')
 WorkerState = namedtuple('WorkerState', 'o1 o2')
 

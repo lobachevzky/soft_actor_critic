@@ -6,10 +6,10 @@ from pathlib import Path
 import ipdb
 import numpy as np
 from click._unicodefun import click
-
-from environments.hsr import print1
-from environments.shift import ShiftEnv
 from mujoco import ObjType
+
+from environments.hsr import print1, HSREnv
+from scripts.hsr import make_box
 
 saved_pos = None
 
@@ -24,13 +24,15 @@ def cli(discrete, xml_file):
     # env = PickAndPlaceEnv(max_steps=9999999)
     xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
 
-    env = ShiftEnv(
+    env = HSREnv(
         xml_filepath=xml_filepath,
-        fixed_block=np.array([0, 0, .43]),
-        # fixed_goal=np.array([.11, .22, .4]),
-        randomize_pose=False,
         steps_per_action=300,
-        geofence=.4,
+        geofence=.05,
+        block_space=make_box((-.1, .1), (-.2, .2), (0, 1), (-1, 1)),
+        goal_space=make_box((-.1, .1), (-.2, .2), (.418, .498)),
+        randomize_pose=True,
+
+        # fixed_goal=np.array([.11, .22, .4]),
         # min_lift_height=.43,
     )
     np.set_printoptions(precision=3, linewidth=800)

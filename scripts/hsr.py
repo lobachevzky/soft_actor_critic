@@ -5,7 +5,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -19,6 +19,11 @@ from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 
 
+def make_box(*tuples: Tuple[float, float]):
+    low, high = map(np.array, zip(*[(map(float, m)) for m in tuples]))
+    return spaces.Box(low=low, high=high)
+
+
 def parse_space(dim: int):
     def _parse_space(arg: str):
         regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)(?:$|,)')
@@ -26,9 +31,7 @@ def parse_space(dim: int):
         if len(matches) != dim:
             raise argparse.ArgumentTypeError(f'Arg {arg} must have {dim} substrings '
                                              f'matching pattern {regex}.')
-        low, high = map(np.array, zip(*[(map(float, m)) for m in matches]))
-        return spaces.Box(low=low, high=high)
-
+        return make_box(*matches)
     return _parse_space
 
 

@@ -21,7 +21,7 @@ from sac.train import HindsightTrainer, Trainer
 
 def parse_space(dim: int):
     def _parse_space(arg: str):
-        regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)(?:$|,)')
+        regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)')
         matches = regex.findall(arg)
         if len(matches) != dim:
             raise argparse.ArgumentTypeError(f'Arg {arg} must have {dim} substrings '

@@ -28,6 +28,14 @@ class AbstractAgent:
                  reuse=False,
                  name='agent') -> None:
 
+        self.default_train_values = ['entropy',
+                                     'soft_update_xi_bar',
+                                     'V_loss',
+                                     'Q_loss',
+                                     'pi_loss',
+                                     'V_grad',
+                                     'Q_grad',
+                                     'pi_grad', ]
         self.reward_scale = reward_scale
         self.activation = activation
         self.n_layers = n_layers
@@ -72,6 +80,7 @@ class AbstractAgent:
             # constructing V loss
             with tf.control_dependencies([self.A_sampled1]):
                 v1 = self.v_network(self.O1, 'V')
+                self.v1 = v1
                 q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
                                     'Q')
                 log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
@@ -147,7 +156,9 @@ class AbstractAgent:
     def seq_len(self):
         return self._seq_len
 
-    def train_step(self, step: Step, feed_dict: dict = None) -> dict:
+    def train_step(self, step: Step,
+                   feed_dict: dict = None,
+                   train_values: list = None) -> dict:
         if feed_dict is None:
             feed_dict = {
                 self.O1: step.o1,
@@ -156,16 +167,8 @@ class AbstractAgent:
                 self.O2: step.o2,
                 self.T: step.t
             }
-        train_values = [
-            'entropy',
-            'soft_update_xi_bar',
-            'V_loss',
-            'Q_loss',
-            'pi_loss',
-            'V_grad',
-            'Q_grad',
-            'pi_grad',
-        ]
+        if train_values is None:
+            train_values = self.default_train_values
         return self.sess.run({attr: getattr(self, attr)
                               for attr in train_values}, feed_dict)
 

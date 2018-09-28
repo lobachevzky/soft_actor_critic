@@ -2,6 +2,7 @@ import itertools
 import time
 from collections import Counter, deque, namedtuple
 from typing import Optional, Tuple
+import nonsense
 
 import gym
 import numpy as np
@@ -9,16 +10,13 @@ import tensorflow as tf
 from gym import Wrapper, spaces
 from gym.spaces import Box
 
-from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
-                                               Hierarchical,
-                                               HierarchicalAgents,
-                                               HierarchicalWrapper)
+from environments.hierarchical_wrapper import (
+    FrozenLakeHierarchicalWrapper, Hierarchical, HierarchicalAgents, HierarchicalWrapper)
 from environments.hindsight_wrapper import HindsightWrapper, Observation
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
-                       vectorize)
+from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env, vectorize)
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -173,11 +171,12 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def perform_update(self):
+    def perform_update(self, train_values=None):
         counter = Counter()
         if self.buffer_full():
             for i in range(self.num_train_steps):
-                step = self.agents.act.train_step(self.sample_buffer())
+                step = self.agents.act.train_step(
+                    self.sample_buffer(), train_values=train_values)
                 counter.update(
                     Counter({
                         k.replace(' ', '_'): v
@@ -307,9 +306,123 @@ class HindsightTrainer(Trainer):
         return super().reset()
 
 
-
-BossState = namedtuple('BossState', 'goal action o1')
+BossState = namedtuple('BossState', 'goal action o0 v0')
 WorkerState = namedtuple('WorkerState', 'o1 o2')
+
+
+class UnsupervisedTrainer(Trainer):
+    # noinspection PyMissingConstructor
+    def __init__(self, env, sess: tf.Session, worker_kwargs, boss_kwargs, **kwargs):
+
+        self.boss_state = None
+        self.worker_o1 = None
+
+        self.env = env
+        self.sess = sess
+        self.count = Counter(reward=0, episode=0, time_steps=0)
+        self.episode_count = Counter()
+        self.time_steps = 0
+
+        self.trainers = Hierarchical(
+            boss=Trainer(
+                observation_space=env.goal_space,
+                action_space=env.goal_space,
+                env=env,
+                sess=sess,
+                name='boss',
+                **boss_kwargs,
+                **kwargs,
+            ),
+            worker=Trainer(
+                observation_space=env.observation_space,
+                action_space=env.action_space,
+                env=env,
+                sess=sess,
+                name='worker',
+                **worker_kwargs,
+                **kwargs,
+            ))
+
+        self.agents = Agents(
+            act=HierarchicalAgents(
+                boss=self.trainers.boss.agents.act,
+                worker=self.trainers.worker.agents.act,
+                initial_state=0),
+            train=HierarchicalAgents(
+                boss=self.trainers.boss.agents.train,
+                worker=self.trainers.worker.agents.train,
+                initial_state=0))
+
+    def boss_turn(self):
+        return self.time_steps == 0
+
+    def get_actions(self, o1, s):
+        # boss
+        if self.boss_turn():
+            if self.boss_oracle:
+                goal_delta = boss_oracle(self.env)
+            else:
+                goal_delta = self.trainers.boss.get_actions(o1.achieved_goal, s).output
+            goal = o1.achieved_goal + goal_delta
+            self.boss_state = BossState(
+                goal=goal, action=goal_delta, o0=o1.achieved_goal, v0=None)
+
+        # worker
+        self.worker_o1 = o1.replace(desired_goal=self.boss_state.goal)
+
+        if self.worker_oracle:
+            raise NotImplementedError
+            # oracle_action = worker_oracle(self.env, direction)
+            # return NetworkOutput(output=oracle_action, state=0)
+        else:
+            return self.trainers.worker.get_actions(self.worker_o1, s)
+
+    def perform_update(self, _=None):
+        boss_update = self.trainers.boss.perform_update(
+            train_values=self.agents.boss.default_train_values + ['v1'])
+        if self.boss_turn():
+            self.boss_state = self.boss_state.replace(v0=boss_update['boss/v1'])
+        return {
+            **{f'boss_{k}': v
+               for k, v in (boss_update or {}).items()},
+            **{
+                f'worker_{k}': v
+                for k, v in (self.trainers.worker.perform_update() or {}).items()
+            }
+        }
+
+    def trajectory(self, time_steps: int, final_index=None):
+        raise NotImplementedError
+
+    def add_to_buffer(self, step: Step):
+        # boss
+        if step.t:
+            boss_action = self.boss_state.action
+            # if self.correct_boss_action:
+            #     rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
+            #     boss_action = self.env.goal_to_boss_action_space(rel_step)
+            success_prob = self.boss_state.v0 / (.99**self.time_steps)
+            reward = -success_prob * np.log(success_prob) \
+                     - (1 - success_prob) * np.log(1 - success_prob)
+
+            self.trainers.boss.buffer.append(
+                step.replace(o1=self.boss_state.o1, a=boss_action, r=reward))
+
+        # worker
+        if not self.worker_oracle:
+            # TODO: allow boss to set goal for worker (so that we don't have to use replace)
+            goal = self.worker_o1.desired_goal
+
+            step = step.replace(
+                o1=self.worker_o1, o2=step.o2.replace(desired_goal=self.boss_state.goal))
+            self.trainers.worker.buffer.append(step)
+            self.episode_count.update(Counter(worker_reward=step.r))
+
+        self.time_steps += 1
+
+    def reset(self):
+        self.time_steps = 0
+        return super().reset()
 
 
 class HierarchicalTrainer(Trainer):
@@ -317,13 +430,12 @@ class HierarchicalTrainer(Trainer):
     def __init__(self, env, boss_act_freq: int, use_boss_oracle: bool,
                  use_worker_oracle: bool, sess: tf.Session, worker_kwargs, boss_kwargs,
                  correct_boss_action: bool, worker_gets_term_r: bool, **kwargs):
-        assert isinstance(env, HierarchicalWrapper)
-        self.correct_boss_action = correct_boss_action
-        self.worker_gets_term_r = worker_gets_term_r
-        self.boss_oracle = use_boss_oracle
-        self.worker_oracle = use_worker_oracle
-        self.boss_act_freq = boss_act_freq
 
+        self.worker_gets_term_r = worker_gets_term_r
+        self.correct_boss_action = correct_boss_action
+        self.use_worker_oracle = use_worker_oracle
+        self.use_boss_oracle = use_boss_oracle
+        self.boss_act_freq = boss_act_freq
         self.boss_state = None
         self.worker_o1 = None
 
@@ -397,7 +509,7 @@ class HierarchicalTrainer(Trainer):
         else:
             return self.trainers.worker.get_actions(self.worker_o1, s)
 
-    def perform_update(self):
+    def perform_update(self, _=None):
         return {
             **{
                 f'boss_{k}': v
@@ -409,7 +521,7 @@ class HierarchicalTrainer(Trainer):
             }
         }
 
-    def trajectory(self, final_index=None):
+    def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
 
     def add_to_buffer(self, step: Step):

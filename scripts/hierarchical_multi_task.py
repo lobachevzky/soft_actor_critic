@@ -170,8 +170,6 @@ def cli(
         boss_act_freq=boss_freq,
         use_worker_oracle=worker_oracle,
         use_boss_oracle=boss_oracle,
-        correct_boss_action=correct_boss_action,
-        worker_gets_term_r=False,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs,
         **kwargs).train(

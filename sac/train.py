@@ -2,7 +2,6 @@ import itertools
 import time
 from collections import Counter, deque, namedtuple
 from typing import Optional, Tuple
-import nonsense
 
 import gym
 import numpy as np
@@ -12,7 +11,7 @@ from gym.spaces import Box
 
 from environments.hierarchical_wrapper import (
     FrozenLakeHierarchicalWrapper, Hierarchical, HierarchicalAgents, HierarchicalWrapper)
-from environments.hindsight_wrapper import HindsightWrapper, Observation
+from environments.hindsight_wrapper import HindsightWrapper, Observation, HSRHindsightWrapper
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
@@ -312,11 +311,21 @@ WorkerState = namedtuple('WorkerState', 'o1 o2')
 
 class UnsupervisedTrainer(Trainer):
     # noinspection PyMissingConstructor
-    def __init__(self, env, sess: tf.Session, worker_kwargs, boss_kwargs, **kwargs):
+    def __init__(self, env: HSRHindsightWrapper,
+                 sess: tf.Session,
+                 worker_kwargs: dict,
+                 boss_kwargs: dict,
+                 boss_freq: int = None,
+                 update_worker: bool = True,
+                 **kwargs):
 
+        self.update_worker = update_worker
         self.boss_state = None
         self.worker_o1 = None
 
+        self.boss_freq = boss_freq
+        self.reward_queue = deque(maxlen=boss_freq)
+        self.use_entropy_reward = boss_freq is None
         self.env = env
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
@@ -354,75 +363,87 @@ class UnsupervisedTrainer(Trainer):
                 initial_state=0))
 
     def boss_turn(self):
+        if self.boss_freq:
+            return self.episode_count['episode'] % self.boss_freq == 0
         return self.time_steps == 0
 
     def get_actions(self, o1, s):
         # boss
         if self.boss_turn():
-            if self.boss_oracle:
-                goal_delta = boss_oracle(self.env)
-            else:
-                goal_delta = self.trainers.boss.get_actions(o1.achieved_goal, s).output
+            goal_delta = self.trainers.boss.get_actions(o1.achieved_goal, s).output
             goal = o1.achieved_goal + goal_delta
+            self.env.hsr_env.set_goal(goal)
             self.boss_state = BossState(
                 goal=goal, action=goal_delta, o0=o1.achieved_goal, v0=None)
 
         # worker
         self.worker_o1 = o1.replace(desired_goal=self.boss_state.goal)
 
-        if self.worker_oracle:
-            raise NotImplementedError
-            # oracle_action = worker_oracle(self.env, direction)
-            # return NetworkOutput(output=oracle_action, state=0)
-        else:
-            return self.trainers.worker.get_actions(self.worker_o1, s)
+        return self.trainers.worker.get_actions(self.worker_o1, s)
 
     def perform_update(self, _=None):
         boss_update = self.trainers.boss.perform_update(
             train_values=self.agents.boss.default_train_values + ['v1'])
         if self.boss_turn():
             self.boss_state = self.boss_state.replace(v0=boss_update['boss/v1'])
+
+        if self.update_worker:
+            worker_update = {f'worker_{k}': v for k, v in (self.trainers.worker.perform_update() or {}).items()}
+        else:
+            worker_update = dict()
+
         return {
             **{f'boss_{k}': v
                for k, v in (boss_update or {}).items()},
-            **{
-                f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update() or {}).items()
-            }
+            **worker_update
         }
 
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
 
+    def step(self, action: np.ndarray, render: bool):
+        o2, r, t, info = super().step
+        self.reward_queue += [r]
+        return o2, r, t, info
+
     def add_to_buffer(self, step: Step):
         # boss
-        if step.t:
-            boss_action = self.boss_state.action
-            # if self.correct_boss_action:
-            #     rel_step = step.o2.achieved_goal - self.boss_state.o1.achieved_goal
-            #     boss_action = self.env.goal_to_boss_action_space(rel_step)
-            success_prob = self.boss_state.v0 / (.99**self.time_steps)
-            reward = -success_prob * np.log(success_prob) \
-                     - (1 - success_prob) * np.log(1 - success_prob)
-
+        if self.boss_turn():
+            if self.use_entropy_reward:
+                p = self.boss_state.v0 / .99 ** self.time_steps
+                if step.r == 0:
+                    p = 1 - p
+                boss_reward = -np.log(p)
+            else:
+                boss_reward = regression_slope(self.reward_queue)
             self.trainers.boss.buffer.append(
-                step.replace(o1=self.boss_state.o1, a=boss_action, r=reward))
+                step.replace(o1=self.boss_state.o1,
+                             a=self.boss_state.action,
+                             r=boss_reward))
 
         # worker
-        if not self.worker_oracle:
-            # TODO: allow boss to set goal for worker (so that we don't have to use replace)
-            goal = self.worker_o1.desired_goal
-
-            step = step.replace(
-                o1=self.worker_o1, o2=step.o2.replace(desired_goal=self.boss_state.goal))
-            self.trainers.worker.buffer.append(step)
-            self.episode_count.update(Counter(worker_reward=step.r))
+        step = step.replace(o1=self.worker_o1, o2=step.o2)
+        self.trainers.worker.buffer.append(step)
+        self.episode_count.update(Counter(worker_reward=step.r))
 
         self.time_steps += 1
 
     def reset(self):
         self.time_steps = 0
         return super().reset()
+
+
+def regression_slope1(Y):
+    Y = np.array(Y)
+    X = np.ones((2, Y.size))
+    X[:, 1] = np.arange(Y.size)
+    return np.matmul(np.linalg.inv(np.matmul(X, X)), np.matmul(X, Y))
+
+def regression_slope(Y):
+    Y = np.array(Y)
+    X = np.arange(Y.size)
+    normalized_X = X - X.mean
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
 
 
 class HierarchicalTrainer(Trainer):

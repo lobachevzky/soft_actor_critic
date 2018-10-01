@@ -48,6 +48,7 @@ class Trainer:
         self.buffer = ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
         self.action_space = action_space or env.action_space
+        observation_space = observation_space or env.observation_space
 
         obs = env.reset()
         self.preprocess_func = preprocess_func
@@ -58,13 +59,10 @@ class Trainer:
             except RuntimeError:
                 self.preprocess_func = vectorize
 
-        if observation_space:
-            self.observation_space = observation_space
-        else:
-            self.observation_space = spaces.Box(*[
-                self.preprocess_obs(get_space_attrs(env.observation_space, attr))
-                for attr in ['low', 'high']
-            ])
+        observation_space = spaces.Box(*[
+            self.preprocess_obs(get_space_attrs(observation_space, attr))
+            for attr in ['low', 'high']
+        ], dtype=np.float32)
 
         self.agents = Agents(
             act=self.build_agent(

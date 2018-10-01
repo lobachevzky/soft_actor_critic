@@ -293,7 +293,8 @@ class HindsightTrainer(Trainer):
                 self.buffer.append(new_traj)
 
     def reset(self) -> Obs:
-        self.add_hindsight_trajectories(self.episode_count['time_steps'])
+        time_steps = 0 if self.episode_count is None else self.episode_count['time_steps']
+        self.add_hindsight_trajectories(time_steps)
         return super().reset()
 
 

@@ -1,5 +1,4 @@
-from collections.__init__ import namedtuple
-
+from collections import namedtuple
 import numpy as np
 from gym import spaces
 

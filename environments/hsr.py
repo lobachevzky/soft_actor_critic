@@ -1,4 +1,4 @@
-from collections.__init__ import namedtuple
+from collections import namedtuple
 from pathlib import Path
 from typing import Tuple
 

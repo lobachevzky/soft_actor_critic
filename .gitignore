@@ -14,4 +14,7 @@ runs.db
 profile
 run.py
 venv/
+.pylintrc
+scripts/.mypy_cache
+.pyre_configuration
 run.json

@@ -160,24 +160,25 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            episode_count.update(Counter(reward=r, time_steps=1))
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
 
             if perform_updates:
                 episode_mean.update(self.perform_update())
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
+            episode_count.update(Counter(reward=r, time_steps=1))
             tick = time.time()
             if t:
                 for k in episode_mean:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def perform_update(self):
+    def perform_update(self, train_values=None):
         counter = Counter()
         if self.buffer_full():
             for i in range(self.num_train_steps):
-                step = self.agents.act.train_step(self.sample_buffer())
+                step = self.agents.act.train_step(
+                    self.sample_buffer(), train_values=train_values)
                 counter.update(
                     Counter({
                         k.replace(' ', '_'): v

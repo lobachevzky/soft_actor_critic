@@ -2,6 +2,7 @@ import itertools
 import time
 from collections import Counter, deque, namedtuple
 from typing import Optional, Tuple
+import nonsense
 
 import gym
 import numpy as np
@@ -39,7 +40,7 @@ class Trainer:
             tf.set_random_seed(seed)
             env.seed(seed)
 
-        self.num_train_steps = num_train_steps
+        elf.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
         self.buffer = ReplayBuffer(buffer_size)
@@ -311,12 +312,14 @@ WorkerState = namedtuple('WorkerState', 'o1 o2')
 
 class UnsupervisedTrainer(Trainer):
     # noinspection PyMissingConstructor
-    def __init__(self, env: HSRHindsightWrapper,
+    def __init__(self,
+                 env: HSRHindsightWrapper,
                  sess: tf.Session,
                  worker_kwargs: dict,
                  boss_kwargs: dict,
                  boss_freq: int = None,
                  update_worker: bool = True,
+                 n_goals: int = None,
                  **kwargs):
 
         self.update_worker = update_worker
@@ -326,31 +329,39 @@ class UnsupervisedTrainer(Trainer):
         self.boss_freq = boss_freq
         self.reward_queue = deque(maxlen=boss_freq)
         self.use_entropy_reward = boss_freq is None
+        if boss_freq:
+            X = np.ones((boss_freq, 2))
+            X[:, 1] = np.arange(boss_freq)
+            self.reward_operator = np.matmul(np.linalg.inv(np.matmul(X.T, X)), X.T)
+
         self.env = env
         self.sess = sess
         self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = Counter()
         self.time_steps = 0
 
-        self.trainers = Hierarchical(
-            boss=Trainer(
-                observation_space=env.goal_space,
-                action_space=env.goal_space,
-                env=env,
-                sess=sess,
-                name='boss',
-                **boss_kwargs,
-                **kwargs,
-            ),
-            worker=Trainer(
-                observation_space=env.observation_space,
-                action_space=env.action_space,
-                env=env,
-                sess=sess,
-                name='worker',
-                **worker_kwargs,
-                **kwargs,
-            ))
+        worker_kwargs = dict(
+            observation_space=env.observation_space,
+            action_space=env.action_space,
+            env=env,
+            sess=sess,
+            name='worker',
+            **worker_kwargs,
+            **kwargs)
+        if n_goals is None:
+            worker_trainer = Trainer(**worker_kwargs)
+        else:
+            worker_trainer = HindsightTrainer(n_goals=n_goals, **worker_kwargs)
+        boss_trainer = Trainer(
+            observation_space=env.goal_space,
+            action_space=env.goal_space,
+            env=env,
+            sess=sess,
+            name='boss',
+            **boss_kwargs,
+            **kwargs,
+        )
+        self.trainers = Hierarchical(boss=boss_trainer, worker=worker_trainer)
 
         self.agents = Agents(
             act=HierarchicalAgents(
@@ -362,9 +373,11 @@ class UnsupervisedTrainer(Trainer):
                 worker=self.trainers.worker.agents.train,
                 initial_state=0))
 
-    def boss_turn(self):
+    def boss_turn(self, episodes=None):
         if self.boss_freq:
-            return self.episode_count['episode'] % self.boss_freq == 0
+            if episodes is None:
+                episodes = self.episode_count['episode']
+            return episodes % self.boss_freq == 0
         return self.time_steps == 0
 
     def get_actions(self, o1, s):
@@ -388,7 +401,10 @@ class UnsupervisedTrainer(Trainer):
             self.boss_state = self.boss_state.replace(v0=boss_update['boss/v1'])
 
         if self.update_worker:
-            worker_update = {f'worker_{k}': v for k, v in (self.trainers.worker.perform_update() or {}).items()}
+            worker_update = {
+                f'worker_{k}': v
+                for k, v in (self.trainers.worker.perform_update() or {}).items()
+            }
         else:
             worker_update = dict()
 
@@ -408,18 +424,22 @@ class UnsupervisedTrainer(Trainer):
 
     def add_to_buffer(self, step: Step):
         # boss
-        if self.boss_turn():
+        if self.use_entropy_reward:
+            boss_turn = step.t
+        else:
+            boss_turn = step.t and self.boss_turn(self.episode_count['episode'] + 1)
+        if boss_turn:
             if self.use_entropy_reward:
-                p = self.boss_state.v0 / .99 ** self.time_steps
+                p = self.boss_state.v0 / .99**self.time_steps
                 if step.r == 0:
                     p = 1 - p
                 boss_reward = -np.log(p)
             else:
-                boss_reward = regression_slope(self.reward_queue)
+                rewards = np.array(self.reward_queue)
+                boss_reward = np.matmul(self.reward_operator, rewards)[1]
             self.trainers.boss.buffer.append(
-                step.replace(o1=self.boss_state.o1,
-                             a=self.boss_state.action,
-                             r=boss_reward))
+                step.replace(
+                    o1=self.boss_state.o1, a=self.boss_state.action, r=boss_reward))
 
         # worker
         step = step.replace(o1=self.worker_o1, o2=step.o2)
@@ -435,15 +455,16 @@ class UnsupervisedTrainer(Trainer):
 
 def regression_slope1(Y):
     Y = np.array(Y)
-    X = np.ones((2, Y.size))
+    X = np.ones((Y.size, 2))
     X[:, 1] = np.arange(Y.size)
-    return np.matmul(np.linalg.inv(np.matmul(X, X)), np.matmul(X, Y))
+    return np.matmul(np.linalg.inv(np.matmul(X.T, X)), np.matmul(X.T, Y))
 
-def regression_slope(Y):
+
+def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
-    normalized_X = X - X.mean
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    normalized_X = X - X.mean()
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
 
 
 class HierarchicalTrainer(Trainer):

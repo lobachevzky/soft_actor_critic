@@ -14,3 +14,4 @@ runs.db
 profile
 run.py
 venv/
+.pylintrc

@@ -1,4 +1,4 @@
-from collections.__init__ import namedtuple
+from collections import namedtuple
 from pathlib import Path
 from typing import Tuple
 
@@ -85,7 +85,7 @@ class HSREnv:
 
         self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
         raw_obs_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints),))
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ))
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
@@ -232,7 +232,7 @@ class HSREnv:
         self.sim.mocap_pos[:] = self.goal
 
         # forward sim
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()

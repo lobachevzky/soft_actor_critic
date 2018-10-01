@@ -48,7 +48,7 @@ class HindsightWrapper(gym.Wrapper):
         return self._add_goals(o2), r, t, info
 
     def reset(self):
-        return self._add_goals(super().reset())
+        return self._add_goals(self.env.reset())
 
     def recompute_trajectory(self, trajectory: Step):
         trajectory = Step(*deepcopy(trajectory))
@@ -82,7 +82,9 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         super().__init__(env)
         self.observation_space = Box(
             low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
-            high=vectorize([self.observation_space.high, env.unwrapped.max_position]))
+            high=vectorize([self.observation_space.high, env.unwrapped.max_position]),
+            dtype=np.float32
+        )
 
     def step(self, action):
         o2, r, t, info = super().step(action)
@@ -137,7 +139,7 @@ class HSRHindsightWrapper(HindsightWrapper):
     def goal_space(self):
         low = self.hsr_env.goal_space.low.copy()
         low[2] = self.hsr_env.initial_block_pos[2]
-        return Box(low=low, high=self.hsr_env.goal_space.high)
+        return Box(low=low, high=self.hsr_env.goal_space.high, dtype=np.float32)
 
 
 class FrozenLakeHindsightWrapper(HindsightWrapper):

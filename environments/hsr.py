@@ -67,17 +67,6 @@ class HSREnv:
         self.initial_qvel = self.sim.qvel.ravel().copy()
         self.initial_block_pos = np.copy(self.block_pos())
 
-        def adjust_dim(space: spaces.Box, offset: Tuple, dim: int):
-            low_offset = np.zeros(space.shape)
-            high_offset = np.zeros(space.shape)
-            low_offset[dim] = offset[0]
-            high_offset[dim] = offset[1]
-
-            return spaces.Box(
-                low=space.low + low_offset,
-                high=space.high + high_offset,
-            )
-
         # goal space
         self._min_lift_height = min_lift_height
         self.goal_space = goal_space
@@ -245,7 +234,7 @@ class HSREnv:
         self.sim.mocap_pos[:] = self.goal
 
         # forward sim
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
@@ -291,6 +280,10 @@ class HSREnv:
         if self._min_lift_height:
             return self.block_pos()[2] > self.initial_block_pos[2] + self._min_lift_height
         return distance_between(self.block_pos(), self.goal) < self.geofence
+
+    def set_goal(self, goal: np.ndarray):
+        assert self.goal_space.contains(goal)
+        self.goal = goal
 
 
 def quaternion2euler(w, x, y, z):

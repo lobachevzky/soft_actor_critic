@@ -85,7 +85,9 @@ class HSREnv:
 
         self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
         raw_obs_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ))
+            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ),
+            dtype=np.float32,
+        )
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
@@ -101,7 +103,7 @@ class HSREnv:
         self._joints = list(filter(using_joint, all_joints))
         jnt_range_idx = [self.sim.name2id(ObjType.JOINT, j) for j in self._joints]
         self._joint_space = spaces.Box(
-            *map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])))
+            *map(np.array, zip(*self.sim.jnt_range[jnt_range_idx])), dtype=np.float32)
         self._joint_qposadrs = [self.sim.get_jnt_qposadr(j) for j in self._joints]
         self.randomize_pose = randomize_pose
 

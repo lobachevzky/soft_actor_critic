@@ -1,25 +1,27 @@
 import argparse
 from pathlib import Path
 
+import tensorflow as tf
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import HSRHindsightWrapper
 from environments.hsr import HSREnv
 from sac.networks import MlpAgent
-from sac.train import Trainer, UnsupervisedTrainer
+from sac.unsupervised_trainer import UnsupervisedTrainer
 from sac.utils import create_sess
-from scripts.hsr import env_wrapper, parse_activation, ACTIVATIONS, cast_to_int, parse_space, parse_vector, \
+from scripts.hsr import env_wrapper, cast_to_int, parse_space, parse_vector, \
     put_in_xml_setter
-import tensorflow as tf
 
 
 @env_wrapper
 def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entropy_scale,
-         worker_reward_scale, worker_num_train_steps, worker_grad_clip, boss_n_layers,
-         boss_layer_size, boss_learning_rate, boss_entropy_scale, boss_reward_scale,
-         boss_num_train_steps, boss_grad_clip, batch_size, max_steps, min_lift_height,
-         geofence, hindsight_geofence, seed, buffer_size, goal_space, block_space,
-         num_train_steps, concat_record, steps_per_action, logdir, save_path, load_path,
+         worker_reward_scale, worker_num_train_steps, worker_grad_clip, steps_per_action,
+         worker_batch_size, worker_buffer_size,
+         boss_n_layers, boss_layer_size, boss_learning_rate, boss_entropy_scale, boss_reward_scale,
+         boss_num_train_steps, boss_grad_clip, boss_buffer_size,
+         boss_batch_size, max_steps, min_lift_height,
+         geofence, hindsight_geofence, seed, goal_space, block_space,
+         concat_record, logdir, save_path, load_path,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
          record_path, temp_path):
     env = HSRHindsightWrapper(
@@ -50,6 +52,8 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         reward_scale=worker_reward_scale,
         grad_clip=worker_grad_clip,
         num_train_steps=worker_num_train_steps,
+        batch_size=worker_batch_size,
+        buffer_size=worker_buffer_size,
     )
 
     boss_kwargs = dict(
@@ -60,6 +64,8 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         reward_scale=boss_reward_scale,
         grad_clip=boss_grad_clip,
         num_train_steps=boss_num_train_steps,
+        batch_size=boss_batch_size,
+        buffer_size=boss_buffer_size,
     )
 
     UnsupervisedTrainer(
@@ -69,10 +75,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         seq_len=None,
         base_agent=MlpAgent,
         seed=seed,
-        buffer_size=buffer_size,
         activation=tf.nn.relu,
-        batch_size=batch_size,
-        num_train_steps=num_train_steps,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs).train(
             load_path=load_path,
@@ -85,13 +88,10 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
 def cli():
     p = argparse.ArgumentParser()
     p.add_argument('--seed', type=int, required=True)
-    p.add_argument(
-        '--activation', type=parse_activation, default='relu', choices=ACTIVATIONS.keys())
     p.add_argument('--boss-n-layers', type=int, required=True)
     p.add_argument('--boss-layer-size', type=int, required=True)
     p.add_argument('--boss-buffer-size', type=cast_to_int, required=True)
     p.add_argument('--boss-num-train-steps', type=int, required=True)
-    p.add_argument('--boss-steps-per-action', type=int, required=True)
     p.add_argument('--boss-batch-size', type=int, required=True)
     p.add_argument('--boss-learning-rate', type=float, required=True)
     p.add_argument('--boss-grad-clip', type=float, required=True)
@@ -102,13 +102,13 @@ def cli():
     p.add_argument('--worker-layer-size', type=int, required=True)
     p.add_argument('--worker-buffer-size', type=cast_to_int, required=True)
     p.add_argument('--worker-num-train-steps', type=int, required=True)
-    p.add_argument('--worker-steps-per-action', type=int, required=True)
     p.add_argument('--worker-batch-size', type=int, required=True)
     p.add_argument('--worker-learning-rate', type=float, required=True)
     p.add_argument('--worker-grad-clip', type=float, required=True)
     scales = p.add_mutually_exclusive_group(required=True)
     scales.add_argument('--worker-reward-scale', type=float, default=1)
     scales.add_argument('--worker-entropy-scale', type=float, default=1)
+    p.add_argument('--steps-per-action', type=int, required=True)
     p.add_argument('--max-steps', type=int, required=True)
     p.add_argument('--n-goals', type=int, default=None)
     p.add_argument('--min-lift-height', type=float, default=None)

@@ -21,12 +21,12 @@ from sac.train import HindsightTrainer, Trainer
 
 def make_box(*tuples: Tuple[float, float]):
     low, high = map(np.array, zip(*[(map(float, m)) for m in tuples]))
-    return spaces.Box(low=low, high=high)
+    return spaces.Box(low=low, high=high, dtype=np.float32)
 
 
 def parse_space(dim: int):
     def _parse_space(arg: str):
-        regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)(?:$|,)')
+        regex = re.compile('\((-?[\.\d]+),(-?[\.\d]+)\)')
         matches = regex.findall(arg)
         if len(matches) != dim:
             raise argparse.ArgumentTypeError(f'Arg {arg} must have {dim} substrings '

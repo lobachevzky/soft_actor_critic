@@ -2,7 +2,6 @@ import itertools
 import time
 from collections import Counter, deque, namedtuple
 from typing import Optional, Tuple
-import nonsense
 
 import gym
 import numpy as np

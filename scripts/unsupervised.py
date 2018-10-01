@@ -40,7 +40,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
                 record=record,
                 record_path=record_path,
                 record_freq=record_freq,
-                concat_recordings=concat_record,
+                record_separate_episodes=concat_record,
                 image_dimensions=image_dims,
             )))
 

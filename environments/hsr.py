@@ -25,7 +25,7 @@ class HSREnv:
                  record_path: Path = None,
                  record_freq: int = None,
                  record: bool = False,
-                 concat_recordings: bool = False,
+                 record_separate_episodes: bool = False,
                  render_freq: int = None):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
@@ -47,14 +47,14 @@ class HSREnv:
 
         # record stuff
         self._video_recorder = None
-        self._concat_recordings = concat_recordings
-        self._record = any((concat_recordings, record_path, record_freq, record))
+        self._record_separate_episodes = record_separate_episodes
+        self._record = any((record_separate_episodes, record_path, record_freq, record))
         if self._record:
             self._record_path = record_path or Path('/tmp/training-video')
             image_dimensions = image_dimensions or (1000, 1000)
             self._record_freq = record_freq or 20
 
-            if concat_recordings:
+            if not record_separate_episodes:
                 self._video_recorder = self.reset_recorder(self._record_path)
         else:
             image_dimensions = image_dimensions or []
@@ -243,7 +243,7 @@ class HSREnv:
             self._episode += 1
 
         # if necessary, reset VideoRecorder
-        if self._record and not self._concat_recordings:
+        if self._record and self._record_separate_episodes:
             if self._video_recorder:
                 self._video_recorder.close()
             record_path = Path(self._record_path, str(self._episode))

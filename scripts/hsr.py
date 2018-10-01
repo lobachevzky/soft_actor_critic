@@ -151,7 +151,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @env_wrapper
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
          activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
-         goal_space, block_space, grad_clip, batch_size, num_train_steps, concat_record,
+         goal_space, block_space, grad_clip, batch_size, num_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render_freq, n_goals, record,
          randomize_pose, image_dims, record_freq, record_path, temp_path):
     env = TimeLimit(
@@ -168,7 +168,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             record=record,
             record_path=record_path,
             record_freq=record_freq,
-            concat_recordings=concat_record,
+            record_separate_episodes=record_separate_episodes,
             image_dimensions=image_dims,
         ))
 
@@ -234,7 +234,7 @@ def cli():
     p.add_argument('--render', action='store_true')
     p.add_argument('--render-freq', type=int, default=None)
     p.add_argument('--record', action='store_true')
-    p.add_argument('--concat-record', action='store_true')
+    p.add_argument('--record-separate-episodes', action='store_true')
     p.add_argument('--record-freq', type=int, default=None)
     p.add_argument('--record-path', type=int, default=None)
     p.add_argument('--xml-file', type=Path, default='world.xml')

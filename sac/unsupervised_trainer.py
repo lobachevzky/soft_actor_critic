@@ -1,3 +1,4 @@
+from collections import namedtuple
 from collections.__init__ import deque, Counter
 
 import numpy as np
@@ -5,8 +6,10 @@ import tensorflow as tf
 
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
-from sac.train import Trainer, HindsightTrainer, Agents, BossState, squash_to_space
+from sac.train import Trainer, HindsightTrainer, Agents, squash_to_space
 from sac.utils import Step
+
+BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')
 
 
 class UnsupervisedTrainer(Trainer):
@@ -100,8 +103,11 @@ class UnsupervisedTrainer(Trainer):
             goal = squash_to_space(o1.achieved_goal + goal_delta,
                                    space=self.env.goal_space)
             self.env.hsr_env.set_goal(goal)
-            self.boss_state = BossState(
-                goal=goal, action=goal_delta, o0=o1, v0=None)
+            self.boss_state = BossState(goal=goal,
+                                        action=goal_delta,
+                                        initial_obs=o1,
+                                        initial_value=None,
+                                        reward=None)
 
         # worker
         self.worker_o0 = o1.replace(desired_goal=self.boss_state.goal)
@@ -113,7 +119,7 @@ class UnsupervisedTrainer(Trainer):
             train_values=self.agents.act.boss.default_train_values + ['v1'])
         if self.boss_turn():
             print('\ndefine v0')
-            self.boss_state = self.boss_state._replace(v0=boss_update['boss/v1'])
+            self.boss_state = self.boss_state._replace(initial_value=boss_update['boss/v1'])
 
         if self.update_worker:
             worker_update = {
@@ -146,7 +152,8 @@ class UnsupervisedTrainer(Trainer):
             boss_turn = step.t and self.boss_turn(self.count['episode'] + 1)
         if boss_turn:
             if self.use_entropy_reward:
-                p = (np.tanh(self.boss_state.v0) + 1) / 2 / .99**self.time_steps
+                squashed_value = (np.tanh(self.boss_state.initial_value) + 1) / 2
+                p = squashed_value / .99 ** self.time_steps
                 if step.r == 0:
                     p = 1 - p
                 boss_reward = -np.log(p)
@@ -156,7 +163,9 @@ class UnsupervisedTrainer(Trainer):
             print('\nBoss Reward:', boss_reward)
             self.trainers.boss.buffer.append(
                 step.replace(
-                    o1=self.boss_state.o0, a=self.boss_state.action, r=boss_reward))
+                    o1=self.boss_state.initial_obs,
+                    a=self.boss_state.action,
+                    r=boss_reward))
 
         # worker
         step = step.replace(o1=self.worker_o0, o2=step.o2)

@@ -297,10 +297,6 @@ class HindsightTrainer(Trainer):
         return super().reset()
 
 
-BossState = namedtuple('BossState', 'goal action o0 v0')
-WorkerState = namedtuple('WorkerState', 'o1 o2')
-
-
 def squash_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
     return (np.tanh(x) + 1) / 2 * (space.high - space.low) + space.low
 

@@ -1,4 +1,4 @@
-from collections.__init__ import Counter
+from collections import Counter, namedtuple
 
 import numpy as np
 import tensorflow as tf
@@ -8,7 +8,7 @@ from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents, 
     FrozenLakeHierarchicalWrapper
 from environments.hindsight_wrapper import Observation
 from sac.agent import NetworkOutput
-from sac.train import Trainer, Agents, BossState
+from sac.train import Trainer, Agents
 from sac.utils import vectorize, Step
 
 
@@ -188,3 +188,4 @@ DIRECTIONS = np.array([
     [0, 1],  # right
     [-1, 0],  # up
 ])
+BossState = namedtuple('BossState', 'goal action o0 v0')

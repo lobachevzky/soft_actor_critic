@@ -132,8 +132,9 @@ class UnsupervisedTrainer(Trainer):
         self.time_steps = 0
         o1 = super().reset()
         goal_delta = self.trainers.boss.get_actions(o1, 0).output
-        goal = squash_to_space(o1.achieved_goal + goal_delta,
-                               space=self.env.goal_space)
+        goal = np.clip(o1.achieved_goal + goal_delta,
+                       self.env.goal_space.low,
+                       self.env.goal_space.high)
         self.env.hsr_env.set_goal(goal)
         if self.boss_state is not None:
             self.trainers.boss.buffer.append(

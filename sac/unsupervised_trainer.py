@@ -131,7 +131,8 @@ class UnsupervisedTrainer(Trainer):
     def reset(self):
         self.time_steps = 0
         o1 = super().reset()
-        goal_delta = self.trainers.boss.get_actions(o1, 0).output
+        goal_delta = squash_to_space(self.trainers.boss.get_actions(o1, 0).output,
+                                     space=self.env.goal_space)
         goal = np.clip(o1.achieved_goal + goal_delta,
                        self.env.goal_space.low,
                        self.env.goal_space.high)

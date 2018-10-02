@@ -97,30 +97,10 @@ class UnsupervisedTrainer(Trainer):
         return self.time_steps == 0
 
     def get_actions(self, o1, s):
-        # boss
-        if self.boss_turn():
-            goal_delta = self.trainers.boss.get_actions(o1, s).output
-            goal = squash_to_space(o1.achieved_goal + goal_delta,
-                                   space=self.env.goal_space)
-            self.env.hsr_env.set_goal(goal)
-            self.boss_state = BossState(goal=goal,
-                                        action=goal_delta,
-                                        initial_obs=o1,
-                                        initial_value=None,
-                                        reward=None)
-
-        # worker
         self.worker_o1 = o1.replace(desired_goal=self.boss_state.goal)
-
         return self.trainers.worker.get_actions(self.worker_o1, s)
 
     def perform_update(self, _=None):
-        boss_update = self.trainers.boss.perform_update(
-            train_values=self.agents.act.boss.default_train_values + ['v1'])
-        if self.boss_turn():
-            print('\ndefine v0')
-            self.boss_state = self.boss_state._replace(initial_value=boss_update['boss/v1'])
-
         if self.update_worker:
             worker_update = {
                 f'worker_{k}': v
@@ -132,7 +112,8 @@ class UnsupervisedTrainer(Trainer):
         self.time_steps += 1
         return {
             **{f'boss_{k}': v
-               for k, v in (boss_update or {}).items()},
+               for k, v in (self.trainers.boss.perform_update(
+                train_values=self.agents.act.boss.default_train_values + ['v1']) or {}).items()},
             **worker_update
         }
 
@@ -145,35 +126,50 @@ class UnsupervisedTrainer(Trainer):
         return o2, r, t, info
 
     def add_to_buffer(self, step: Step):
-        # boss
-        if self.use_entropy_reward:
-            boss_turn = step.t
-        else:
-            boss_turn = step.t and self.boss_turn(self.count['episode'] + 1)
-        if boss_turn:
-            if self.use_entropy_reward:
-                squashed_value = (np.tanh(self.boss_state.initial_value) + 1) / 2
-                p = squashed_value / .99 ** self.time_steps
-                if step.r == 0:
-                    p = 1 - p
-                boss_reward = -np.log(p)
-            else:
-                rewards = np.array(self.reward_queue)
-                boss_reward = np.matmul(self.reward_operator, rewards)[1]
-            print('\nBoss Reward:', boss_reward)
-            self.trainers.boss.buffer.append(
-                step.replace(
-                    o1=self.boss_state.initial_obs,
-                    a=self.boss_state.action,
-                    r=boss_reward))
-
-        # worker
-        step = step.replace(o1=self.worker_o1, o2=step.o2)
-        self.trainers.worker.buffer.append(step)
+        self.trainers.worker.buffer.append(step.replace(o1=self.worker_o1))
 
     def reset(self):
         self.time_steps = 0
-        return super().reset()
+        o1 = super().reset()
+        goal_delta = self.trainers.boss.get_actions(o1, 0).output
+        goal = squash_to_space(o1.achieved_goal + goal_delta,
+                               space=self.env.goal_space)
+        self.env.hsr_env.set_goal(goal)
+        if self.boss_state is not None:
+            self.trainers.boss.buffer.append(
+                Step(s=0, o1=self.boss_state.initial_obs,
+                     a=self.boss_state.action,
+                     r=self.boss_state.reward,
+                     o2=o1,
+                     t=True))  # TODO: what about False?
+
+        v1 = self.agents.act.worker.get_v1(o1=self.trainers.worker.preprocess_func(o1))
+        normalized_v1 = v1 / self.agents.act.worker.reward_scale
+        self.boss_state = BossState(goal=goal,
+                                    action=goal_delta,
+                                    initial_obs=o1,
+                                    initial_value=normalized_v1,
+                                    reward=None)
+        return o1
+
+    def run_episode(self, o1, perform_updates, render):
+        episode_count = super().run_episode(o1=o1,
+                                            perform_updates=perform_updates,
+                                            render=render)
+        reward = episode_count['reward']
+        if self.use_entropy_reward:
+            squashed_value = (np.tanh(self.boss_state.initial_value) + 1) / 2
+            p = squashed_value / .99 ** self.time_steps
+            if reward == 0:
+                p = 1 - p
+            boss_reward = -np.log(p)
+        else:
+            rewards = np.array(self.reward_queue)
+            boss_reward = np.matmul(self.reward_operator, rewards)[1]
+        episode_count['boss_reward'] = boss_reward
+        self.boss_state = self.boss_state._replace(reward=boss_reward)
+        print('\nBoss Reward:', boss_reward)
+        return episode_count
 
 
 def regression_slope1(Y):

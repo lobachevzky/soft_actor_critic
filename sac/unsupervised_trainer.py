@@ -26,7 +26,7 @@ class UnsupervisedTrainer(Trainer):
 
         self.update_worker = update_worker
         self.boss_state = None
-        self.worker_o0 = None
+        self.worker_o1 = None
 
         self.boss_freq = boss_freq
         self.reward_queue = deque(maxlen=boss_freq)
@@ -110,9 +110,9 @@ class UnsupervisedTrainer(Trainer):
                                         reward=None)
 
         # worker
-        self.worker_o0 = o1.replace(desired_goal=self.boss_state.goal)
+        self.worker_o1 = o1.replace(desired_goal=self.boss_state.goal)
 
-        return self.trainers.worker.get_actions(self.worker_o0, s)
+        return self.trainers.worker.get_actions(self.worker_o1, s)
 
     def perform_update(self, _=None):
         boss_update = self.trainers.boss.perform_update(
@@ -168,7 +168,7 @@ class UnsupervisedTrainer(Trainer):
                     r=boss_reward))
 
         # worker
-        step = step.replace(o1=self.worker_o0, o2=step.o2)
+        step = step.replace(o1=self.worker_o1, o2=step.o2)
         self.trainers.worker.buffer.append(step)
 
     def reset(self):

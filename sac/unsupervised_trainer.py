@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
-from environments.hindsight_wrapper import HSRHindsightWrapper
+from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
 from sac.train import Trainer, HindsightTrainer, Agents, BossState, squash_to_space
 from sac.utils import Step
 
@@ -40,10 +40,13 @@ class UnsupervisedTrainer(Trainer):
         self.episode_count = None
         self.time_steps = 0
 
+        def boss_preprocess_func(obs, _):
+            return Observation(*obs).achieved_goal
+
         boss_trainer = Trainer(
-            observation_space=env.goal_space,
+            observation_space=env.observation_space,
             action_space=env.goal_space,
-            preprocess_func=lambda obs, shape: obs,
+            preprocess_func=boss_preprocess_func,
             env=env,
             sess=sess,
             name='boss',
@@ -93,12 +96,12 @@ class UnsupervisedTrainer(Trainer):
     def get_actions(self, o1, s):
         # boss
         if self.boss_turn():
-            goal_delta = self.trainers.boss.get_actions(o1.achieved_goal, s).output
+            goal_delta = self.trainers.boss.get_actions(o1, s).output
             goal = squash_to_space(o1.achieved_goal + goal_delta,
                                    space=self.env.goal_space)
             self.env.hsr_env.set_goal(goal)
             self.boss_state = BossState(
-                goal=goal, action=goal_delta, o0=o1.achieved_goal, v0=None)
+                goal=goal, action=goal_delta, o0=o1, v0=None)
 
         # worker
         self.worker_o0 = o1.replace(desired_goal=self.boss_state.goal)
@@ -109,6 +112,7 @@ class UnsupervisedTrainer(Trainer):
         boss_update = self.trainers.boss.perform_update(
             train_values=self.agents.act.boss.default_train_values + ['v1'])
         if self.boss_turn():
+            print('define v0')
             self.boss_state = self.boss_state._replace(v0=boss_update['boss/v1'])
 
         if self.update_worker:

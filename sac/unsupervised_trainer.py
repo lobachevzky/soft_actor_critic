@@ -145,6 +145,8 @@ class UnsupervisedTrainer(Trainer):
 
         v1 = self.agents.act.worker.get_v1(o1=self.trainers.worker.preprocess_func(o1))
         normalized_v1 = v1 / self.agents.act.worker.reward_scale
+        if normalized_v1 == 0:
+            import ipdb; ipdb.set_trace()
         self.boss_state = BossState(goal=goal,
                                     action=goal_delta,
                                     initial_obs=o1,
@@ -158,14 +160,17 @@ class UnsupervisedTrainer(Trainer):
                                             render=render)
         reward = episode_count['reward']
         if self.use_entropy_reward:
-            squashed_value = (np.tanh(self.boss_state.initial_value) + 1) / 2
-            p = squashed_value / .99 ** self.time_steps
+            p = self.boss_state.initial_value / .99 ** self.time_steps
+            squashed_p = (np.tanh(p) + 1) / 2
             if reward == 0:
-                p = 1 - p
-            boss_reward = -np.log(p)
+                squashed_p = 1 - squashed_p
+            boss_reward = -np.log(squashed_p)
         else:
             rewards = np.array(self.reward_queue)
             boss_reward = np.matmul(self.reward_operator, rewards)[1]
+
+        if np.isnan(boss_reward):
+            import ipdb; ipdb.set_trace()
 
         episode_count['boss_reward'] = boss_reward
         self.boss_state = self.boss_state._replace(reward=boss_reward)

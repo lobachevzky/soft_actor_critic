@@ -173,8 +173,9 @@ class UnsupervisedTrainer(Trainer):
             import ipdb; ipdb.set_trace()
 
         episode_count['boss_reward'] = boss_reward
+        episode_count['initial_value'] = self.boss_state.initial_value
         self.boss_state = self.boss_state._replace(reward=boss_reward)
-        print('\nBoss Reward:', boss_reward)
+        print('\nBoss Reward:', boss_reward,'\t Initial Value:', self.boss_state.initial_value)
         return episode_count
 
 

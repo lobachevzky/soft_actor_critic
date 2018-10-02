@@ -53,12 +53,10 @@ class Trainer:
             except RuntimeError:
                 self.preprocess_func = vectorize
 
-        observation_space = spaces.Box(
-            *[
-                self.preprocess_obs(get_space_attrs(observation_space, attr))
-                for attr in ['low', 'high']
-            ],
-            dtype=np.float32)
+        observation_space = spaces.Box(*[
+            self.preprocess_obs(get_space_attrs(observation_space, attr))
+            for attr in ['low', 'high']
+        ], dtype=np.float32)
 
         self.agents = Agents(
             act=self.build_agent(
@@ -305,3 +303,4 @@ WorkerState = namedtuple('WorkerState', 'o1 o2')
 
 def squash_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
     return (np.tanh(x) + 1) / 2 * (space.high - space.low) + space.low
+

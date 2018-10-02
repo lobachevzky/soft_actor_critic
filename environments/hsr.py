@@ -283,6 +283,7 @@ class HSREnv:
 
     def set_goal(self, goal: np.ndarray):
         assert self.goal_space.contains(goal)
+        self.sim.mocap_pos[:] = goal
         self.goal = goal
 
 

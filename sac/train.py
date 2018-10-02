@@ -152,10 +152,9 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
-
             if perform_updates:
                 episode_mean.update(self.perform_update())
+            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             episode_count.update(Counter(reward=r, time_steps=1))

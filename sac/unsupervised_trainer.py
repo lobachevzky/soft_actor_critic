@@ -145,8 +145,6 @@ class UnsupervisedTrainer(Trainer):
 
         v1 = self.agents.act.worker.get_v1(o1=self.trainers.worker.preprocess_func(o1))
         normalized_v1 = v1 / self.agents.act.worker.reward_scale
-        if normalized_v1 == 0:
-            import ipdb; ipdb.set_trace()
         self.boss_state = BossState(goal=goal,
                                     action=goal_delta,
                                     initial_obs=o1,
@@ -168,9 +166,6 @@ class UnsupervisedTrainer(Trainer):
         else:
             rewards = np.array(self.reward_queue)
             boss_reward = np.matmul(self.reward_operator, rewards)[1]
-
-        if np.isnan(boss_reward):
-            import ipdb; ipdb.set_trace()
 
         episode_count['boss_reward'] = boss_reward
         episode_count['initial_value'] = self.boss_state.initial_value

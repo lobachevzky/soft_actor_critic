@@ -170,7 +170,7 @@ class UnsupervisedTrainer(Trainer):
         episode_count['boss_reward'] = boss_reward
         episode_count['initial_value'] = self.boss_state.initial_value
         self.boss_state = self.boss_state._replace(reward=boss_reward)
-        print('\nBoss Reward:', boss_reward,'\t Initial Value:', self.boss_state.initial_value)
+        print('\nBoss Reward:', boss_reward, '\t Initial Value:', self.boss_state.initial_value)
         return episode_count
 
 
@@ -189,4 +189,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

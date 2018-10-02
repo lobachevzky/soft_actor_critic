@@ -112,7 +112,7 @@ class UnsupervisedTrainer(Trainer):
         boss_update = self.trainers.boss.perform_update(
             train_values=self.agents.act.boss.default_train_values + ['v1'])
         if self.boss_turn():
-            print('define v0')
+            print('\ndefine v0')
             self.boss_state = self.boss_state._replace(v0=boss_update['boss/v1'])
 
         if self.update_worker:
@@ -153,6 +153,7 @@ class UnsupervisedTrainer(Trainer):
             else:
                 rewards = np.array(self.reward_queue)
                 boss_reward = np.matmul(self.reward_operator, rewards)[1]
+            print('\nBoss Reward:', boss_reward)
             self.trainers.boss.buffer.append(
                 step.replace(
                     o1=self.boss_state.o0, a=self.boss_state.action, r=boss_reward))

@@ -142,7 +142,7 @@ class UnsupervisedTrainer(Trainer):
             boss_turn = step.t and self.boss_turn(self.count['episode'] + 1)
         if boss_turn:
             if self.use_entropy_reward:
-                p = self.boss_state.v0 / .99**self.time_steps
+                p = (np.tanh(self.boss_state.v0) + 1) / 2 / .99**self.time_steps
                 if step.r == 0:
                     p = 1 - p
                 boss_reward = -np.log(p)

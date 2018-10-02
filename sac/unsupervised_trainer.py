@@ -161,7 +161,7 @@ class UnsupervisedTrainer(Trainer):
         reward = episode_count['reward']
         if self.use_entropy_reward:
             p = self.boss_state.initial_value / .99 ** self.time_steps
-            squashed_p = (np.tanh(p) + 1) / 2
+            squashed_p = sigmoid(p)
             if reward == 0:
                 squashed_p = 1 - squashed_p
             boss_reward = -np.log(squashed_p)
@@ -177,6 +177,10 @@ class UnsupervisedTrainer(Trainer):
         self.boss_state = self.boss_state._replace(reward=boss_reward)
         print('\nBoss Reward:', boss_reward,'\t Initial Value:', self.boss_state.initial_value)
         return episode_count
+
+
+def sigmoid(x):
+    return (np.tanh(x * 2 - 1) + 1) / 2
 
 
 def regression_slope1(Y):

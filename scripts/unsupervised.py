@@ -23,7 +23,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
          geofence, hindsight_geofence, seed, goal_space, block_space,
          concat_record, logdir, save_path, load_path, worker_load_path,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
-         record_path, temp_path):
+         record_path, temp_path, freeze_worker):
     env = HSRHindsightWrapper(
         geofence=hindsight_geofence or geofence,
         env=TimeLimit(
@@ -78,6 +78,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         activation=tf.nn.relu,
         worker_load_path=worker_load_path,
         worker_kwargs=worker_kwargs,
+        update_worker=not freeze_worker,
         boss_kwargs=boss_kwargs).train(
             load_path=load_path,
             logdir=logdir,
@@ -110,6 +111,7 @@ def cli():
     scales = p.add_mutually_exclusive_group(required=True)
     scales.add_argument('--worker-reward-scale', type=float, default=1)
     scales.add_argument('--worker-entropy-scale', type=float, default=1)
+    p.add_argument('--freeze-worker', action='store_true')
     p.add_argument('--steps-per-action', type=int, required=True)
     p.add_argument('--max-steps', type=int, required=True)
     p.add_argument('--n-goals', type=int, default=None)

@@ -166,6 +166,7 @@ class UnsupervisedTrainer(Trainer):
         else:
             rewards = np.array(self.reward_queue)
             boss_reward = np.matmul(self.reward_operator, rewards)[1]
+
         episode_count['boss_reward'] = boss_reward
         self.boss_state = self.boss_state._replace(reward=boss_reward)
         print('\nBoss Reward:', boss_reward)

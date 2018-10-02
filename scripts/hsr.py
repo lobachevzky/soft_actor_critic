@@ -239,14 +239,7 @@ def cli():
     p.add_argument('--record-path', type=int, default=None)
     p.add_argument('--xml-file', type=Path, default='world.xml')
     p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
-    p.add_argument(
-        '--use-dof',
-        action='append',
-        nargs='*',
-        default=[
-            'slide_x', 'slide_y', 'arm_lift_joint', 'arm_flex_joint', 'wrist_roll_joint',
-            'hand_l_proximal_joint', 'hand_r_proximal_joint'
-        ])
+    p.add_argument('--use-dof', type=str, action='append')
     main(**vars(p.parse_args()))
 
 

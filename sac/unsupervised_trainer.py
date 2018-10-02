@@ -19,7 +19,7 @@ class UnsupervisedTrainer(Trainer):
                  boss_freq: int = None,
                  update_worker: bool = True,
                  n_goals: int = None,
-                 **kwargs):
+                 worker_load_path=None, **kwargs):
 
         self.update_worker = update_worker
         self.boss_state = None
@@ -40,6 +40,17 @@ class UnsupervisedTrainer(Trainer):
         self.episode_count = None
         self.time_steps = 0
 
+        boss_trainer = Trainer(
+            observation_space=env.goal_space,
+            action_space=env.goal_space,
+            preprocess_func=lambda obs, shape: obs,
+            env=env,
+            sess=sess,
+            name='boss',
+            **boss_kwargs,
+            **kwargs,
+        )
+
         worker_kwargs = dict(
             observation_space=env.observation_space,
             action_space=env.action_space,
@@ -52,16 +63,14 @@ class UnsupervisedTrainer(Trainer):
             worker_trainer = Trainer(**worker_kwargs)
         else:
             worker_trainer = HindsightTrainer(n_goals=n_goals, **worker_kwargs)
-        boss_trainer = Trainer(
-            observation_space=env.goal_space,
-            action_space=env.goal_space,
-            preprocess_func=lambda obs, shape: obs,
-            env=env,
-            sess=sess,
-            name='boss',
-            **boss_kwargs,
-            **kwargs,
-        )
+
+        worker_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='worker')
+        var_list = {v.name.replace('worker', 'agent').rstrip(':0'): v
+                    for v in worker_vars}
+        saver = tf.train.Saver(var_list=var_list)
+        if worker_load_path:
+            saver.restore(self.sess, worker_load_path)
+            print("Model restored from", worker_load_path)
         self.trainers = Hierarchical(boss=boss_trainer, worker=worker_trainer)
 
         self.agents = Agents(

@@ -21,7 +21,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
          boss_num_train_steps, boss_grad_clip, boss_buffer_size,
          boss_batch_size, max_steps, min_lift_height,
          geofence, hindsight_geofence, seed, goal_space, block_space,
-         concat_record, logdir, save_path, load_path,
+         concat_record, logdir, save_path, load_path, worker_load_path,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
          record_path, temp_path):
     env = HSRHindsightWrapper(
@@ -76,6 +76,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         base_agent=MlpAgent,
         seed=seed,
         activation=tf.nn.relu,
+        worker_load_path=worker_load_path,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs).train(
             load_path=load_path,
@@ -105,6 +106,7 @@ def cli():
     p.add_argument('--worker-batch-size', type=int, required=True)
     p.add_argument('--worker-learning-rate', type=float, required=True)
     p.add_argument('--worker-grad-clip', type=float, required=True)
+    p.add_argument('--worker-load-path', type=str, default=None)
     scales = p.add_mutually_exclusive_group(required=True)
     scales.add_argument('--worker-reward-scale', type=float, default=1)
     scales.add_argument('--worker-entropy-scale', type=float, default=1)

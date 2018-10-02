@@ -190,6 +190,9 @@ class AbstractAgent:
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.network(o).output, 1, name='v'), [-1])
 
+    def get_v1(self, o1: np.ndarray):
+        return self.sess.run(self.v1, feed_dict={self.O1: [o1]})
+
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:
         pass

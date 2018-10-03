@@ -1,4 +1,4 @@
-from collections import Counter, deque, namedtuple
+from collections import deque, namedtuple
 
 import numpy as np
 import tensorflow as tf
@@ -104,8 +104,7 @@ class UnsupervisedTrainer(Trainer):
         if self.update_worker:
             worker_update = {
                 f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update()
-                             or {}).items()
+                for k, v in (self.trainers.worker.perform_update() or {}).items()
             }
         else:
             worker_update = dict()
@@ -173,7 +172,7 @@ class UnsupervisedTrainer(Trainer):
             return episode_count
         reward = episode_count['reward']
         if self.use_entropy_reward:
-            p = self.boss_state.initial_value / .99 ** episode_count['time_steps']
+            p = self.boss_state.initial_value / .99**episode_count['time_steps']
             squashed_p = sigmoid(p)
             if reward == 0:
                 squashed_p = 1 - squashed_p
@@ -208,4 +207,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

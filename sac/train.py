@@ -123,8 +123,8 @@ class Trainer:
                 [self.global_step, self.increment_global_step],
                 {self.episode_time_step: self.episode_count['time_steps']})
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
-                time_steps, episode_reward))
+                'EVAL' if self.is_eval_period() else 'TRAIN', episodes, time_steps,
+                episode_reward))
 
             if logdir:
                 summary = tf.Summary()
@@ -164,11 +164,11 @@ class Trainer:
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
             # noinspection PyTypeChecker
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick),
-                                        **info.get('log mean', {})))
+            episode_mean.update(
+                Counter(fps=1 / float(time.time() - tick), **info.get('log mean', {})))
             # noinspection PyTypeChecker
-            episode_count.update(Counter(reward=r, time_steps=1,
-                                         **info.get('log count', {})))
+            episode_count.update(
+                Counter(reward=r, time_steps=1, **info.get('log count', {})))
             tick = time.time()
             if t:
                 for k in episode_mean:

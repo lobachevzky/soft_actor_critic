@@ -156,7 +156,7 @@ class Trainer:
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
             if not eval_period:
-                episode_mean.update(self.perform_update())
+                episode_mean.update(self.perform_update(time_steps))
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
@@ -167,12 +167,12 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def perform_update(self, train_values=None):
+    def perform_update(self, time_steps: int):
         counter = Counter()
         if self.buffer_full():
             for i in range(self.num_train_steps):
                 step = self.agents.act.train_step(
-                    self.sample_buffer(), train_values=train_values)
+                    self.sample_buffer(), time_steps=time_steps)
                 counter.update(
                     Counter({
                         k.replace(' ', '_'): v

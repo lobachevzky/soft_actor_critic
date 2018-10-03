@@ -97,7 +97,7 @@ class LstmAgent(AbstractAgent):
     def state_feed(self, states):
         return dict(zip(self.S, states))
 
-    def train_step(self, step: Step, feed_dict: dict = None) -> dict:
+    def train_step(self, step: Step, time_steps: int, feed_dict: dict = None) -> dict:
         assert np.shape(step.s) == np.shape(self.initial_state)
         if feed_dict is None:
             feed_dict = {

@@ -3,7 +3,7 @@ import gym
 import tensorflow as tf
 
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
-from sac.networks import MlpAgent, MoEAgent
+from sac.networks import MlpAgent
 from sac.train import HindsightTrainer
 
 

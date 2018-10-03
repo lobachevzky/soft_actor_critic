@@ -87,8 +87,7 @@ class MountaincarHindsightWrapper(HindsightWrapper):
                 observation=self.mc_env.observation_space,
                 desired_goal=self.goal_space,
                 achieved_goal=self.goal_space,
-            )
-        )
+            ))
 
     def step(self, action):
         o2, r, t, info = super().step(action)
@@ -109,9 +108,10 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     @property
     def goal_space(self):
-        return Box(low=np.array(self.mc_env.min_position),
-                   high=np.array(self.mc_env.max_position),
-                   dtype=np.float32)
+        return Box(
+            low=np.array(self.mc_env.min_position),
+            high=np.array(self.mc_env.max_position),
+            dtype=np.float32)
 
 
 class HSRHindsightWrapper(HindsightWrapper):

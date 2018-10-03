@@ -45,8 +45,11 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
-
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
+            global_step = tf.Variable(0, name='global_step', trainable=False)
+            self.time_steps = tf.placeholder(tf.int32, name='time_steps')
+            self.increment_global_step = tf.assign_add(global_step, self.time_steps)
+
             seq_dim = [batch_size]
             if self.seq_len is not None:
                 seq_dim = [batch_size, self.seq_len]
@@ -158,20 +161,19 @@ class AbstractAgent:
     def seq_len(self):
         return self._seq_len
 
-    def train_step(self, step: Step, feed_dict: dict = None,
-                   train_values: list = None) -> dict:
-        if feed_dict is None:
-            feed_dict = {
-                self.O1: step.o1,
-                self.A: step.a,
-                self.R: np.array(step.r) * self.reward_scale,
-                self.O2: step.o2,
-                self.T: step.t
-            }
-        if train_values is None:
-            train_values = self.default_train_values
-        return self.sess.run({attr: getattr(self, attr)
-                              for attr in train_values}, feed_dict)
+    def train_step(self, step: Step, time_steps: int = None) -> dict:
+        feed_dict = {
+            self.O1: step.o1,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
+            self.O2: step.o2,
+            self.T: step.t,
+        }
+        if time_steps:
+            feed_dict[self.time_steps] = time_steps
+        return self.sess.run(
+            {attr: getattr(self, attr)
+             for attr in self.default_train_values}, feed_dict)
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood

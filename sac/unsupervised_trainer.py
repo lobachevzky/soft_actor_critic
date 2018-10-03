@@ -1,5 +1,4 @@
-from collections import namedtuple
-from collections import Counter, deque
+from collections import Counter, deque, namedtuple
 
 import numpy as np
 import tensorflow as tf
@@ -105,11 +104,12 @@ class UnsupervisedTrainer(Trainer):
         self.worker_o1 = o1.replace(desired_goal=self.env.hsr_env.goal)
         return self.trainers.worker.get_actions(self.worker_o1, s, sample=sample)
 
-    def perform_update(self, _=None):
+    def perform_update(self, time_steps: int):
         if self.update_worker:
             worker_update = {
                 f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update() or {}).items()
+                for k, v in (self.trainers.worker.perform_update(time_steps=time_steps)
+                             or {}).items()
             }
         else:
             worker_update = dict()
@@ -118,9 +118,7 @@ class UnsupervisedTrainer(Trainer):
         return {
             **{
                 f'boss_{k}': v
-                for k, v in (self.trainers.boss.perform_update(train_values=self.agents.act.boss.default_train_values + [
-                    'v1'
-                ]) or {}).items()
+                for k, v in (self.trainers.boss.perform_update(time_steps=time_steps) or {}).items()
             },
             **worker_update
         }
@@ -140,16 +138,18 @@ class UnsupervisedTrainer(Trainer):
         self.time_steps = 0
         o1 = super().reset()
         if self.boss_state is not None:
-            self.trainers.boss.add_to_buffer(Step(s=0, o1=self.boss_state.initial_obs,
-                                                  a=self.boss_state.action,
-                                                  r=self.boss_state.reward,
-                                                  o2=o1,
-                                                  t=False))  # TODO: what about true?
+            self.trainers.boss.add_to_buffer(
+                Step(
+                    s=0,
+                    o1=self.boss_state.initial_obs,
+                    a=self.boss_state.action,
+                    r=self.boss_state.reward,
+                    o2=o1,
+                    t=False))  # TODO: what about true?
         self.boss_state = None
         if not self.is_eval_period():
             goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
-            goal = np.clip(o1.achieved_goal + goal_delta,
-                           self.env.goal_space.low,
+            goal = np.clip(o1.achieved_goal + goal_delta, self.env.goal_space.low,
                            self.env.goal_space.high)
             self.env.hsr_env.set_goal(goal)
             if self.boss_state is not None:

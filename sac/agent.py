@@ -45,6 +45,8 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
+        self.global_step = tf.Variable(0)
+
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
             seq_dim = [batch_size]
             if self.seq_len is not None:
@@ -125,7 +127,8 @@ class AbstractAgent:
                         gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
                     else:
                         norm = tf.global_norm(gradients)
-                    op = optimizer.apply_gradients(zip(gradients, variables))
+                    op = optimizer.apply_gradients(zip(gradients, variables),
+                                                   global_step=self.global_step)
                     return op, norm
 
             self.train_V, self.V_grad = train_op(

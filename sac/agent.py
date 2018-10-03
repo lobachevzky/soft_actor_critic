@@ -28,14 +28,16 @@ class AbstractAgent:
                  reuse=False,
                  name='agent') -> None:
 
-        self.default_train_values = ['entropy',
-                                     'soft_update_xi_bar',
-                                     'V_loss',
-                                     'Q_loss',
-                                     'pi_loss',
-                                     'V_grad',
-                                     'Q_grad',
-                                     'pi_grad', ]
+        self.default_train_values = [
+            'entropy',
+            'soft_update_xi_bar',
+            'V_loss',
+            'Q_loss',
+            'pi_loss',
+            'V_grad',
+            'Q_grad',
+            'pi_grad',
+        ]
         self.reward_scale = reward_scale
         self.activation = activation
         self.n_layers = n_layers
@@ -156,8 +158,7 @@ class AbstractAgent:
     def seq_len(self):
         return self._seq_len
 
-    def train_step(self, step: Step,
-                   feed_dict: dict = None,
+    def train_step(self, step: Step, feed_dict: dict = None,
                    train_values: list = None) -> dict:
         if feed_dict is None:
             feed_dict = {
@@ -189,6 +190,9 @@ class AbstractAgent:
     def v_network(self, o: tf.Tensor, name: str, reuse: bool = None) -> tf.Tensor:
         with tf.variable_scope(name, reuse=reuse):
             return tf.reshape(tf.layers.dense(self.network(o).output, 1, name='v'), [-1])
+
+    def get_v1(self, o1: np.ndarray):
+        return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

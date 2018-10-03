@@ -18,3 +18,4 @@ venv/
 scripts/.mypy_cache
 .pyre_configuration
 run.json
+.watchmanconfig

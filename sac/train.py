@@ -7,14 +7,9 @@ import gym
 import numpy as np
 import tensorflow as tf
 from gym import Wrapper, spaces
-from gym.spaces import Box
 
-from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
-                                               Hierarchical,
-                                               HierarchicalAgents,
-                                               HierarchicalWrapper)
-from environments.hindsight_wrapper import HindsightWrapper, Observation
-from sac.agent import AbstractAgent, NetworkOutput
+from environments.hindsight_wrapper import HindsightWrapper
+from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
 from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
@@ -59,10 +54,12 @@ class Trainer:
             except RuntimeError:
                 self.preprocess_func = vectorize
 
-        observation_space = spaces.Box(*[
-            self.preprocess_obs(get_space_attrs(observation_space, attr))
-            for attr in ['low', 'high']
-        ], dtype=np.float32)
+        observation_space = spaces.Box(
+            *[
+                self.preprocess_obs(get_space_attrs(observation_space, attr))
+                for attr in ['low', 'high']
+            ],
+            dtype=np.float32)
 
         self.agents = Agents(
             act=self.build_agent(
@@ -83,7 +80,7 @@ class Trainer:
                 **kwargs))
         self.seq_len = self.agents.act.seq_len
         self.count = Counter(reward=0, episode=0, time_steps=0)
-        self.episode_count = Counter()
+        self.episode_count = None
 
         # self.train(load_path, logdir, render, save_path)
 
@@ -100,10 +97,11 @@ class Trainer:
         best_average = -np.inf
 
         for episodes in itertools.count(1):
+            self.count['episode'] = episodes
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
-                perform_updates=not self.is_eval_period() and load_path is None)
+                eval_period=self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
 
@@ -116,8 +114,7 @@ class Trainer:
                 best_average = new_average
 
             episode_time_steps = self.episode_count['time_steps']
-            self.count.update(
-                Counter(reward=episode_reward, episode=1, time_steps=episode_time_steps))
+            self.count.update(Counter(time_steps=episode_time_steps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 self.count['time_steps'], episode_reward))
@@ -133,7 +130,7 @@ class Trainer:
                 tb_writer.flush()
 
     def is_eval_period(self):
-        return self.count['episode'] % 100 == 99
+        return self.count['episode'] % 100 == 0
 
     def trajectory(self, time_steps: int, final_index=None) -> Optional[Step]:
         if final_index is None:
@@ -144,13 +141,13 @@ class Trainer:
             return None
         return Step(*self.buffer[-time_steps:final_index])
 
-    def run_episode(self, o1, perform_updates, render):
+    def run_episode(self, o1, eval_period, render):
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
-            a, s = self.get_actions(o1, s)
+            a, s = self.get_actions(o1, s, sample=not eval_period)
             o2, r, t, info = self.step(a, render)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
@@ -158,10 +155,9 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
-
-            if perform_updates:
+            if not eval_period:
                 episode_mean.update(self.perform_update())
+            self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
             episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
             episode_count.update(Counter(reward=r, time_steps=1))
@@ -184,11 +180,10 @@ class Trainer:
                     }))
         return counter
 
-    def get_actions(self, o1, s):
+    def get_actions(self, o1, s, sample: bool):
         obs = self.preprocess_obs(o1)
         # assert self.observation_space.contains(obs)
-        return self.agents.act.get_actions(
-            o=obs, state=s, sample=(not self.is_eval_period()))
+        return self.agents.act.get_actions(o=obs, state=s, sample=sample)
 
     def build_agent(self,
                     base_agent: AbstractAgent,
@@ -238,7 +233,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))
         else:
-            return self.env.step(squash_to_space(action, space=self.action_space))
+            return self.env.step(fit_to_space(action, space=self.action_space))
 
     def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
@@ -299,14 +294,10 @@ class HindsightTrainer(Trainer):
                 self.buffer.append(new_traj)
 
     def reset(self) -> Obs:
-        self.add_hindsight_trajectories(self.episode_count['time_steps'])
+        time_steps = 0 if self.episode_count is None else self.episode_count['time_steps']
+        self.add_hindsight_trajectories(time_steps)
         return super().reset()
 
 
-BossState = namedtuple('BossState', 'goal action o0 v0')
-WorkerState = namedtuple('WorkerState', 'o1 o2')
-
-
-def squash_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
+def fit_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
     return (np.tanh(x) + 1) / 2 * (space.high - space.low) + space.low
-

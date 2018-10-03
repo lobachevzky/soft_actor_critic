@@ -4,8 +4,8 @@ from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
+from sac.hierarchical_trainer import HierarchicalTrainer
 from sac.networks import MlpAgent
-from sac.train import HierarchicalTrainer
 from sac.utils import create_sess
 
 
@@ -137,8 +137,6 @@ def cli(
         boss_act_freq=boss_freq,
         use_worker_oracle=worker_oracle,
         use_boss_oracle=boss_oracle,
-        correct_boss_action=correct_boss_action,
-        worker_gets_term_r=True,
         worker_kwargs=worker_kwargs,
         boss_kwargs=boss_kwargs,
         **kwargs).train(

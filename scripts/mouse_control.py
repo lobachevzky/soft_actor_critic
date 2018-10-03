@@ -6,9 +6,9 @@ from pathlib import Path
 import ipdb
 import numpy as np
 from click._unicodefun import click
-from mujoco import ObjType
 
-from environments.hsr import print1, HSREnv
+from environments.hsr import HSREnv, print1
+from mujoco import ObjType
 from scripts.hsr import make_box
 
 saved_pos = None

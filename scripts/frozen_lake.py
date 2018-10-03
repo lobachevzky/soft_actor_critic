@@ -4,8 +4,9 @@ from gym.wrappers import TimeLimit
 
 from environments.frozen_lake import FrozenLakeEnv
 from environments.hierarchical_wrapper import FrozenLakeHierarchicalWrapper
+from sac.hierarchical_trainer import HierarchicalTrainer
 from sac.networks import MlpAgent
-from sac.train import HierarchicalTrainer, Trainer
+from sac.train import Trainer
 from sac.utils import create_sess
 
 

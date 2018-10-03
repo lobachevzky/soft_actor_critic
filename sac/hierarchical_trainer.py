@@ -1,15 +1,17 @@
-from collections.__init__ import Counter
+from collections import Counter, namedtuple
 
 import numpy as np
 import tensorflow as tf
 from gym.spaces import Box
 
-from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents, HierarchicalWrapper, \
-    FrozenLakeHierarchicalWrapper
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
+                                               Hierarchical,
+                                               HierarchicalAgents,
+                                               HierarchicalWrapper)
 from environments.hindsight_wrapper import Observation
 from sac.agent import NetworkOutput
-from sac.train import Trainer, Agents, BossState
-from sac.utils import vectorize, Step
+from sac.train import Agents, Trainer
+from sac.utils import Step, vectorize
 
 
 class HierarchicalTrainer(Trainer):
@@ -188,3 +190,4 @@ DIRECTIONS = np.array([
     [0, 1],  # right
     [-1, 0],  # up
 ])
+BossState = namedtuple('BossState', 'goal action o0 v0')

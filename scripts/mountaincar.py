@@ -12,7 +12,6 @@ from sac.train import HindsightTrainer
 @click.option('--device-num', default=0, type=int)
 @click.option('--relu', 'activation', flag_value=tf.nn.relu, default=True)
 @click.option('--n-layers', default=3, type=int)
-@click.option('--n-networks', default=None, type=int)
 @click.option('--layer-size', default=256, type=int)
 @click.option('--learning-rate', default=3e-4, type=float)
 @click.option('--buffer-size', default=1e7, type=int)
@@ -26,12 +25,12 @@ from sac.train import HindsightTrainer
 @click.option('--save-path', default=None, type=str)
 @click.option('--load-path', default=None, type=str)
 @click.option('--render', is_flag=True)
-@click.option('--no-hindsight', is_flag=True)
 def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learning_rate,
         reward_scale, entropy_scale, grad_clip, batch_size, num_train_steps, logdir,
-        save_path, load_path, render, n_goals, no_hindsight, n_networks):
-    kwargs = dict(
+        save_path, load_path, render, n_goals):
+    HindsightTrainer(
         env=MountaincarHindsightWrapper(gym.make('MountainCarContinuous-v0')),
+        base_agent=MlpAgent,
         seq_len=None,
         seed=seed,
         device_num=device_num,
@@ -46,15 +45,12 @@ def cli(seed, device_num, buffer_size, activation, n_layers, layer_size, learnin
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         num_train_steps=num_train_steps,
-        logdir=logdir,
-        save_path=save_path,
+    ).train(
         load_path=load_path,
-        render=render)  # because render is handled inside env
-    hindsight = not no_hindsight
-    if n_networks:
-        HindsightTrainer(base_agent=MoEAgent, n_networks=n_networks, **kwargs)
-    else:
-        HindsightTrainer(base_agent=MlpAgent, **kwargs)
+        save_path=save_path,
+        logdir=logdir,
+        render=render,
+    )
 
 
 if __name__ == '__main__':

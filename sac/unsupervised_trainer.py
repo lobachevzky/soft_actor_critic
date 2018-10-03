@@ -22,7 +22,8 @@ class UnsupervisedTrainer(Trainer):
                  boss_freq: int = None,
                  update_worker: bool = True,
                  n_goals: int = None,
-                 worker_load_path=None, **kwargs):
+                 worker_load_path=None,
+                 **kwargs):
 
         self.update_worker = update_worker
         self.boss_state = None
@@ -71,8 +72,10 @@ class UnsupervisedTrainer(Trainer):
             worker_trainer = HindsightTrainer(n_goals=n_goals, **worker_kwargs)
 
         worker_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='worker')
-        var_list = {v.name.replace('worker', 'agent').rstrip(':0'): v
-                    for v in worker_vars}
+        var_list = {
+            v.name.replace('worker', 'agent').rstrip(':0'): v
+            for v in worker_vars
+        }
         saver = tf.train.Saver(var_list=var_list)
         if worker_load_path:
             saver.restore(self.sess, worker_load_path)
@@ -112,9 +115,12 @@ class UnsupervisedTrainer(Trainer):
 
         self.time_steps += 1
         return {
-            **{f'boss_{k}': v
-               for k, v in (self.trainers.boss.perform_update(
-                train_values=self.agents.act.boss.default_train_values + ['v1']) or {}).items()},
+            **{
+                f'boss_{k}': v
+                for k, v in (self.trainers.boss.perform_update(train_values=self.agents.act.boss.default_train_values + [
+                    'v1'
+                ]) or {}).items()
+            },
             **worker_update
         }
 
@@ -136,37 +142,37 @@ class UnsupervisedTrainer(Trainer):
         if not self.is_eval_period():
             boss_action = self.trainers.boss.get_actions(o1, 0, sample=False)
             goal_delta = squash_to_space(boss_action.output, space=self.env.goal_space)
-            goal = np.clip(o1.achieved_goal + goal_delta,
-                           self.env.goal_space.low,
+            goal = np.clip(o1.achieved_goal + goal_delta, self.env.goal_space.low,
                            self.env.goal_space.high)
             self.env.hsr_env.set_goal(goal)
             if self.boss_state is not None:
                 self.trainers.boss.buffer.append(
-                    Step(s=0, o1=self.boss_state.initial_obs,
-                         a=self.boss_state.action,
-                         r=self.boss_state.reward,
-                         o2=o1,
-                         t=True))  # TODO: what about False?
+                    Step(
+                        s=0,
+                        o1=self.boss_state.initial_obs,
+                        a=self.boss_state.action,
+                        r=self.boss_state.reward,
+                        o2=o1,
+                        t=True))  # TODO: what about False?
 
-            v1 = self.agents.act.worker.get_v1(o1=self.trainers.worker.preprocess_func(o1))
+            v1 = self.agents.act.worker.get_v1(
+                o1=self.trainers.worker.preprocess_func(o1))
             normalized_v1 = v1 / self.agents.act.worker.reward_scale
-            self.boss_state = BossState(goal=goal,
-                                        action=goal_delta,
-                                        initial_obs=o1,
-                                        initial_value=normalized_v1,
-                                        reward=None)
+            self.boss_state = BossState(
+                goal=goal,
+                action=goal_delta,
+                initial_obs=o1,
+                initial_value=normalized_v1,
+                reward=None)
         return o1
 
     def run_episode(self, o1, eval_period, render):
-        episode_count = super().run_episode(o1=o1,
-                                            eval_period=eval_period,
-                                            render=render)
+        episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
         if eval_period:
-            import ipdb; ipdb.set_trace()
             return episode_count
         reward = episode_count['reward']
         if self.use_entropy_reward:
-            p = self.boss_state.initial_value / .99 ** self.time_steps
+            p = self.boss_state.initial_value / .99**self.time_steps
             squashed_p = sigmoid(p)
             if reward == 0:
                 squashed_p = 1 - squashed_p
@@ -178,7 +184,8 @@ class UnsupervisedTrainer(Trainer):
         episode_count['boss_reward'] = boss_reward
         episode_count['initial_value'] = self.boss_state.initial_value
         self.boss_state = self.boss_state._replace(reward=boss_reward)
-        print('\nBoss Reward:', boss_reward, '\t Initial Value:', self.boss_state.initial_value)
+        print('\nBoss Reward:', boss_reward, '\t Initial Value:',
+              self.boss_state.initial_value)
         return episode_count
 
 
@@ -197,4 +204,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

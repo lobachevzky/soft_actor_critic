@@ -244,6 +244,7 @@ class HSREnv:
 
         if self._time_steps > 0:
             self._episode += 1
+        self._time_steps = 0
 
         # if necessary, reset VideoRecorder
         if self._record and self._record_separate_episodes:

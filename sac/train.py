@@ -94,6 +94,7 @@ class Trainer:
         best_average = -np.inf
 
         for episodes in itertools.count(1):
+            self.count['episode'] = episodes
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
@@ -110,8 +111,7 @@ class Trainer:
                 best_average = new_average
 
             episode_time_steps = self.episode_count['time_steps']
-            self.count.update(
-                Counter(reward=episode_reward, episode=1, time_steps=episode_time_steps))
+            self.count.update(Counter(time_steps=episode_time_steps))
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
                 self.count['time_steps'], episode_reward))
@@ -127,7 +127,7 @@ class Trainer:
                 tb_writer.flush()
 
     def is_eval_period(self):
-        return self.count['episode'] % 10 == 9
+        return self.count['episode'] % 100 == 0
 
     def trajectory(self, time_steps: int, final_index=None) -> Optional[Step]:
         if final_index is None:
@@ -298,4 +298,3 @@ class HindsightTrainer(Trainer):
 
 def squash_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
     return (np.tanh(x) + 1) / 2 * (space.high - space.low) + space.low
-

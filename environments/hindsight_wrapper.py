@@ -5,6 +5,7 @@ from copy import deepcopy
 import gym
 import numpy as np
 from gym import spaces
+from gym.envs.classic_control import Continuous_MountainCarEnv
 from gym.spaces import Box
 
 import environments.hsr
@@ -80,10 +81,14 @@ class MountaincarHindsightWrapper(HindsightWrapper):
 
     def __init__(self, env):
         super().__init__(env)
-        self.observation_space = Box(
-            low=vectorize([self.observation_space.low, env.unwrapped.min_position]),
-            high=vectorize([self.observation_space.high, env.unwrapped.max_position]),
-            dtype=np.float32)
+        self.mc_env = unwrap_env(env, lambda e: isinstance(e, Continuous_MountainCarEnv))
+        self.observation_space = spaces.Tuple(
+            Observation(
+                observation=self.mc_env.observation_space,
+                desired_goal=self.goal_space,
+                achieved_goal=self.goal_space,
+            )
+        )
 
     def step(self, action):
         o2, r, t, info = super().step(action)
@@ -94,13 +99,19 @@ class MountaincarHindsightWrapper(HindsightWrapper):
         return o2, new_r, new_t, info
 
     def _achieved_goal(self):
-        return self.env.unwrapped.state[0]
+        return self.mc_env.state[0]
 
     def _desired_goal(self):
         return 0.45
 
     def _is_success(self, achieved_goal, desired_goal):
         return achieved_goal >= desired_goal
+
+    @property
+    def goal_space(self):
+        return Box(low=np.array(self.mc_env.min_position),
+                   high=np.array(self.mc_env.max_position),
+                   dtype=np.float32)
 
 
 class HSRHindsightWrapper(HindsightWrapper):

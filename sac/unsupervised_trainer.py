@@ -97,7 +97,8 @@ class UnsupervisedTrainer(Trainer):
         return self.time_steps == 0
 
     def get_actions(self, o1, s, sample: bool):
-        self.worker_o1 = o1.replace(desired_goal=self.boss_state.goal)
+        assert isinstance(self.env, HSRHindsightWrapper)
+        self.worker_o1 = o1.replace(desired_goal=self.env.hsr_env.goal)
         return self.trainers.worker.get_actions(self.worker_o1, s, sample=sample)
 
     def perform_update(self, _=None):
@@ -131,34 +132,37 @@ class UnsupervisedTrainer(Trainer):
     def reset(self):
         self.time_steps = 0
         o1 = super().reset()
-        boss_action = self.trainers.boss.get_actions(o1, 0,
-                                                     sample=not self.is_eval_period())
-        goal_delta = squash_to_space(boss_action.output, space=self.env.goal_space)
-        goal = np.clip(o1.achieved_goal + goal_delta,
-                       self.env.goal_space.low,
-                       self.env.goal_space.high)
-        self.env.hsr_env.set_goal(goal)
-        if self.boss_state is not None:
-            self.trainers.boss.buffer.append(
-                Step(s=0, o1=self.boss_state.initial_obs,
-                     a=self.boss_state.action,
-                     r=self.boss_state.reward,
-                     o2=o1,
-                     t=True))  # TODO: what about False?
+        self.boss_state = None
+        if not self.is_eval_period():
+            boss_action = self.trainers.boss.get_actions(o1, 0, sample=False)
+            goal_delta = squash_to_space(boss_action.output, space=self.env.goal_space)
+            goal = np.clip(o1.achieved_goal + goal_delta,
+                           self.env.goal_space.low,
+                           self.env.goal_space.high)
+            self.env.hsr_env.set_goal(goal)
+            if self.boss_state is not None:
+                self.trainers.boss.buffer.append(
+                    Step(s=0, o1=self.boss_state.initial_obs,
+                         a=self.boss_state.action,
+                         r=self.boss_state.reward,
+                         o2=o1,
+                         t=True))  # TODO: what about False?
 
-        v1 = self.agents.act.worker.get_v1(o1=self.trainers.worker.preprocess_func(o1))
-        normalized_v1 = v1 / self.agents.act.worker.reward_scale
-        self.boss_state = BossState(goal=goal,
-                                    action=goal_delta,
-                                    initial_obs=o1,
-                                    initial_value=normalized_v1,
-                                    reward=None)
+            v1 = self.agents.act.worker.get_v1(o1=self.trainers.worker.preprocess_func(o1))
+            normalized_v1 = v1 / self.agents.act.worker.reward_scale
+            self.boss_state = BossState(goal=goal,
+                                        action=goal_delta,
+                                        initial_obs=o1,
+                                        initial_value=normalized_v1,
+                                        reward=None)
         return o1
 
     def run_episode(self, o1, eval_period, render):
         episode_count = super().run_episode(o1=o1,
                                             eval_period=eval_period,
                                             render=render)
+        if eval_period:
+            return episode_count
         reward = episode_count['reward']
         if self.use_entropy_reward:
             p = self.boss_state.initial_value / .99 ** self.time_steps

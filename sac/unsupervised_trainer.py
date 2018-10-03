@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
+from environments.hsr import distance_between
 from sac.train import Agents, HindsightTrainer, Trainer, squash_to_space
 from sac.utils import Step
 
@@ -183,6 +184,9 @@ class UnsupervisedTrainer(Trainer):
 
         episode_count['boss_reward'] = boss_reward
         episode_count['initial_value'] = self.boss_state.initial_value
+        episode_count['goal_distance'] = distance_between(self.worker_o1.achieved_goal,
+                                                          self.env.hsr_env.goal)
+
         self.boss_state = self.boss_state._replace(reward=boss_reward)
         print('\nBoss Reward:', boss_reward, '\t Initial Value:',
               self.boss_state.initial_value)

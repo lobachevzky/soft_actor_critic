@@ -85,7 +85,9 @@ class HSREnv:
 
         self._base_joints = list(filter(using_joint, ['slide_x', 'slide_y']))
         raw_obs_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(self.sim.nq + len(self._base_joints), ),
+            low=-np.inf,
+            high=np.inf,
+            shape=(self.sim.nq + len(self._base_joints), ),
             dtype=np.float32,
         )
         self.observation_space = spaces.Tuple(

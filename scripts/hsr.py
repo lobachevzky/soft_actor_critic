@@ -32,6 +32,7 @@ def parse_space(dim: int):
             raise argparse.ArgumentTypeError(f'Arg {arg} must have {dim} substrings '
                                              f'matching pattern {regex}.')
         return make_box(*matches)
+
     return _parse_space
 
 
@@ -151,9 +152,10 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
 @env_wrapper
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
          activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
-         goal_space, block_space, grad_clip, batch_size, num_train_steps, record_separate_episodes,
-         steps_per_action, logdir, save_path, load_path, render_freq, n_goals, record,
-         randomize_pose, image_dims, record_freq, record_path, temp_path):
+         goal_space, block_space, grad_clip, batch_size, num_train_steps,
+         record_separate_episodes, steps_per_action, logdir, save_path, load_path,
+         render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
+         record_path, temp_path):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=HSREnv(

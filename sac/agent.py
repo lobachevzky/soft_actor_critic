@@ -28,14 +28,16 @@ class AbstractAgent:
                  reuse=False,
                  name='agent') -> None:
 
-        self.default_train_values = ['entropy',
-                                     'soft_update_xi_bar',
-                                     'V_loss',
-                                     'Q_loss',
-                                     'pi_loss',
-                                     'V_grad',
-                                     'Q_grad',
-                                     'pi_grad', ]
+        self.default_train_values = [
+            'entropy',
+            'soft_update_xi_bar',
+            'V_loss',
+            'Q_loss',
+            'pi_loss',
+            'V_grad',
+            'Q_grad',
+            'pi_grad',
+        ]
         self.reward_scale = reward_scale
         self.activation = activation
         self.n_layers = n_layers
@@ -156,8 +158,7 @@ class AbstractAgent:
     def seq_len(self):
         return self._seq_len
 
-    def train_step(self, step: Step,
-                   feed_dict: dict = None,
+    def train_step(self, step: Step, feed_dict: dict = None,
                    train_values: list = None) -> dict:
         if feed_dict is None:
             feed_dict = {

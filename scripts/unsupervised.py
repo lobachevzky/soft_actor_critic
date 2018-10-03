@@ -9,8 +9,8 @@ from environments.hsr import HSREnv
 from sac.networks import MlpAgent
 from sac.unsupervised_trainer import UnsupervisedTrainer
 from sac.utils import create_sess
-from scripts.hsr import env_wrapper, cast_to_int, parse_space, parse_vector, \
-    put_in_xml_setter
+from scripts.hsr import (cast_to_int, env_wrapper, parse_space, parse_vector,
+                         put_in_xml_setter)
 
 
 @env_wrapper

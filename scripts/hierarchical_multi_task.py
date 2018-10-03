@@ -8,8 +8,8 @@ from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
                                                HierarchicalWrapper,
                                                ShiftHierarchicalWrapper)
 from environments.shift import ShiftEnv
-from sac.networks import MlpAgent
 from sac.hierarchical_trainer import HierarchicalTrainer
+from sac.networks import MlpAgent
 from sac.utils import create_sess
 from scripts.lift import env_wrapper, put_in_xml_setter
 from scripts.shift import parse_coordinate

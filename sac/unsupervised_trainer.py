@@ -7,7 +7,7 @@ import tensorflow as tf
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
 from environments.hsr import distance_between
-from sac.train import Agents, HindsightTrainer, Trainer, squash_to_space
+from sac.train import Agents, HindsightTrainer, Trainer, fit_to_space
 from sac.utils import Step
 
 BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')
@@ -141,9 +141,9 @@ class UnsupervisedTrainer(Trainer):
         o1 = super().reset()
         self.boss_state = None
         if not self.is_eval_period():
-            boss_action = self.trainers.boss.get_actions(o1, 0, sample=False)
-            goal_delta = squash_to_space(boss_action.output, space=self.env.goal_space)
-            goal = np.clip(o1.achieved_goal + goal_delta, self.env.goal_space.low,
+            goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
+            goal = np.clip(o1.achieved_goal + goal_delta,
+                           self.env.goal_space.low,
                            self.env.goal_space.high)
             self.env.hsr_env.set_goal(goal)
             if self.boss_state is not None:

@@ -233,7 +233,7 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))
         else:
-            return self.env.step(squash_to_space(action, space=self.action_space))
+            return self.env.step(fit_to_space(action, space=self.action_space))
 
     def preprocess_obs(self, obs, shape: tuple = None):
         if self.preprocess_func is not None:
@@ -299,5 +299,5 @@ class HindsightTrainer(Trainer):
         return super().reset()
 
 
-def squash_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
+def fit_to_space(x: np.ndarray, space: spaces.Box) -> np.ndarray:
     return (np.tanh(x) + 1) / 2 * (space.high - space.low) + space.low

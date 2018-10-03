@@ -1,5 +1,5 @@
 from collections import namedtuple
-from collections.__init__ import Counter, deque
+from collections import Counter, deque
 
 import numpy as np
 import tensorflow as tf
@@ -7,7 +7,7 @@ import tensorflow as tf
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
 from environments.hsr import distance_between
-from sac.train import Agents, HindsightTrainer, Trainer, fit_to_space
+from sac.train import Agents, HindsightTrainer, Trainer
 from sac.utils import Step
 
 BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')

@@ -162,6 +162,7 @@ class UnsupervisedTrainer(Trainer):
                                             eval_period=eval_period,
                                             render=render)
         if eval_period:
+            import ipdb; ipdb.set_trace()
             return episode_count
         reward = episode_count['reward']
         if self.use_entropy_reward:

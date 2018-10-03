@@ -127,7 +127,7 @@ class Trainer:
                 tb_writer.flush()
 
     def is_eval_period(self):
-        return self.count['episode'] % 100 == 99
+        return self.count['episode'] % 10 == 9
 
     def trajectory(self, time_steps: int, final_index=None) -> Optional[Step]:
         if final_index is None:

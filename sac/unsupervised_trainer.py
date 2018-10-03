@@ -96,9 +96,9 @@ class UnsupervisedTrainer(Trainer):
             return episodes % self.boss_freq == 0
         return self.time_steps == 0
 
-    def get_actions(self, o1, s):
+    def get_actions(self, o1, s, sample: bool):
         self.worker_o1 = o1.replace(desired_goal=self.boss_state.goal)
-        return self.trainers.worker.get_actions(self.worker_o1, s)
+        return self.trainers.worker.get_actions(self.worker_o1, s, sample=sample)
 
     def perform_update(self, _=None):
         if self.update_worker:
@@ -131,8 +131,9 @@ class UnsupervisedTrainer(Trainer):
     def reset(self):
         self.time_steps = 0
         o1 = super().reset()
-        goal_delta = squash_to_space(self.trainers.boss.get_actions(o1, 0).output,
-                                     space=self.env.goal_space)
+        boss_action = self.trainers.boss.get_actions(o1, 0,
+                                                     sample=not self.is_eval_period())
+        goal_delta = squash_to_space(boss_action.output, space=self.env.goal_space)
         goal = np.clip(o1.achieved_goal + goal_delta,
                        self.env.goal_space.low,
                        self.env.goal_space.high)
@@ -154,9 +155,9 @@ class UnsupervisedTrainer(Trainer):
                                     reward=None)
         return o1
 
-    def run_episode(self, o1, perform_updates, render):
+    def run_episode(self, o1, eval_period, render):
         episode_count = super().run_episode(o1=o1,
-                                            perform_updates=perform_updates,
+                                            eval_period=eval_period,
                                             render=render)
         reward = episode_count['reward']
         if self.use_entropy_reward:

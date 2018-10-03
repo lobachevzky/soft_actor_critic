@@ -213,7 +213,8 @@ class HSREnv:
                 if self._record:
                     self._video_recorder.capture_frame()
 
-        return self._get_obs(), reward, done, {}
+        info = {'log count': {'success': reward > 0 and self._time_steps > 1}}
+        return self._get_obs(), reward, done, info
 
     def _sync_grippers(self, qpos):
         qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
@@ -282,7 +283,7 @@ class HSREnv:
         return distance_between(self.block_pos(), self.goal) < self.geofence
 
     def set_goal(self, goal: np.ndarray):
-        assert self.goal_space.contains(goal)
+        # assert self.goal_space.contains(goal)
         self.sim.mocap_pos[:] = goal
         self.goal = goal
 

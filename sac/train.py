@@ -97,7 +97,7 @@ class Trainer:
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
-                perform_updates=not self.is_eval_period() and load_path is None)
+                eval_period=self.is_eval_period() and load_path is None)
 
             episode_reward = self.episode_count['reward']
 
@@ -138,13 +138,13 @@ class Trainer:
             return None
         return Step(*self.buffer[-time_steps:final_index])
 
-    def run_episode(self, o1, perform_updates, render):
+    def run_episode(self, o1, eval_period, render):
         episode_count = Counter()
         episode_mean = Counter()
         tick = time.time()
         s = self.agents.act.initial_state
         for time_steps in itertools.count(1):
-            a, s = self.get_actions(o1, s)
+            a, s = self.get_actions(o1, s, sample=not eval_period)
             o2, r, t, info = self.step(a, render)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
@@ -152,7 +152,7 @@ class Trainer:
                 episode_count.update(Counter(info['log count']))
             if 'log mean' in info:
                 episode_mean.update(Counter(info['log mean']))
-            if perform_updates:
+            if not eval_period:
                 episode_mean.update(self.perform_update())
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
@@ -177,11 +177,10 @@ class Trainer:
                     }))
         return counter
 
-    def get_actions(self, o1, s):
+    def get_actions(self, o1, s, sample: bool):
         obs = self.preprocess_obs(o1)
         # assert self.observation_space.contains(obs)
-        return self.agents.act.get_actions(
-            o=obs, state=s, sample=(not self.is_eval_period()))
+        return self.agents.act.get_actions(o=obs, state=s, sample=sample)
 
     def build_agent(self,
                     base_agent: AbstractAgent,

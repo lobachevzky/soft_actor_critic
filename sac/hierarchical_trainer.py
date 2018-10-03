@@ -98,7 +98,7 @@ class HierarchicalTrainer(Trainer):
         else:
             return self.trainers.worker.get_actions(self.worker_o1, s)
 
-    def perform_update(self, _=None):
+    def perform_update(self):
         return {
             **{
                 f'boss_{k}': v

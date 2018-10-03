@@ -37,6 +37,8 @@ class Trainer:
             tf.set_random_seed(seed)
             env.seed(seed)
 
+        self.episodes = None
+        self.episode_count = None
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
@@ -79,8 +81,12 @@ class Trainer:
                 observation_space=observation_space,
                 **kwargs))
         self.seq_len = self.agents.act.seq_len
-        self.count = Counter(reward=0, episode=0, time_steps=0)
-        self.episode_count = None
+
+        self.global_step = tf.Variable(0, name='global_step', trainable=False)
+        self.episode_time_step = tf.placeholder(tf.int32, name='episode_time_steps')
+        self.increment_global_step = tf.assign_add(self.global_step,
+                                                   self.episode_time_step)
+        sess.run(self.global_step.initializer)
 
         # self.train(load_path, logdir, render, save_path)
 
@@ -97,7 +103,7 @@ class Trainer:
         best_average = -np.inf
 
         for episodes in itertools.count(1):
-            self.count['episode'] = episodes
+            self.episodes = episodes
             self.episode_count = self.run_episode(
                 o1=self.reset(),
                 render=render,
@@ -113,11 +119,13 @@ class Trainer:
                 saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
                 best_average = new_average
 
-            episode_time_steps = self.episode_count['time_steps']
-            self.count.update(Counter(time_steps=episode_time_steps))
+            time_steps, _ = self.sess.run(
+                [self.global_step, self.increment_global_step],
+                {self.episode_time_step: self.episode_count['time_steps']})
             print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
                 'EVAL' if self.is_eval_period() else 'TRAIN', episodes,
-                self.count['time_steps'], episode_reward))
+                time_steps, episode_reward))
+
             if logdir:
                 summary = tf.Summary()
                 if self.is_eval_period():
@@ -126,11 +134,11 @@ class Trainer:
                     for k in self.episode_count:
                         summary.value.add(
                             tag=k.replace('_', ' '), simple_value=self.episode_count[k])
-                tb_writer.add_summary(summary, self.count['time_steps'])
+                tb_writer.add_summary(summary, time_steps)
                 tb_writer.flush()
 
     def is_eval_period(self):
-        return self.count['episode'] % 100 == 0
+        return self.episodes % 100 == 0
 
     def trajectory(self, time_steps: int, final_index=None) -> Optional[Step]:
         if final_index is None:
@@ -151,28 +159,27 @@ class Trainer:
             o2, r, t, info = self.step(a, render)
             if 'print' in info:
                 print('Time step:', time_steps, info['print'])
-            if 'log count' in info:
-                episode_count.update(Counter(info['log count']))
-            if 'log mean' in info:
-                episode_mean.update(Counter(info['log mean']))
             if not eval_period:
-                episode_mean.update(self.perform_update(time_steps))
+                episode_mean.update(self.perform_update())
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
-            episode_mean.update(Counter(fps=1 / float(time.time() - tick)))
-            episode_count.update(Counter(reward=r, time_steps=1))
+            # noinspection PyTypeChecker
+            episode_mean.update(Counter(fps=1 / float(time.time() - tick),
+                                        **info.get('log mean', {})))
+            # noinspection PyTypeChecker
+            episode_count.update(Counter(reward=r, time_steps=1,
+                                         **info.get('log count', {})))
             tick = time.time()
             if t:
                 for k in episode_mean:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def perform_update(self, time_steps: int):
+    def perform_update(self):
         counter = Counter()
         if self.buffer_full():
             for i in range(self.num_train_steps):
-                step = self.agents.act.train_step(
-                    self.sample_buffer(), time_steps=time_steps)
+                step = self.agents.act.train_step(self.sample_buffer())
                 counter.update(
                     Counter({
                         k.replace(' ', '_'): v

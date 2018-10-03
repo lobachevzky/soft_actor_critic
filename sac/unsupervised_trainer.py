@@ -40,9 +40,7 @@ class UnsupervisedTrainer(Trainer):
         self.env = env
         self.action_space = env.action_space
         self.sess = sess
-        self.count = Counter(reward=0, episode=0, time_steps=0)
         self.episode_count = None
-        self.time_steps = 0
 
         def boss_preprocess_func(obs, _):
             return Observation(*obs).achieved_goal
@@ -80,7 +78,12 @@ class UnsupervisedTrainer(Trainer):
         if worker_load_path:
             saver.restore(self.sess, worker_load_path)
             print("Model restored from", worker_load_path)
+
         self.trainers = Hierarchical(boss=boss_trainer, worker=worker_trainer)
+
+        self.global_step = self.trainers.worker.global_step
+        self.episode_time_step = self.trainers.worker.episode_time_step
+        self.increment_global_step = self.trainers.worker.increment_global_step
 
         self.agents = Agents(
             act=HierarchicalAgents(
@@ -92,33 +95,25 @@ class UnsupervisedTrainer(Trainer):
                 worker=self.trainers.worker.agents.train,
                 initial_state=0))
 
-    def boss_turn(self, episodes=None):
-        if self.boss_freq:
-            if episodes is None:
-                episodes = self.episode_count['episode']
-            return episodes % self.boss_freq == 0
-        return self.time_steps == 0
-
     def get_actions(self, o1, s, sample: bool):
         assert isinstance(self.env, HSRHindsightWrapper)
         self.worker_o1 = o1.replace(desired_goal=self.env.hsr_env.goal)
         return self.trainers.worker.get_actions(self.worker_o1, s, sample=sample)
 
-    def perform_update(self, time_steps: int):
+    def perform_update(self):
         if self.update_worker:
             worker_update = {
                 f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update(time_steps=time_steps)
+                for k, v in (self.trainers.worker.perform_update()
                              or {}).items()
             }
         else:
             worker_update = dict()
 
-        self.time_steps += 1
         return {
             **{
                 f'boss_{k}': v
-                for k, v in (self.trainers.boss.perform_update(time_steps=time_steps) or {}).items()
+                for k, v in (self.trainers.boss.perform_update() or {}).items()
             },
             **worker_update
         }
@@ -135,7 +130,6 @@ class UnsupervisedTrainer(Trainer):
         self.trainers.worker.buffer.append(step.replace(o1=self.worker_o1))
 
     def reset(self):
-        self.time_steps = 0
         o1 = super().reset()
         if self.boss_state is not None:
             self.trainers.boss.add_to_buffer(
@@ -179,7 +173,7 @@ class UnsupervisedTrainer(Trainer):
             return episode_count
         reward = episode_count['reward']
         if self.use_entropy_reward:
-            p = self.boss_state.initial_value / .99**self.time_steps
+            p = self.boss_state.initial_value / .99 ** episode_count['time_steps']
             squashed_p = sigmoid(p)
             if reward == 0:
                 squashed_p = 1 - squashed_p
@@ -214,4 +208,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

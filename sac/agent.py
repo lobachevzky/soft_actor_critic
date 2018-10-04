@@ -45,7 +45,7 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
-        self.global_step = tf.Variable(0)
+        self.global_step = tf.Variable(0, name='global_step')
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
             seq_dim = [batch_size]

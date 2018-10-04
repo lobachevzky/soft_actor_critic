@@ -176,7 +176,7 @@ class UnsupervisedTrainer(Trainer):
             squashed_p = sigmoid(p)
             if reward == 0:
                 squashed_p = 1 - squashed_p
-            boss_reward = -np.log(squashed_p)
+            boss_reward = -np.log(max(squashed_p, 1e-200))
         else:
             rewards = np.array(self.reward_queue)
             boss_reward = np.matmul(self.reward_operator, rewards)[1]

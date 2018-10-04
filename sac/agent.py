@@ -127,8 +127,8 @@ class AbstractAgent:
                         gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
                     else:
                         norm = tf.global_norm(gradients)
-                    op = optimizer.apply_gradients(zip(gradients, variables),
-                                                   global_step=self.global_step)
+                    op = optimizer.apply_gradients(
+                        zip(gradients, variables), global_step=self.global_step)
                     return op, norm
 
             self.train_V, self.V_grad = train_op(
@@ -168,6 +168,8 @@ class AbstractAgent:
             self.O2: step.o2,
             self.T: step.t,
         }
+        import ipdb
+        ipdb.set_trace()
         return self.sess.run(
             {attr: getattr(self, attr)
              for attr in self.default_train_values}, feed_dict)

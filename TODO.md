@@ -1,4 +1,7 @@
 * try with openai observation
-* Add time_step variable to agents
-* Have eval randomly sample goal
+* record and visualize shift runs
 
+# Hierarchical
+* no random reset after goal is accomplished
+* make goal include rotation 
+* set goal as relative

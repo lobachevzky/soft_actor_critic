@@ -1,5 +1,6 @@
 import itertools
 import time
+import pickle
 from collections import Counter, deque, namedtuple
 from pathlib import Path
 from typing import Optional, Tuple
@@ -173,6 +174,8 @@ class Trainer:
             if not eval_period:
                 episode_mean.update(self.perform_update())
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
+            with Path('buffer.pkl').open('wb') as f:
+                pickle.dump(self.buffer, f)
             o1 = o2
             # noinspection PyTypeChecker
             episode_mean.update(

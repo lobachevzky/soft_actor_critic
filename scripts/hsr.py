@@ -155,7 +155,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          goal_space, block_space, grad_clip, batch_size, num_train_steps,
          record_separate_episodes, steps_per_action, logdir, save_path, load_path,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
-         record_path, temp_path, save_threshold):
+         record_path, temp_path, save_threshold, no_random_reset):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=HSREnv(
@@ -172,6 +172,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             record_freq=record_freq,
             record_separate_episodes=record_separate_episodes,
             image_dimensions=image_dims,
+            no_random_reset=no_random_reset,
         ))
 
     kwargs = dict(
@@ -228,6 +229,7 @@ def cli():
     p.add_argument('--block-space', type=parse_space(dim=4), required=True)
     p.add_argument('--geofence', type=float, required=True)
     p.add_argument('--hindsight-geofence', type=float)
+    p.add_argument('--no-random-reset', action='store_true')
     p.add_argument('--randomize-pose', action='store_true')
     p.add_argument('--logdir', type=str, default=None)
     p.add_argument('--load-path', type=str, default=None)

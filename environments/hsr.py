@@ -26,10 +26,12 @@ class HSREnv:
                  record_freq: int = None,
                  record: bool = False,
                  record_separate_episodes: bool = False,
-                 render_freq: int = None):
+                 render_freq: int = None,
+                 no_random_reset: bool = False):
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
+        self.no_random_reset = no_random_reset
         self.geofence = geofence
         self._obs_type = obs_type
         self._block_name = 'block1'
@@ -226,21 +228,22 @@ class HSREnv:
         self.sim.reset()
         qpos = np.copy(self.initial_qpos)
 
-        if self.randomize_pose:
-            qpos[self._joint_qposadrs] = self._joint_space.sample()
-        self._sync_grippers(qpos)
-        qpos[self._block_qposadrs] = self._block_space.sample()
-        if self._min_lift_height:
-            self.set_goal(self.block_pos() + np.array([0, 0, self._min_lift_height]))
-        else:
-            self.set_goal(self.goal_space.sample())
+        if not self.no_random_reset:
+            if self.randomize_pose:
+                qpos[self._joint_qposadrs] = self._joint_space.sample()
+            self._sync_grippers(qpos)
+            qpos[self._block_qposadrs] = self._block_space.sample()
+            if self._min_lift_height:
+                self.set_goal(self.block_pos() + np.array([0, 0, self._min_lift_height]))
+            else:
+                self.set_goal(self.goal_space.sample())
 
-        # forward sim
-        assert qpos.shape == (self.sim.nq, )
-        self.initial_qpos = qpos
-        self.sim.qpos[:] = qpos.copy()
-        self.sim.qvel[:] = 0
-        self.sim.forward()
+            # forward sim
+            assert qpos.shape == (self.sim.nq, )
+            self.initial_qpos = qpos
+            self.sim.qpos[:] = qpos.copy()
+            self.sim.qvel[:] = 0
+            self.sim.forward()
 
         if self._time_steps > 0:
             self._episode += 1

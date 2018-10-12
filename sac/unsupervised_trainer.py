@@ -142,8 +142,7 @@ class UnsupervisedTrainer(Trainer):
         self.boss_state = None
         if not self.is_eval_period():
             goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
-            goal = np.clip(o1.achieved_goal + goal_delta, self.env.goal_space.low,
-                           self.env.goal_space.high)
+            goal = o1.achieved_goal + goal_delta
             self.env.hsr_env.set_goal(goal)
             if self.boss_state is not None:
                 self.trainers.boss.buffer.append(

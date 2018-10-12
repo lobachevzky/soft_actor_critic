@@ -143,7 +143,7 @@ class HSRHindsightWrapper(HindsightWrapper):
 
     def _desired_goal(self):
         assert isinstance(self.hsr_env, HSREnv)
-        return self.hsr_env.goal - self.hsr_env.block_pos()
+        return self.hsr_env.observed_goal()
 
     @property
     def goal_space(self):

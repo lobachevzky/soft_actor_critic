@@ -176,9 +176,12 @@ class HSREnv:
         else:
             base_qvels = [self.sim.get_joint_qvel(j) for j in self._base_joints]
             obs = np.concatenate([self.sim.qpos, base_qvels])
-        observation = Observation(observation=obs, goal=self.goal - self.block_pos())
+        observation = Observation(observation=obs, goal=self.observed_goal())
         # assert self.observation_space.contains(observation)
         return observation
+
+    def observed_goal(self):
+        return self.goal - self.block_pos()
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)
@@ -224,11 +227,24 @@ class HSREnv:
         qpos[self.sim.get_jnt_qposadr('hand_r_proximal_joint')] = qpos[
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
+    def reset_sim(self, qpos: np.ndarray):
+        assert qpos.shape == (self.sim.nq, )
+        self.initial_qpos = qpos
+        self.sim.qpos[:] = qpos.copy()
+        self.sim.qvel[:] = 0
+        self.sim.forward()
+
     def reset(self):
         self.sim.reset()
         qpos = np.copy(self.initial_qpos)
 
-        if not self.no_random_reset:
+        if self.no_random_reset:
+            if self.goal is None:
+                self.set_goal(self.goal_space.sample())
+            if not self.goal_space.contains(self.block_pos()):
+                qpos[self._block_qposadrs] = self._block_space.sample()
+                self.reset_sim(qpos)
+        else:
             if self.randomize_pose:
                 qpos[self._joint_qposadrs] = self._joint_space.sample()
             self._sync_grippers(qpos)
@@ -238,12 +254,7 @@ class HSREnv:
             else:
                 self.set_goal(self.goal_space.sample())
 
-            # forward sim
-            assert qpos.shape == (self.sim.nq, )
-            self.initial_qpos = qpos
-            self.sim.qpos[:] = qpos.copy()
-            self.sim.qvel[:] = 0
-            self.sim.forward()
+            self.reset_sim(qpos)
 
         if self._time_steps > 0:
             self._episode += 1

@@ -82,6 +82,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
             logdir=logdir,
             render=False,
             save_path=save_path,
+            save_threshold=None,
         )
 
 

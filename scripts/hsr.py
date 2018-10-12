@@ -155,7 +155,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          goal_space, block_space, grad_clip, batch_size, num_train_steps,
          record_separate_episodes, steps_per_action, logdir, save_path, load_path,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
-         record_path, temp_path):
+         record_path, temp_path, save_threshold):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=HSREnv(
@@ -201,6 +201,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         logdir=logdir,
         render=False,
         save_path=save_path,
+        save_threshold=save_threshold,
     )
 
 
@@ -229,8 +230,9 @@ def cli():
     p.add_argument('--hindsight-geofence', type=float)
     p.add_argument('--randomize-pose', action='store_true')
     p.add_argument('--logdir', type=str, default=None)
-    p.add_argument('--save-path', type=str, default=None)
     p.add_argument('--load-path', type=str, default=None)
+    p.add_argument('--save-path', type=str, default=None)
+    p.add_argument('--save-threshold', type=int, default=None)
     p.add_argument(
         '--image-dims', type=parse_vector(length=2, delim=','), default='800,800')
     p.add_argument('--render', action='store_true')
@@ -238,7 +240,7 @@ def cli():
     p.add_argument('--record', action='store_true')
     p.add_argument('--record-separate-episodes', action='store_true')
     p.add_argument('--record-freq', type=int, default=None)
-    p.add_argument('--record-path', type=int, default=None)
+    p.add_argument('--record-path', type=Path, default=None)
     p.add_argument('--xml-file', type=Path, default='world.xml')
     p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
     p.add_argument('--use-dof', type=str, action='append')

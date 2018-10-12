@@ -1,6 +1,7 @@
 import itertools
 import time
 from collections import Counter, deque, namedtuple
+from pathlib import Path
 from typing import Optional, Tuple
 
 import gym
@@ -85,11 +86,16 @@ class Trainer:
         self.episode_time_step = tf.placeholder(tf.int32, name='episode_time_steps')
         self.increment_global_step = tf.assign_add(self.global_step,
                                                    self.episode_time_step)
-        sess.run(self.global_step.initializer)
+        self.sess.run(self.global_step.initializer)
 
         # self.train(load_path, logdir, render, save_path)
 
-    def train(self, load_path, logdir, render, save_path):
+    def train(self,
+              save_path: Path,
+              load_path: Path,
+              logdir: Path,
+              render: bool,
+              save_threshold: int = None):
         saver = tf.train.Saver()
         tb_writer = None
         if load_path:
@@ -98,7 +104,7 @@ class Trainer:
         if logdir:
             tb_writer = tf.summary.FileWriter(logdir=logdir, graph=self.sess.graph)
 
-        last_50_rewards = deque(maxlen=50)
+        past_rewards = deque(maxlen=save_threshold)
         best_average = -np.inf
 
         for episodes in itertools.count(1):
@@ -111,12 +117,18 @@ class Trainer:
             episode_reward = self.episode_count['reward']
 
             # save model
-            last_50_rewards.append(episode_reward)
-            new_average = np.mean(last_50_rewards)
-            if save_path and episodes % 50 == 1 and new_average > best_average:
+            passes_save_threshold = True
+            if save_threshold is not None:
+                past_rewards.append(episode_reward)
+                new_average = np.mean(past_rewards)
+                if new_average < best_average:
+                    passes_save_threshold = False
+                else:
+                    best_average = new_average
+
+            if save_path and episodes % 10 == 1 and passes_save_threshold:
                 print("model saved in path:", saver.save(self.sess, save_path=save_path))
                 saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
-                best_average = new_average
 
             time_steps, _ = self.sess.run(
                 [self.global_step, self.increment_global_step],
@@ -176,7 +188,7 @@ class Trainer:
 
     def perform_update(self):
         counter = Counter()
-        if self.buffer_full():
+        if self.buffer_ready():
             for i in range(self.num_train_steps):
                 step = self.agents.act.train_step(self.sample_buffer())
                 counter.update(
@@ -250,7 +262,7 @@ class Trainer:
         assert isinstance(step, Step)
         self.buffer.append(step)
 
-    def buffer_full(self):
+    def buffer_ready(self):
         return len(self.buffer) >= self.batch_size
 
     def sample_buffer(self) -> Step:

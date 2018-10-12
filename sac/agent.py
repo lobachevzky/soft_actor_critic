@@ -45,9 +45,10 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
-        self.global_step = tf.Variable(0, name='global_step')
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
+            self.global_step = tf.Variable(0, name='global_step')
+
             seq_dim = [batch_size]
             if self.seq_len is not None:
                 seq_dim = [batch_size, self.seq_len]
@@ -168,8 +169,6 @@ class AbstractAgent:
             self.O2: step.o2,
             self.T: step.t,
         }
-        import ipdb
-        ipdb.set_trace()
         return self.sess.run(
             {attr: getattr(self, attr)
              for attr in self.default_train_values}, feed_dict)

@@ -231,13 +231,13 @@ class HSREnv:
         self._sync_grippers(qpos)
         qpos[self._block_qposadrs] = self._block_space.sample()
         if self._min_lift_height:
-            self.goal = self.block_pos() + np.array([0, 0, self._min_lift_height])
+            self.set_goal(self.block_pos() + np.array([0, 0, self._min_lift_height]))
         else:
-            self.goal = self.goal_space.sample()
-        self.sim.mocap_pos[:] = self.goal
+            self.set_goal(self.goal_space.sample())
 
         # forward sim
         assert qpos.shape == (self.sim.nq, )
+        self.initial_qpos = qpos
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()

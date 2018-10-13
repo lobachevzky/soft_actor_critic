@@ -130,16 +130,6 @@ class UnsupervisedTrainer(Trainer):
 
     def reset(self):
         o1 = super().reset()
-        if self.boss_state is not None:
-            self.trainers.boss.add_to_buffer(
-                Step(
-                    s=0,
-                    o1=self.boss_state.initial_obs,
-                    a=self.boss_state.action,
-                    r=self.boss_state.reward,
-                    o2=o1,
-                    t=False))  # TODO: what about true?
-        self.boss_state = None
         if not self.is_eval_period():
             goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
             goal = o1.achieved_goal + goal_delta

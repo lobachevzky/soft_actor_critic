@@ -235,16 +235,15 @@ class HSREnv:
         self.sim.forward()
 
     def reset(self):
-        self.sim.reset()
-        qpos = np.copy(self.initial_qpos)
-
         if self.no_random_reset:
-            if self.goal is None:
-                self.set_goal(self.goal_space.sample())
+            qpos = np.copy(self.initial_qpos)
+            self.set_goal(self.goal_space.sample())
             if not self.goal_space.contains(self.block_pos()):
                 qpos[self._block_qposadrs] = self._block_space.sample()
                 self.reset_sim(qpos)
         else:
+            self.sim.reset()
+            qpos = np.copy(self.initial_qpos)
             if self.randomize_pose:
                 qpos[self._joint_qposadrs] = self._joint_space.sample()
             self._sync_grippers(qpos)

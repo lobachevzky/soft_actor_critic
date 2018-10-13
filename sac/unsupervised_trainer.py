@@ -172,10 +172,7 @@ class UnsupervisedTrainer(Trainer):
         reward = episode_count['reward']
         if self.use_entropy_reward:
             p = self.boss_state.initial_value / .99**episode_count['time_steps']
-            squashed_p = sigmoid(p)
-            if reward == 0:
-                squashed_p = 1 - squashed_p
-            boss_reward = -np.log(max(squashed_p, 1e-200))
+            boss_reward = -reward * np.log(max(sigmoid(p), 1e-200))
         else:
             rewards = np.array(self.reward_queue)
             boss_reward = np.matmul(self.reward_operator, rewards)[1]

@@ -132,7 +132,8 @@ class UnsupervisedTrainer(Trainer):
         o1 = super().reset()
         if not self.is_eval_period():
             goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
-            goal = o1.achieved_goal
+            goal = o1.achieved_goal + np.random.normal(loc=0,
+                    scale=self.env.hsr_env.geofence/2)
             self.env.hsr_env.set_goal(goal)
             if self.boss_state is not None:
                 self.trainers.boss.buffer.append(

@@ -176,12 +176,9 @@ class HSREnv:
         else:
             base_qvels = [self.sim.get_joint_qvel(j) for j in self._base_joints]
             obs = np.concatenate([self.sim.qpos, base_qvels])
-        observation = Observation(observation=obs, goal=self.observed_goal())
+        observation = Observation(observation=obs, goal=self.goal)
         # assert self.observation_space.contains(observation)
         return observation
-
-    def observed_goal(self):
-        return self.goal - self.block_pos()
 
     def step(self, action):
         action = np.clip(action, self.action_space.low, self.action_space.high)

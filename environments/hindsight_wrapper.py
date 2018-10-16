@@ -136,14 +136,14 @@ class HSRHindsightWrapper(HindsightWrapper):
         return observation
 
     def _is_success(self, achieved_goal, desired_goal):
-        return np.linalg.norm(desired_goal) < self._geofence
+        return distance_between(achieved_goal, desired_goal) < self._geofence
 
     def _achieved_goal(self):
         return self.hsr_env.block_pos()
 
     def _desired_goal(self):
         assert isinstance(self.hsr_env, HSREnv)
-        return self.hsr_env.observed_goal()
+        return self.hsr_env.goal
 
     @property
     def goal_space(self):

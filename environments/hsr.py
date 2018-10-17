@@ -240,7 +240,7 @@ class HSREnv:
         self.sim.forward()
 
     def reset(self):
-        if self.no_random_reset:
+        if self.no_random_reset and (self.goal is None or not self._is_successful()):
             qpos = np.copy(self.initial_qpos)
             self.set_goal(self.goal_space.sample())
             if not self.goal_space.contains(self.block_pos()):

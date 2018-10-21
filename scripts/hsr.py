@@ -7,9 +7,7 @@ from functools import wraps
 from pathlib import Path
 from typing import List, Tuple
 from xml.etree import ElementTree as ET
-from xml.etree.ElementTree import dump
 
-import gym
 import numpy as np
 import tensorflow as tf
 from gym import spaces

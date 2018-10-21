@@ -1,4 +1,6 @@
+import itertools
 from collections import namedtuple
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Tuple
 
@@ -8,7 +10,7 @@ from gym.utils import closer
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import ObjType
+from mujoco import ObjType, MujocoError
 
 
 class HSREnv:
@@ -35,7 +37,7 @@ class HSREnv:
         self.no_random_reset = no_random_reset
         self.geofence = geofence
         self._obs_type = obs_type
-        self._block_name = 'block1'
+        self._block_name = 'block'
         left_finger_name = 'hand_l_distal_link'
         self._finger_names = [left_finger_name, left_finger_name.replace('_l_', '_r_')]
         self._episode = 0
@@ -98,7 +100,7 @@ class HSREnv:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(self.sim.nq + len(self._base_joints), ),
+                shape=(self.sim.nq + len(self._base_joints),),
                 dtype=np.float32,
             )
         self.observation_space = spaces.Tuple(
@@ -106,7 +108,18 @@ class HSREnv:
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
-        # x, y, z-axis rotation
+        self._block_qposadrs = []
+        for i in itertools.count():
+            try:
+                offset = np.array([0,  # x
+                                   1,  # y
+                                   3,  # quat0
+                                   6,  # quat3
+                                   ])
+                self._block_qposadrs.append(
+                    self.sim.get_jnt_qposadr(f'block{i}joint') + offset)
+            except MujocoError:
+                break
 
         # joint space
         all_joints = [
@@ -234,32 +247,49 @@ class HSREnv:
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
     def reset_sim(self, qpos: np.ndarray):
-        assert qpos.shape == (self.sim.nq, )
+        assert qpos.shape == (self.sim.nq,)
         self.initial_qpos = qpos
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
         self.sim.forward()
 
+    @contextmanager
+    def get_initial_qpos(self):
+        qpos = np.copy(self.initial_qpos)
+        yield qpos
+        self.reset_sim(qpos)
+
     def reset(self):
         if self.no_random_reset and (self.goal is None or not self._is_successful()):
-            qpos = np.copy(self.initial_qpos)
-            self.set_goal(self.goal_space.sample())
-            if not self.goal_space.contains(self.block_pos()):
-                qpos[self._block_qposadrs] = self._block_space.sample()
-                self.reset_sim(qpos)
-        else:
-            self.sim.reset()
-            qpos = np.copy(self.initial_qpos)
-            if self.randomize_pose:
-                qpos[self._joint_qposadrs] = self._joint_space.sample()
-            self._sync_grippers(qpos)
-            qpos[self._block_qposadrs] = self._block_space.sample()
-            if self._min_lift_height:
-                self.set_goal(self.block_pos() + np.array([0, 0, self._min_lift_height]))
-            else:
+            with self.get_initial_qpos() as qpos:
+                # set new goal
                 self.set_goal(self.goal_space.sample())
 
-            self.reset_sim(qpos)
+                for i, adrs in enumerate(self._block_qposadrs):
+
+                    # if block out of bounds
+                    if not self.goal_space.contains(self.block_pos(i)):
+
+                        # randomize blocks
+                        qpos[adrs] = self._block_space.sample()
+        else:
+            self.sim.reset()  # restore original qpos
+            with self.get_initial_qpos() as qpos:
+                if self.randomize_pose:
+                    # randomize joint angles
+                    qpos[self._joint_qposadrs] = self._joint_space.sample()
+                    self._sync_grippers(qpos)
+
+                # randomize blocks
+                for adrs in self._block_qposadrs:
+                    qpos[adrs] = self._block_space.sample()
+
+                # set new goal
+                if self._min_lift_height:
+                    self.set_goal(
+                        self.block_pos() + np.array([0, 0, self._min_lift_height]))
+                else:
+                    self.set_goal(self.goal_space.sample())
 
         if self._time_steps > 0:
             self._episode += 1
@@ -274,8 +304,8 @@ class HSREnv:
 
         return self._get_obs()
 
-    def block_pos(self):
-        return self.sim.get_body_xpos(self._block_name)
+    def block_pos(self, blocknum=0):
+        return self.sim.get_body_xpos(self._block_name + str(blocknum))
 
     def gripper_pos(self):
         finger1, finger2 = [self.sim.get_body_xpos(name) for name in self._finger_names]

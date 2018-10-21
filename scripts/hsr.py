@@ -7,10 +7,13 @@ from functools import wraps
 from pathlib import Path
 from typing import List, Tuple
 from xml.etree import ElementTree as ET
+from xml.etree.ElementTree import dump
 
+import gym
 import numpy as np
 import tensorflow as tf
 from gym import spaces
+from gym.spaces import Box
 from gym.wrappers import TimeLimit
 
 from environments.hindsight_wrapper import HSRHindsightWrapper
@@ -69,9 +72,8 @@ def put_in_xml_setter(arg: str):
 
 def env_wrapper(func):
     @wraps(func)
-    def _wrapper(render, render_freq, set_xml, use_dof, xml_file, geofence, **kwargs):
-        if render and not render_freq:
-            render_freq = 20
+    def _wrapper(set_xml, use_dof, n_blocks, goal_space, xml_file, geofence,
+                 **kwargs):
         xml_filepath = Path(
             Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
         if set_xml is None:
@@ -80,9 +82,11 @@ def env_wrapper(func):
         path = Path('worldbody', 'body[@name="goal"]', 'site[@name="goal"]', 'size')
         set_xml += [XMLSetter(path=f'./{path}', value=site_size)]
         with mutate_xml(
-                changes=set_xml, dofs=use_dof, xml_filepath=xml_filepath) as temp_path:
+                changes=set_xml, dofs=use_dof, n_blocks=n_blocks, goal_space=goal_space,
+                xml_filepath=xml_filepath) as temp_path:
             return func(
-                geofence=geofence, temp_path=temp_path, render_freq=render_freq, **kwargs)
+                geofence=geofence, temp_path=temp_path,
+                goal_space=goal_space, **kwargs)
 
     return _wrapper
 
@@ -91,11 +95,44 @@ XMLSetter = namedtuple('XMLSetter', 'path value')
 
 
 @contextmanager
-def mutate_xml(changes: List[XMLSetter], dofs: List[str], xml_filepath: Path):
+def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box,
+               n_blocks: int, xml_filepath:
+        Path):
     def rel_to_abs(path: Path):
         return Path(xml_filepath.parent, path)
 
     def mutate_tree(tree: ET.ElementTree):
+
+        worldbody = tree.getroot().find("./worldbody")
+        rgba = [
+            "0 0 1 1",
+            "0 1 0 1",
+            "0 1 1 1",
+            "1 0 0 1",
+            "1 0 1 1",
+            "1 1 0 1",
+            "1 1 1 1",
+        ]
+
+        if worldbody:
+            for i in range(n_blocks):
+                pos = ' '.join(map(str, goal_space.sample()))
+                name = f'block{i}'
+
+                body = ET.SubElement(worldbody, 'body', attrib=dict(name=name,
+                                                                               pos=pos))
+                ET.SubElement(body, 'geom', attrib=dict(name=name,
+                                                                   type='box',
+                                                                   mass='1',
+                                                                   size=".05 .025 .017",
+                                                                   rgba=rgba[i],
+                                                                   condim='6',
+                                                                   solimp="0.99 0.99 "
+                                                                          "0.01",
+                                                                   solref='0.01 1'))
+                ET.SubElement(body, 'freejoint',
+                              attrib=dict(name=f'block{i}joint'))
+
         for change in changes:
             parent = re.sub('/[^/]*$', '', change.path)
             element_to_change = tree.find(parent)
@@ -154,7 +191,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
          goal_space, block_space, grad_clip, batch_size, num_train_steps,
          record_separate_episodes, steps_per_action, logdir, save_path, load_path,
-         render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
+         render, render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
          record_path, temp_path, save_threshold, no_random_reset, obs_type):
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -166,6 +203,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             block_space=block_space,
             goal_space=goal_space,
             geofence=geofence,
+            render=render,
             render_freq=render_freq,
             record=record,
             record_path=record_path,
@@ -224,6 +262,7 @@ def cli():
     p.add_argument('--learning-rate', type=float, required=True)
     p.add_argument('--max-steps', type=int, required=True)
     p.add_argument('--n-goals', type=int, required=True)
+    p.add_argument('--n-blocks', type=int, required=True)
     p.add_argument('--min-lift-height', type=float, default=None)
     p.add_argument('--grad-clip', type=float, required=True)
     p.add_argument('--goal-space', type=parse_space(dim=3), default=None)  # TODO

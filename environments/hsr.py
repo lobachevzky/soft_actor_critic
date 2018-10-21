@@ -22,6 +22,7 @@ class HSREnv:
                  randomize_pose: bool = False,
                  obs_type: str = None,
                  image_dimensions: Tuple[int] = None,
+                 render: bool = False,
                  record_path: Path = None,
                  record_freq: int = None,
                  record: bool = False,
@@ -44,7 +45,7 @@ class HSREnv:
         self.metadata = {'render.modes': 'rgb_array'}
         self.reward_range = -np.inf, np.inf
         self.spec = None
-        self.render_freq = render_freq
+        self.render_freq = 20 if (render and render_freq is None) else render_freq
         self.steps_per_action = steps_per_action
 
         # record stuff

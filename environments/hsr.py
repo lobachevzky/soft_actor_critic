@@ -112,7 +112,7 @@ class HSREnv:
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
-        block_joint = self.sim.get_jnt_qposadr('block1joint')
+        block_joint = self.sim.get_jnt_qposadr('block0joint')
         self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
         offset = np.array([0,  # x
                            1,  # y
@@ -262,7 +262,7 @@ class HSREnv:
         self.reset_sim(qpos)
 
     def reset(self):
-        if self.no_random_reset and (self.goal is None or not self.is_successful()):
+        if self.no_random_reset:
             with self.get_initial_qpos() as qpos:
                 for i, adrs in enumerate(self._block_qposadrs):
 
@@ -270,9 +270,6 @@ class HSREnv:
                     if not self.goal_space.contains(self.block_pos(i)):
                         # randomize blocks
                         qpos[adrs] = self._block_space.sample()
-
-            # set new goal
-            self.set_goal(self.goal_space.sample())
 
         else:
             self.sim.reset()  # restore original qpos
@@ -286,12 +283,12 @@ class HSREnv:
                 for adrs in self._block_qposadrs:
                     qpos[adrs] = self._block_space.sample()
 
-            # set new goal
-            if self._min_lift_height:
-                self.set_goal(
-                    self.block_pos() + np.array([0, 0, self._min_lift_height]))
-            else:
-                self.set_goal(self.goal_space.sample())
+        # set new goal
+        if self._min_lift_height:
+            self.set_goal(
+                self.block_pos() + np.array([0, 0, self._min_lift_height]))
+        else:
+            self.set_goal(self.goal_space.sample())
 
         if self._time_steps > 0:
             self._episode += 1
@@ -364,6 +361,7 @@ class MultiBlockHSREnv(HSREnv):
                                                        :2]) < self.geofence, axis=-1)
 
     def set_goal(self, goal: np.ndarray):
+        goal[2] = self.initial_block_pos[2]
         super().set_goal(goal)
         self.goals = np.stack([self.goal] + [self.block_pos(i).copy()
                                              for i in range(1, self.n_blocks)])

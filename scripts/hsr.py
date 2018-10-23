@@ -14,8 +14,8 @@ from gym import spaces
 from gym.spaces import Box
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import HSRHindsightWrapper
-from environments.hsr import HSREnv
+from environments.hindsight_wrapper import HSRHindsightWrapper, MBHSRHindsightWrapper
+from environments.hsr import HSREnv, MultiBlockHSREnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 
@@ -190,10 +190,10 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          goal_space, block_space, grad_clip, batch_size, num_train_steps,
          record_separate_episodes, steps_per_action, logdir, save_path, load_path,
          render, render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
-         record_path, temp_path, save_threshold, no_random_reset, obs_type):
+         record_path, temp_path, save_threshold, no_random_reset, obs_type, multi_block):
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=HSREnv(
+        env=(MultiBlockHSREnv if multi_block else HSREnv)(
             steps_per_action=steps_per_action,
             randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,
@@ -229,7 +229,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
 
     if hindsight_geofence:
         trainer = HindsightTrainer(
-            env=HSRHindsightWrapper(env=env, geofence=hindsight_geofence),
+            env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(env=env,
+                                                     geofence=hindsight_geofence),
             n_goals=n_goals,
             **kwargs)
     else:
@@ -285,6 +286,7 @@ def cli():
     p.add_argument('--xml-file', type=Path, default='world.xml')
     p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
     p.add_argument('--use-dof', type=str, action='append')
+    p.add_argument('--multi-block', action='store_true')
     main(**vars(p.parse_args()))
 
 

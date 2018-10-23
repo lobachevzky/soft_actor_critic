@@ -11,7 +11,7 @@ from gym.spaces import Box
 import environments.hsr
 from environments import hsr
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hsr import HSREnv, distance_between
+from environments.hsr import HSREnv, distance_between, MultiBlockHSREnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 
@@ -136,7 +136,8 @@ class HSRHindsightWrapper(HindsightWrapper):
         return observation
 
     def _is_success(self, achieved_goal, desired_goal):
-        return distance_between(achieved_goal, desired_goal) < self._geofence
+        return self.hsr_env.is_successful(achieved_goal=achieved_goal,
+                                          desired_goal=desired_goal)
 
     def _achieved_goal(self):
         return self.hsr_env.block_pos()
@@ -150,6 +151,24 @@ class HSRHindsightWrapper(HindsightWrapper):
         low = self.hsr_env.goal_space.low.copy()
         low[2] = self.hsr_env.initial_block_pos[2]
         return Box(low=low, high=self.hsr_env.goal_space.high, dtype=np.float32)
+
+
+class MBHSRHindsightWrapper(HSRHindsightWrapper):
+    def __init__(self, env, geofence):
+        super().__init__(env, geofence)
+        self._mb_hsr_env = unwrap_env(env, lambda e: isinstance(e, MultiBlockHSREnv))
+        self.observation_space = spaces.Tuple(
+            self.observation_space.spaces.replace(
+                desired_goal=spaces.Tuple([
+                                              self.goal_space] * self.hsr_env.n_blocks)))
+
+    def _achieved_goal(self):
+        return np.stack(
+            [self._mb_hsr_env.block_pos(i).copy() for i in range(
+                self._mb_hsr_env.n_blocks)])
+
+    def _desired_goal(self):
+        return self.hsr_env.goals
 
 
 class FrozenLakeHindsightWrapper(HindsightWrapper):

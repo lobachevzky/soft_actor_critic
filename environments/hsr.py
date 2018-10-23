@@ -84,6 +84,12 @@ class HSREnv:
 
         # block space
         self._block_space = block_space
+        try:
+            for i in itertools.count():
+                self.sim.name2id(ObjType.BODY, f'block{i}')
+                self.n_blocks = i + 1
+        except MujocoError:
+            pass
 
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
@@ -108,18 +114,14 @@ class HSREnv:
 
         block_joint = self.sim.get_jnt_qposadr('block1joint')
         self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
-        self._block_qposadrs = []
-        for i in itertools.count():
-            try:
-                offset = np.array([0,  # x
-                                   1,  # y
-                                   3,  # quat0
-                                   6,  # quat3
-                                   ])
-                self._block_qposadrs.append(
-                    self.sim.get_jnt_qposadr(f'block{i}joint') + offset)
-            except MujocoError:
-                break
+        offset = np.array([0,  # x
+                           1,  # y
+                           3,  # quat0
+                           6,  # quat3
+                           ])
+
+        self._block_qposadrs = [self.sim.get_jnt_qposadr(f'block{i}joint') + offset
+                                for i in range(self.n_blocks)]
 
         # joint space
         all_joints = [
@@ -151,10 +153,10 @@ class HSREnv:
         return self.sim.render_offscreen(camera_name)
 
     def compute_terminal(self):
-        return self._is_successful()
+        return self.is_successful()
 
     def compute_reward(self):
-        if self._is_successful():
+        if self.is_successful():
             return 1
         else:
             return 0
@@ -260,18 +262,18 @@ class HSREnv:
         self.reset_sim(qpos)
 
     def reset(self):
-        if self.no_random_reset and (self.goal is None or not self._is_successful()):
+        if self.no_random_reset and (self.goal is None or not self.is_successful()):
             with self.get_initial_qpos() as qpos:
-                # set new goal
-                self.set_goal(self.goal_space.sample())
-
                 for i, adrs in enumerate(self._block_qposadrs):
 
                     # if block out of bounds
                     if not self.goal_space.contains(self.block_pos(i)):
-
                         # randomize blocks
                         qpos[adrs] = self._block_space.sample()
+
+            # set new goal
+            self.set_goal(self.goal_space.sample())
+
         else:
             self.sim.reset()  # restore original qpos
             with self.get_initial_qpos() as qpos:
@@ -284,12 +286,12 @@ class HSREnv:
                 for adrs in self._block_qposadrs:
                     qpos[adrs] = self._block_space.sample()
 
-                # set new goal
-                if self._min_lift_height:
-                    self.set_goal(
-                        self.block_pos() + np.array([0, 0, self._min_lift_height]))
-                else:
-                    self.set_goal(self.goal_space.sample())
+            # set new goal
+            if self._min_lift_height:
+                self.set_goal(
+                    self.block_pos() + np.array([0, 0, self._min_lift_height]))
+            else:
+                self.set_goal(self.goal_space.sample())
 
         if self._time_steps > 0:
             self._episode += 1
@@ -329,15 +331,43 @@ class HSREnv:
     def __exit__(self, *args):
         self.sim.__exit__()
 
-    def _is_successful(self):
+    def is_successful(self, achieved_goal=None, desired_goal=None):
         if self._min_lift_height:
             return self.block_pos()[2] > self.initial_block_pos[2] + self._min_lift_height
-        return distance_between(self.block_pos(), self.goal) < self.geofence
+
+        # only check first block
+        if achieved_goal is None:
+            achieved_goal = self.block_pos()
+        if desired_goal is None:
+            desired_goal = self.goal
+        return distance_between(achieved_goal, desired_goal) < self.geofence
 
     def set_goal(self, goal: np.ndarray):
         # assert self.goal_space.contains(goal)
         self.sim.mocap_pos[:] = goal
         self.goal = goal
+
+
+class MultiBlockHSREnv(HSREnv):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.goals = None
+
+    def is_successful(self, achieved_goal=None, desired_goal=None):
+        if achieved_goal is None:
+            achieved_goal = np.stack([self.block_pos(i).copy() for i in range(
+                self.n_blocks)])
+        if desired_goal is None:
+            desired_goal = self.goals
+
+        return np.all(distance_between(achieved_goal[..., :2], desired_goal[...,
+                                                       :2]) < self.geofence, axis=-1)
+
+    def set_goal(self, goal: np.ndarray):
+        super().set_goal(goal)
+        self.goals = np.stack([self.goal] + [self.block_pos(i).copy()
+                                             for i in range(1, self.n_blocks)])
+
 
 
 def quaternion2euler(w, x, y, z):

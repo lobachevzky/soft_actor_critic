@@ -44,7 +44,7 @@ def cli(env, seed, buffer_size, n_layers, layer_size, learning_rate, reward_scal
         reward_scale=reward_scale,
         batch_size=batch_size,
         grad_clip=None,
-        num_train_steps=num_train_steps)
+        n_train_steps=num_train_steps)
 
 
 if __name__ == '__main__':

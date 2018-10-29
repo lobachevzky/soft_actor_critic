@@ -15,9 +15,9 @@ from scripts.hsr import (cast_to_int, env_wrapper, parse_space, parse_vector,
 
 @env_wrapper
 def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entropy_scale,
-         worker_reward_scale, worker_num_train_steps, worker_grad_clip, steps_per_action,
+         worker_reward_scale, n_train_steps, worker_grad_clip, steps_per_action,
          worker_batch_size, worker_buffer_size, boss_n_layers, boss_layer_size,
-         boss_learning_rate, boss_entropy_scale, boss_reward_scale, boss_num_train_steps,
+         boss_learning_rate, boss_entropy_scale, boss_reward_scale,
          boss_grad_clip, boss_buffer_size, boss_batch_size, max_steps, min_lift_height,
          geofence, hindsight_geofence, seed, goal_space, block_space, concat_record,
          logdir, save_path, load_path, worker_load_path, render_freq, render, n_goals,
@@ -44,6 +44,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
                 image_dimensions=image_dims,
             )))
 
+
     worker_kwargs = dict(
         n_layers=worker_n_layers,
         layer_size=worker_layer_size,
@@ -51,7 +52,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         entropy_scale=worker_entropy_scale,
         reward_scale=worker_reward_scale,
         grad_clip=worker_grad_clip,
-        num_train_steps=worker_num_train_steps,
+        n_train_steps=n_train_steps,
         batch_size=worker_batch_size,
         buffer_size=worker_buffer_size,
     )
@@ -63,7 +64,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         entropy_scale=boss_entropy_scale,
         reward_scale=boss_reward_scale,
         grad_clip=boss_grad_clip,
-        num_train_steps=boss_num_train_steps,
+        n_train_steps=n_train_steps,
         batch_size=boss_batch_size,
         buffer_size=boss_buffer_size,
     )
@@ -74,6 +75,7 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
         n_goals=n_goals,
         seq_len=None,
         base_agent=MlpAgent,
+        n_train_steps=n_train_steps,
         seed=seed,
         activation=tf.nn.relu,
         worker_load_path=worker_load_path,
@@ -94,7 +96,6 @@ def cli():
     p.add_argument('--boss-n-layers', type=int, required=True)
     p.add_argument('--boss-layer-size', type=int, required=True)
     p.add_argument('--boss-buffer-size', type=cast_to_int, required=True)
-    p.add_argument('--boss-num-train-steps', type=int, required=True)
     p.add_argument('--boss-batch-size', type=int, required=True)
     p.add_argument('--boss-learning-rate', type=float, required=True)
     p.add_argument('--boss-grad-clip', type=float, required=True)
@@ -104,7 +105,6 @@ def cli():
     p.add_argument('--worker-n-layers', type=int, required=True)
     p.add_argument('--worker-layer-size', type=int, required=True)
     p.add_argument('--worker-buffer-size', type=cast_to_int, required=True)
-    p.add_argument('--worker-num-train-steps', type=int, required=True)
     p.add_argument('--worker-batch-size', type=int, required=True)
     p.add_argument('--worker-learning-rate', type=float, required=True)
     p.add_argument('--worker-grad-clip', type=float, required=True)
@@ -115,6 +115,7 @@ def cli():
     p.add_argument('--freeze-worker', action='store_true')
     p.add_argument('--steps-per-action', type=int, required=True)
     p.add_argument('--max-steps', type=int, required=True)
+    p.add_argument('--n-train-steps', type=int, required=True)
     p.add_argument('--n-goals', type=int, default=None)
     p.add_argument('--n-blocks', type=int, required=True)
     p.add_argument('--min-lift-height', type=float, default=None)

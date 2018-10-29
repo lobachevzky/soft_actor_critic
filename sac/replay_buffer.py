@@ -36,7 +36,7 @@ class ReplayBuffer:
         assert self.buffer is not None
         return self.buffer[self.modulate(key)]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Key, value):
         self.buffer[self.modulate(key)] = value
 
     def __len__(self):
@@ -47,7 +47,7 @@ class ReplayBuffer:
             key = np.arange(key.start or 0, 0 if key.stop is None else key.stop, key.step)
         return (key + self.pos) % self.maxlen
 
-    def sample(self, batch_size: int, seq_len=None):
+    def sample(self, batch_size: int, seq_len: int=None):
         # indices are negative because indices are relative to pos
         indices = np.random.randint(-len(self), 0, size=batch_size)  # type: np.ndarray
         if seq_len is not None:

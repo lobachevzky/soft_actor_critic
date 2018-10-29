@@ -189,7 +189,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
 @env_wrapper
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
          activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
-         goal_space, block_space, grad_clip, batch_size, num_train_steps,
+         goal_space, block_space, grad_clip, batch_size, n_train_steps,
          record_separate_episodes, steps_per_action, logdir, save_path, load_path, render,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
          record_path, temp_path, save_threshold, no_random_reset, obs_type, multi_block):
@@ -227,7 +227,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
-        num_train_steps=num_train_steps)
+        n_train_steps=n_train_steps)
 
     if hindsight_geofence:
         trainer = HindsightTrainer(
@@ -254,7 +254,7 @@ def cli():
     p.add_argument('--n-layers', type=int, required=True)
     p.add_argument('--layer-size', type=int, required=True)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)
-    p.add_argument('--num-train-steps', type=int, required=True)
+    p.add_argument('--n-train-steps', type=int, required=True)
     p.add_argument('--steps-per-action', type=int, required=True)
     p.add_argument('--batch-size', type=int, required=True)
     scales = p.add_mutually_exclusive_group(required=True)

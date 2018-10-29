@@ -1,7 +1,9 @@
-from collections import deque, namedtuple
+import random
+from collections import deque, namedtuple, defaultdict, Counter
 
 import numpy as np
 import tensorflow as tf
+from gym.spaces import Box
 
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
@@ -11,6 +13,47 @@ from sac.train import Agents, HindsightTrainer, Trainer
 from sac.utils import Step
 
 BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')
+Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
+
+
+class WorkerTrainer(Trainer):
+    def perform_update(self):
+        return super().perform_update()
+
+    def train_step(self, add_fetch: list = None):
+        if add_fetch is None:
+            add_fetch = []
+        add_fetch.append('delta_td_error')
+        return super().train_step(add_fetch=add_fetch)
+
+
+class DictBuffer(ReplayBuffer):
+    def __init__(self):
+        super().__init__(maxlen=0)
+        self.buffer = defaultdict(0)
+
+    def __getitem__(self, key: Key):
+        assert self.buffer is not None
+        return self.buffer[key]
+
+    def __setitem__(self, key: Key, value):
+        self.buffer[key] = value
+
+    def __len__(self):
+        return len(self.buffer)
+
+    def sample(self, batch_size: int, seq_len: int = None):
+        return random.choices(self.buffer.values(), batch_size)
+
+    def append(self, step: Step):
+        o1 = Observation(*step.o1)
+        key = Key(tuple(o1.achieved_goal), tuple(o1.desired_goal))
+        self[key] = step
+
+
+# TODO: can we get rid of this?
+def boss_preprocess_func(obs, _=None):
+    return Observation(*obs).achieved_goal
 
 
 class UnsupervisedTrainer(Trainer):
@@ -21,14 +64,17 @@ class UnsupervisedTrainer(Trainer):
                  worker_kwargs: dict,
                  boss_kwargs: dict,
                  boss_freq: int = None,
+                 n_train_steps: int = None,
                  update_worker: bool = True,
                  n_goals: int = None,
                  worker_load_path=None,
                  **kwargs):
 
+        self.n_train_steps = n_train_steps
         self.update_worker = update_worker
         self.boss_state = None
         self.worker_o1 = None
+        self.boss_o1 = None
 
         self.boss_freq = boss_freq
         self.reward_queue = deque(maxlen=boss_freq)
@@ -42,9 +88,6 @@ class UnsupervisedTrainer(Trainer):
         self.action_space = env.action_space
         self.sess = sess
         self.episode_count = None
-
-        def boss_preprocess_func(obs, _):
-            return Observation(*obs).achieved_goal
 
         boss_trainer = Trainer(
             observation_space=env.observation_space,
@@ -66,9 +109,9 @@ class UnsupervisedTrainer(Trainer):
             **worker_kwargs,
             **kwargs)
         if n_goals is None:
-            worker_trainer = LastEpisodeTrainer(**worker_kwargs)
+            worker_trainer = Trainer(**worker_kwargs)
         else:
-            worker_trainer = HindsightLastEpisodeTrainer(n_goals=n_goals, **worker_kwargs)
+            worker_trainer = HindsightTrainer(n_goals=n_goals, **worker_kwargs)
 
         worker_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='worker')
         var_list = {
@@ -101,17 +144,64 @@ class UnsupervisedTrainer(Trainer):
         self.worker_o1 = o1.replace(desired_goal=self.env.hsr_env.goal)
         return self.trainers.worker.get_actions(o1=self.worker_o1, s=s, sample=sample)
 
+    def sample_buffer(self) -> Step:
+        worker = self.trainers.worker
+        return Step(*worker.buffer.sample(worker.batch_size, seq_len=worker.seq_len))
+
     def perform_update(self):
-        return {
-            **{
-                f'boss_{k}': v
-                for k, v in (self.trainers.boss.perform_update() or {}).items()
-            },
-            **{
-                f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update() or {}).items()
-            }
-        }
+        counter = Counter()
+        worker_trainer = self.trainers.worker
+        worker_agent = self.agents.act.worker
+
+        def preprocess_obs(obs):
+            return worker_trainer.preprocess_obs(
+                obs, shape=[worker_trainer.batch_size, -1])
+
+        def preprocess_sample(sample: Step):
+            return sample.replace(
+                o1=preprocess_obs(sample.o1),
+                o2=preprocess_obs(sample.o2)
+            )
+
+        batch_size = worker_trainer.batch_size
+        if len(worker_trainer.buffer) >= batch_size:
+            for i in range(self.n_train_steps):
+                train_sample = self.sample_buffer()
+                test_sample = self.sample_buffer()
+
+                o1 = Observation(*train_sample.o1)
+                goal = o1.desired_goal
+
+                train_sample = preprocess_sample(train_sample)
+                test_sample = preprocess_sample(test_sample)
+
+                pre_td_error = worker_agent.td_error(test_sample)
+
+                worker_step = worker_agent.train_step(train_sample)
+                post_td_error = worker_agent.td_error(test_sample)
+                self.boss_state = self.boss_state._replace(reward=post_td_error -
+                                                                pre_td_error)
+
+                ones = np.ones(batch_size)
+                boss_step = self.agents.act.boss.train_step(
+                    Step(s=0,
+                         o1=train_sample.s,
+                         a=goal - train_sample.s,
+                         r=ones * self.boss_state.reward,
+                         o2=np.zeros_like(train_sample.s),
+                         # dummy
+                         t=ones,
+                         # True
+                         ))
+
+                def count(step: Step, prefix: str) -> dict:
+                    return {prefix + k.replace(' ', '_'): v
+                            for k, v in step.items() if np.isscalar(v)}
+
+                counter.update(
+                    Counter(**count(worker_step, 'worker_'),
+                            **count(boss_step, 'boss_'), ))
+        return counter
 
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
@@ -122,7 +212,9 @@ class UnsupervisedTrainer(Trainer):
         return o2, r, t, info
 
     def add_to_buffer(self, step: Step):
-        self.trainers.worker.buffer.append(step.replace(o1=self.worker_o1))
+        self.trainers.worker.buffer.append(step.replace(
+            s=boss_preprocess_func(self.boss_state.initial_obs),
+            o1=self.worker_o1))
 
     def reset(self):
         o1 = super().reset()
@@ -131,15 +223,6 @@ class UnsupervisedTrainer(Trainer):
             # goal = o1.achieved_goal + goal_delta
             goal = self.env.goal_space.sample()
             self.env.hsr_env.set_goal(goal)
-            if self.boss_state is not None:
-                self.trainers.boss.buffer.append(
-                    Step(
-                        s=0,
-                        o1=self.boss_state.initial_obs,
-                        a=self.boss_state.action,
-                        r=self.boss_state.reward,
-                        o2=o1,
-                        t=True))  # TODO: what about False?
 
             v1 = self.agents.act.worker.get_v1(
                 o1=self.trainers.worker.preprocess_func(o1))
@@ -156,21 +239,12 @@ class UnsupervisedTrainer(Trainer):
         episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
         if eval_period:
             return episode_count
-        reward = episode_count['reward']
-        if self.use_entropy_reward:
-            p = self.boss_state.initial_value / .99 ** episode_count['time_steps']
-            boss_reward = -reward * np.log(max(sigmoid(p), 1e-200))
-        else:
-            rewards = np.array(self.reward_queue)
-            boss_reward = np.matmul(self.reward_operator, rewards)[1]
 
-        episode_count['boss_reward'] = boss_reward
         episode_count['initial_value'] = self.boss_state.initial_value
         episode_count['goal_distance'] = distance_between(self.worker_o1.achieved_goal,
                                                           self.env.hsr_env.goal)
 
-        self.boss_state = self.boss_state._replace(reward=boss_reward)
-        print('\nBoss Reward:', boss_reward, '\t Initial Value:',
+        print('\nBoss Reward:', self.boss_state.reward, '\t Initial Value:',
               self.boss_state.initial_value)
         return episode_count
 

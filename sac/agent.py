@@ -37,6 +37,9 @@ class AbstractAgent:
             'V_grad',
             'Q_grad',
             'pi_grad',
+            'train_V',
+            'train_Q',
+            'train_pi',
         ]
         self.reward_scale = reward_scale
         self.activation = activation
@@ -96,8 +99,10 @@ class AbstractAgent:
             q = self.q_network(
                 self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             # noinspection PyTypeChecker
+            q_target = R + (1 - T) * gamma * v2
             self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
+                0.5 * tf.square(q - q_target))
+            self._td_error = tf.reduce_mean(.5 * tf.square(q_target - v1))
 
             # constructing pi loss
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -156,17 +161,19 @@ class AbstractAgent:
     def seq_len(self):
         return self._seq_len
 
-    def train_step(self, step: Step) -> dict:
+    def train_step(self, step: Step, add_fetch: dict = None) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A: step.a,
-            self.R: np.array(step.r) * self.reward_scale,
+            self.A:  step.a,
+            self.R:  np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T: step.t,
+            self.T:  step.t,
         }
+        train_values = self.default_train_values
+        if add_fetch:
+            train_values.append(add_fetch)
         return self.sess.run(
-            {attr: getattr(self, attr)
-             for attr in self.default_train_values}, feed_dict)
+            {attr: getattr(self, attr) for attr in train_values}, feed_dict)
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
@@ -188,6 +195,13 @@ class AbstractAgent:
 
     def get_v1(self, o1: np.ndarray):
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
+
+    def td_error(self, step: Step):
+        return self.sess.run(self._td_error, feed_dict={self.O1: step.o1,
+                                                        self.A: step.a,
+                                                        self.R: step.r,
+                                                        self.O2: step.o2,
+                                                        self.T: step.t})
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

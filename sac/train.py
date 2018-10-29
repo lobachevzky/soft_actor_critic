@@ -25,8 +25,7 @@ class Trainer:
                  buffer_size: int,
                  batch_size: int,
                  seq_len: int,
-                 num_train_steps: int,
-                 buffer: ReplayBuffer = None,
+                 n_train_steps: int,
                  sess: tf.Session = None,
                  preprocess_func=None,
                  action_space=None,
@@ -40,10 +39,10 @@ class Trainer:
 
         self.episodes = None
         self.episode_count = None
-        self.num_train_steps = num_train_steps
+        self.n_train_steps = n_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = buffer or ReplayBuffer(buffer_size)
+        self.buffer = ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
         self.action_space = action_space or env.action_space
         observation_space = observation_space or env.observation_space
@@ -56,6 +55,7 @@ class Trainer:
                     env, lambda e: hasattr(e, 'preprocess_obs')).preprocess_obs
             except RuntimeError:
                 self.preprocess_func = vectorize
+
 
         observation_space = spaces.Box(
             *[
@@ -187,15 +187,18 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
+    def train_step(self, add_fetch: list = None):
+        return self.agents.act.train_step(self.sample_buffer(),
+                                          add_fetch=add_fetch)
+
     def perform_update(self):
         counter = Counter()
         if self.buffer_ready():
-            for i in range(self.num_train_steps):
-                step = self.agents.act.train_step(self.sample_buffer())
+            for i in range(self.n_train_steps):
                 counter.update(
                     Counter({
                         k.replace(' ', '_'): v
-                        for k, v in step.items() if np.isscalar(v)
+                        for k, v in self.train_step().items() if np.isscalar(v)
                     }))
         return counter
 

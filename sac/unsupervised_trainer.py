@@ -6,27 +6,11 @@ import tensorflow as tf
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
 from environments.hsr import distance_between
+from sac.replay_buffer import ReplayBuffer
 from sac.train import Agents, HindsightTrainer, Trainer
 from sac.utils import Step
 
 BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')
-
-
-class LastEpisodeTrainer(Trainer):
-    def sample_buffer(self) -> Step:
-        sample = self.trajectory(time_steps=self.batch_size)
-        shape = [self.batch_size, -1]
-        return Step(
-            o1=self.preprocess_obs(sample.o1, shape=shape),
-            o2=self.preprocess_obs(sample.o2, shape=shape),
-            s=sample.s,
-            a=sample.a,
-            r=sample.r,
-            t=sample.t)
-
-
-class HindsightLastEpisodeTrainer(HindsightTrainer, LastEpisodeTrainer):
-    pass
 
 
 class UnsupervisedTrainer(Trainer):

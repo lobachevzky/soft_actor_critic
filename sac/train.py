@@ -26,6 +26,7 @@ class Trainer:
                  batch_size: int,
                  seq_len: int,
                  num_train_steps: int,
+                 buffer: ReplayBuffer = None,
                  sess: tf.Session = None,
                  preprocess_func=None,
                  action_space=None,
@@ -42,7 +43,7 @@ class Trainer:
         self.num_train_steps = num_train_steps
         self.batch_size = batch_size
         self.env = env
-        self.buffer = ReplayBuffer(buffer_size)
+        self.buffer = buffer or ReplayBuffer(buffer_size)
         self.sess = sess or create_sess()
         self.action_space = action_space or env.action_space
         observation_space = observation_space or env.observation_space

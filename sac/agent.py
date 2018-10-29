@@ -119,25 +119,24 @@ class AbstractAgent:
 
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
-            def train_op(loss, var_list, dependency):
-                with tf.control_dependencies([dependency]):
-                    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-                    gradients, variables = zip(
-                        *optimizer.compute_gradients(loss, var_list=var_list))
-                    if grad_clip:
-                        gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
-                    else:
-                        norm = tf.global_norm(gradients)
-                    op = optimizer.apply_gradients(
-                        zip(gradients, variables), global_step=self.global_step)
-                    return op, norm
+            def train_op(loss, var_list):
+                optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+                gradients, variables = zip(
+                    *optimizer.compute_gradients(loss, var_list=var_list))
+                if grad_clip:
+                    gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
+                else:
+                    norm = tf.global_norm(gradients)
+                op = optimizer.apply_gradients(
+                    zip(gradients, variables), global_step=self.global_step)
+                return op, norm
 
             self.train_V, self.V_grad = train_op(
-                loss=V_loss, var_list=xi, dependency=self.pi_loss)
+                loss=V_loss, var_list=xi)
             self.train_Q, self.Q_grad = train_op(
-                loss=Q_loss, var_list=theta, dependency=self.train_V)
+                loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(
-                loss=pi_loss, var_list=phi, dependency=self.train_Q)
+                loss=pi_loss, var_list=phi)
 
             with tf.control_dependencies([self.train_pi]):
                 soft_update_xi_bar_ops = [

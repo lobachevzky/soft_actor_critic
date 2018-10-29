@@ -82,35 +82,32 @@ class AbstractAgent:
                 sample_pi_network('pi', reuse=True))
 
             # constructing V loss
-            with tf.control_dependencies([self.A_sampled1]):
-                v1 = self.v_network(self.O1, 'V')
-                self.v1 = v1
-                q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
-                                    'Q')
-                log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
-                log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
-                self.V_loss = V_loss = tf.reduce_mean(
-                    0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
+            v1 = self.v_network(self.O1, 'V')
+            self.v1 = v1
+            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
+                                'Q')
+            log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
+            log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
+            self.V_loss = V_loss = tf.reduce_mean(
+                0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
 
             # constructing Q loss
-            with tf.control_dependencies([self.V_loss]):
-                v2 = self.v_network(self.O2, 'V_bar')
-                q = self.q_network(
-                    self.O1, self.transform_action_sample(A), 'Q', reuse=True)
-                # noinspection PyTypeChecker
-                self.Q_loss = Q_loss = tf.reduce_mean(
-                    0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
+            v2 = self.v_network(self.O2, 'V_bar')
+            q = self.q_network(
+                self.O1, self.transform_action_sample(A), 'Q', reuse=True)
+            # noinspection PyTypeChecker
+            self.Q_loss = Q_loss = tf.reduce_mean(
+                0.5 * tf.square(q - (R + (1 - T) * gamma * v2)))
 
             # constructing pi loss
-            with tf.control_dependencies([self.Q_loss]):
-                self.A_sampled2 = A_sampled2 = tf.stop_gradient(
-                    sample_pi_network('pi', reuse=True))
-                q2 = self.q_network(
-                    self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-                log_pi_sampled2 = pi_network_log_prob(A_sampled2, 'pi', reuse=True)
-                log_pi_sampled2 *= entropy_scale  # type: tf.Tensor
-                self.pi_loss = pi_loss = tf.reduce_mean(
-                    log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
+            self.A_sampled2 = A_sampled2 = tf.stop_gradient(
+                sample_pi_network('pi', reuse=True))
+            q2 = self.q_network(
+                self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
+            log_pi_sampled2 = pi_network_log_prob(A_sampled2, 'pi', reuse=True)
+            log_pi_sampled2 *= entropy_scale  # type: tf.Tensor
+            self.pi_loss = pi_loss = tf.reduce_mean(
+                log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
             # grabbing all the relevant variables
             def get_variables(var_name: str) -> List[tf.Variable]:

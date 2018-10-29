@@ -135,15 +135,14 @@ class AbstractAgent:
             self.train_pi, self.pi_grad = train_op(
                 loss=pi_loss, var_list=phi)
 
-            with tf.control_dependencies([self.train_pi]):
-                soft_update_xi_bar_ops = [
-                    tf.assign(xbar, tau * x + (1 - tau) * xbar)
-                    for (xbar, x) in zip(xi_bar, xi)
-                ]
-                self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
-                # self.check = tf.add_check_numerics_ops()
-                self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
-                # ensure that xi and xi_bar are the same at initialization
+            soft_update_xi_bar_ops = [
+                tf.assign(xbar, tau * x + (1 - tau) * xbar)
+                for (xbar, x) in zip(xi_bar, xi)
+            ]
+            self.soft_update_xi_bar = tf.group(*soft_update_xi_bar_ops)
+            # self.check = tf.add_check_numerics_ops()
+            self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
+            # ensure that xi and xi_bar are the same at initialization
 
             sess.run(tf.global_variables_initializer())
 

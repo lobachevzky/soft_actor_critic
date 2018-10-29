@@ -12,6 +12,23 @@ from sac.utils import Step
 BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')
 
 
+class LastEpisodeTrainer(Trainer):
+    def sample_buffer(self) -> Step:
+        sample = self.trajectory(time_steps=self.batch_size)
+        shape = [self.batch_size, -1]
+        return Step(
+            o1=self.preprocess_obs(sample.o1, shape=shape),
+            o2=self.preprocess_obs(sample.o2, shape=shape),
+            s=sample.s,
+            a=sample.a,
+            r=sample.r,
+            t=sample.t)
+
+
+class HindsightLastEpisodeTrainer(HindsightTrainer, LastEpisodeTrainer):
+    pass
+
+
 class UnsupervisedTrainer(Trainer):
     # noinspection PyMissingConstructor
     def __init__(self,
@@ -65,9 +82,9 @@ class UnsupervisedTrainer(Trainer):
             **worker_kwargs,
             **kwargs)
         if n_goals is None:
-            worker_trainer = Trainer(**worker_kwargs)
+            worker_trainer = LastEpisodeTrainer(**worker_kwargs)
         else:
-            worker_trainer = HindsightTrainer(n_goals=n_goals, **worker_kwargs)
+            worker_trainer = HindsightLastEpisodeTrainer(n_goals=n_goals, **worker_kwargs)
 
         worker_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='worker')
         var_list = {
@@ -98,23 +115,18 @@ class UnsupervisedTrainer(Trainer):
     def get_actions(self, o1, s, sample: bool):
         assert isinstance(self.env, HSRHindsightWrapper)
         self.worker_o1 = o1.replace(desired_goal=self.env.hsr_env.goal)
-        return self.trainers.worker.get_actions(self.worker_o1, s, sample=sample)
+        return self.trainers.worker.get_actions(o1=self.worker_o1, s=s, sample=sample)
 
     def perform_update(self):
-        if self.update_worker:
-            worker_update = {
-                f'worker_{k}': v
-                for k, v in (self.trainers.worker.perform_update() or {}).items()
-            }
-        else:
-            worker_update = dict()
-
         return {
             **{
                 f'boss_{k}': v
                 for k, v in (self.trainers.boss.perform_update() or {}).items()
             },
-            **worker_update
+            **{
+                f'worker_{k}': v
+                for k, v in (self.trainers.worker.perform_update() or {}).items()
+            }
         }
 
     def trajectory(self, time_steps: int, final_index=None):
@@ -162,7 +174,7 @@ class UnsupervisedTrainer(Trainer):
             return episode_count
         reward = episode_count['reward']
         if self.use_entropy_reward:
-            p = self.boss_state.initial_value / .99**episode_count['time_steps']
+            p = self.boss_state.initial_value / .99 ** episode_count['time_steps']
             boss_reward = -reward * np.log(max(sigmoid(p), 1e-200))
         else:
             rewards = np.array(self.reward_queue)
@@ -194,4 +206,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

@@ -99,14 +99,14 @@ class HSREnv:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(25,),
+                shape=(25, ),
                 dtype=np.float32,
             )
         else:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(self.sim.nq + len(self._base_joints),),
+                shape=(self.sim.nq + len(self._base_joints), ),
                 dtype=np.float32,
             )
         self.observation_space = spaces.Tuple(
@@ -114,14 +114,17 @@ class HSREnv:
 
         block_joint = self.sim.get_jnt_qposadr('block0joint')
         self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
-        offset = np.array([0,  # x
-                           1,  # y
-                           3,  # quat0
-                           6,  # quat3
-                           ])
+        offset = np.array([
+            0,  # x
+            1,  # y
+            3,  # quat0
+            6,  # quat3
+        ])
 
-        self._block_qposadrs = [self.sim.get_jnt_qposadr(f'block{i}joint') + offset
-                                for i in range(self.n_blocks)]
+        self._block_qposadrs = [
+            self.sim.get_jnt_qposadr(f'block{i}joint') + offset
+            for i in range(self.n_blocks)
+        ]
 
         # joint space
         all_joints = [
@@ -249,7 +252,7 @@ class HSREnv:
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
     def reset_sim(self, qpos: np.ndarray):
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.initial_qpos = qpos
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
@@ -285,8 +288,7 @@ class HSREnv:
 
         # set new goal
         if self._min_lift_height:
-            self.set_goal(
-                self.block_pos() + np.array([0, 0, self._min_lift_height]))
+            self.set_goal(self.block_pos() + np.array([0, 0, self._min_lift_height]))
         else:
             self.set_goal(self.goal_space.sample())
 
@@ -352,20 +354,21 @@ class MultiBlockHSREnv(HSREnv):
 
     def is_successful(self, achieved_goal=None, desired_goal=None):
         if achieved_goal is None:
-            achieved_goal = np.stack([self.block_pos(i).copy() for i in range(
-                self.n_blocks)])
+            achieved_goal = np.stack(
+                [self.block_pos(i).copy() for i in range(self.n_blocks)])
         if desired_goal is None:
             desired_goal = self.goals
 
-        return np.all(distance_between(achieved_goal[..., :2], desired_goal[...,
-                                                       :2]) < self.geofence, axis=-1)
+        return np.all(
+            distance_between(achieved_goal[..., :2], desired_goal[..., :2]) <
+            self.geofence,
+            axis=-1)
 
     def set_goal(self, goal: np.ndarray):
         goal[2] = self.initial_block_pos[2]
         super().set_goal(goal)
-        self.goals = np.stack([self.goal] + [self.block_pos(i).copy()
-                                             for i in range(1, self.n_blocks)])
-
+        self.goals = np.stack([self.goal] +
+                              [self.block_pos(i).copy() for i in range(1, self.n_blocks)])
 
 
 def quaternion2euler(w, x, y, z):

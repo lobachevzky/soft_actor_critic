@@ -20,8 +20,9 @@ def main(worker_n_layers, worker_layer_size, worker_learning_rate, worker_entrop
          boss_learning_rate, boss_entropy_scale, boss_reward_scale, boss_num_train_steps,
          boss_grad_clip, boss_buffer_size, boss_batch_size, max_steps, min_lift_height,
          geofence, hindsight_geofence, seed, goal_space, block_space, concat_record,
-         logdir, save_path, load_path, worker_load_path, render_freq, render, n_goals, record,
-         randomize_pose, image_dims, record_freq, record_path, temp_path, freeze_worker):
+         logdir, save_path, load_path, worker_load_path, render_freq, render, n_goals,
+         record, randomize_pose, image_dims, record_freq, record_path, temp_path,
+         freeze_worker):
     env = HSRHindsightWrapper(
         geofence=hindsight_geofence or geofence,
         env=TimeLimit(

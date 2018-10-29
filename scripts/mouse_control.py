@@ -9,7 +9,7 @@ from click._unicodefun import click
 
 from environments.hsr import HSREnv, print1
 from mujoco import ObjType
-from scripts.hsr import make_box
+from scripts.hsr import make_box, mutate_xml
 
 saved_pos = None
 
@@ -22,26 +22,34 @@ def cli(discrete, xml_file):
     # env = Arm2PosEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = Arm2TouchEnv(action_multiplier=.01, history_len=1, continuous=True, max_steps=9999999, neg_reward=True)
     # env = PickAndPlaceEnv(max_steps=9999999)
-    xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file)
+    goal_space = make_box((-.1, .1), (-.2, .2), (.418, .498))
+    xml_filepath = Path(
+        Path(__file__).parent.parent, 'environments', 'models', 'world.xml').absolute()
+    with mutate_xml(
+            changes=[],
+            dofs=[
+                "slide_x", "slide_y", "arm_lift_joint", "arm_flex_joint",
+                "wrist_roll_joint", "hand_l_proximal_joint", "hand_r_proximal_joint"
+            ],
+            n_blocks=3,
+            goal_space=goal_space,
+            xml_filepath=xml_filepath) as temp_path:
+        # xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file) as temp_path:
+        env = HSREnv(
+            xml_filepath=temp_path,
+            steps_per_action=300,
+            geofence=.05,
+            block_space=make_box((-.1, .1), (-.2, .2), (0, 1), (-1, 1)),
+            goal_space=goal_space,
+            randomize_pose=False,
 
-    env = HSREnv(
-        xml_filepath=xml_filepath,
-        steps_per_action=300,
-        geofence=.05,
-        block_space=make_box((-.1, .1), (-.2, .2), (0, 1), (-1, 1)),
-        goal_space=make_box((-.1, .1), (-.2, .2), (.418, .498)),
-        randomize_pose=True,
-
-        # fixed_goal=np.array([.11, .22, .4]),
-        # min_lift_height=.43,
-    )
+            # fixed_goal=np.array([.11, .22, .4]),
+            # min_lift_height=.43,
+        )
     np.set_printoptions(precision=3, linewidth=800)
     env.reset()
 
-    if discrete:
-        shape = env.action_space.n
-    else:
-        shape, = env.action_space.shape
+    shape, = env.action_space.shape
 
     i = 0
     action = 0 if discrete else np.zeros(shape)

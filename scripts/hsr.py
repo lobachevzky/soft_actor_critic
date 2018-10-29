@@ -70,8 +70,7 @@ def put_in_xml_setter(arg: str):
 
 def env_wrapper(func):
     @wraps(func)
-    def _wrapper(set_xml, use_dof, n_blocks, goal_space, xml_file, geofence,
-                 **kwargs):
+    def _wrapper(set_xml, use_dof, n_blocks, goal_space, xml_file, geofence, **kwargs):
         xml_filepath = Path(
             Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
         if set_xml is None:
@@ -80,11 +79,13 @@ def env_wrapper(func):
         path = Path('worldbody', 'body[@name="goal"]', 'site[@name="goal"]', 'size')
         set_xml += [XMLSetter(path=f'./{path}', value=site_size)]
         with mutate_xml(
-                changes=set_xml, dofs=use_dof, n_blocks=n_blocks, goal_space=goal_space,
+                changes=set_xml,
+                dofs=use_dof,
+                n_blocks=n_blocks,
+                goal_space=goal_space,
                 xml_filepath=xml_filepath) as temp_path:
             return func(
-                geofence=geofence, temp_path=temp_path,
-                goal_space=goal_space, **kwargs)
+                geofence=geofence, temp_path=temp_path, goal_space=goal_space, **kwargs)
 
     return _wrapper
 
@@ -93,9 +94,8 @@ XMLSetter = namedtuple('XMLSetter', 'path value')
 
 
 @contextmanager
-def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box,
-               n_blocks: int, xml_filepath:
-        Path):
+def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blocks: int,
+               xml_filepath: Path):
     def rel_to_abs(path: Path):
         return Path(xml_filepath.parent, path)
 
@@ -103,8 +103,8 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box,
 
         worldbody = tree.getroot().find("./worldbody")
         rgba = [
-            "0 0 1 1",
             "0 1 0 1",
+            "0 0 1 1",
             "0 1 1 1",
             "1 0 0 1",
             "1 0 1 1",
@@ -117,19 +117,21 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box,
                 pos = ' '.join(map(str, goal_space.sample()))
                 name = f'block{i}'
 
-                body = ET.SubElement(worldbody, 'body', attrib=dict(name=name,
-                                                                               pos=pos))
-                ET.SubElement(body, 'geom', attrib=dict(name=name,
-                                                                   type='box',
-                                                                   mass='1',
-                                                                   size=".05 .025 .017",
-                                                                   rgba=rgba[i],
-                                                                   condim='6',
-                                                                   solimp="0.99 0.99 "
-                                                                          "0.01",
-                                                                   solref='0.01 1'))
-                ET.SubElement(body, 'freejoint',
-                              attrib=dict(name=f'block{i}joint'))
+                body = ET.SubElement(worldbody, 'body', attrib=dict(name=name, pos=pos))
+                ET.SubElement(
+                    body,
+                    'geom',
+                    attrib=dict(
+                        name=name,
+                        type='box',
+                        mass='1',
+                        size=".05 .025 .017",
+                        rgba=rgba[i],
+                        condim='6',
+                        solimp="0.99 0.99 "
+                        "0.01",
+                        solref='0.01 1'))
+                ET.SubElement(body, 'freejoint', attrib=dict(name=f'block{i}joint'))
 
         for change in changes:
             parent = re.sub('/[^/]*$', '', change.path)
@@ -188,8 +190,8 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box,
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
          activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale,
          goal_space, block_space, grad_clip, batch_size, num_train_steps,
-         record_separate_episodes, steps_per_action, logdir, save_path, load_path,
-         render, render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
+         record_separate_episodes, steps_per_action, logdir, save_path, load_path, render,
+         render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
          record_path, temp_path, save_threshold, no_random_reset, obs_type, multi_block):
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -229,8 +231,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
 
     if hindsight_geofence:
         trainer = HindsightTrainer(
-            env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(env=env,
-                                                     geofence=hindsight_geofence),
+            env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(
+                env=env, geofence=hindsight_geofence),
             n_goals=n_goals,
             **kwargs)
     else:

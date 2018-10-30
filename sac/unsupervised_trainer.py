@@ -180,8 +180,8 @@ class UnsupervisedTrainer(Trainer):
         o1 = super().reset()
         if not self.is_eval_period():
             goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
-            goal = o1.achieved_goal + goal_delta
-            # goal = self.env.goal_space.sample()
+            # goal = o1.achieved_goal + goal_delta
+            goal = self.env.goal_space.sample()
             self.env.hsr_env.set_goal(goal)
 
             v1 = self.agents.act.worker.get_v1(

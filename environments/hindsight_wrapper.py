@@ -136,8 +136,8 @@ class HSRHindsightWrapper(HindsightWrapper):
         return observation
 
     def _is_success(self, achieved_goal, desired_goal):
-        return self.hsr_env.is_successful(achieved_goal=achieved_goal,
-                                          desired_goal=desired_goal)
+        return self.hsr_env.is_successful(
+            achieved_goal=achieved_goal, desired_goal=desired_goal)
 
     def _achieved_goal(self):
         return self.hsr_env.block_pos()
@@ -159,13 +159,12 @@ class MBHSRHindsightWrapper(HSRHindsightWrapper):
         self._mb_hsr_env = unwrap_env(env, lambda e: isinstance(e, MultiBlockHSREnv))
         self.observation_space = spaces.Tuple(
             self.observation_space.spaces.replace(
-                desired_goal=spaces.Tuple([
-                                              self.goal_space] * self.hsr_env.n_blocks)))
+                desired_goal=spaces.Tuple([self.goal_space] * self.hsr_env.n_blocks)))
 
     def _achieved_goal(self):
-        return np.stack(
-            [self._mb_hsr_env.block_pos(i).copy() for i in range(
-                self._mb_hsr_env.n_blocks)])
+        return np.stack([
+            self._mb_hsr_env.block_pos(i).copy() for i in range(self._mb_hsr_env.n_blocks)
+        ])
 
     def _desired_goal(self):
         return self.hsr_env.goals

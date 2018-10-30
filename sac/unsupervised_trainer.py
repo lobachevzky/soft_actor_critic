@@ -121,9 +121,7 @@ class UnsupervisedTrainer(Trainer):
 
         def preprocess_sample(sample: Step):
             return sample.replace(
-                o1=preprocess_obs(sample.o1),
-                o2=preprocess_obs(sample.o2)
-            )
+                o1=preprocess_obs(sample.o1), o2=preprocess_obs(sample.o2))
 
         batch_size = worker_trainer.batch_size
         if len(worker_trainer.buffer) >= batch_size:
@@ -142,25 +140,30 @@ class UnsupervisedTrainer(Trainer):
                 worker_step = worker_agent.train_step(train_sample)
                 post_td_error = worker_agent.td_error(test_sample)
                 self.boss_state = self.boss_state._replace(reward=post_td_error -
-                                                                pre_td_error)
+                                                           pre_td_error)
 
                 ones = np.ones(batch_size)
                 boss_step = self.agents.act.boss.train_step(
-                    Step(s=0,
-                         o1=train_sample.s, # first observation in episode
-                         a=goal - train_sample.s,  # goal delta
-                         r=ones * self.boss_state.reward,
-                         o2=np.zeros_like(train_sample.s), # dummy
-                         t=ones, # True
-                         ))
+                    Step(
+                        s=0,
+                        o1=train_sample.s,  # first observation in episode
+                        a=goal - train_sample.s,  # goal delta
+                        r=ones * self.boss_state.reward,
+                        o2=np.zeros_like(train_sample.s),  # dummy
+                        t=ones,  # True
+                    ))
 
                 def count(step: Step, prefix: str) -> dict:
-                    return {prefix + k.replace(' ', '_'): v
-                            for k, v in step.items() if np.isscalar(v)}
+                    return {
+                        prefix + k.replace(' ', '_'): v
+                        for k, v in step.items() if np.isscalar(v)
+                    }
 
                 counter.update(
-                    Counter(**count(worker_step, 'worker_'),
-                            **count(boss_step, 'boss_'), ))
+                    Counter(
+                        **count(worker_step, 'worker_'),
+                        **count(boss_step, 'boss_'),
+                    ))
         return counter
 
     def trajectory(self, time_steps: int, final_index=None):
@@ -172,9 +175,9 @@ class UnsupervisedTrainer(Trainer):
         return o2, r, t, info
 
     def add_to_buffer(self, step: Step):
-        self.trainers.worker.buffer.append(step.replace(
-            s=boss_preprocess_func(self.boss_state.initial_obs),
-            o1=self.worker_o1))
+        self.trainers.worker.buffer.append(
+            step.replace(
+                s=boss_preprocess_func(self.boss_state.initial_obs), o1=self.worker_o1))
 
     def reset(self):
         o1 = super().reset()
@@ -199,8 +202,9 @@ class UnsupervisedTrainer(Trainer):
         episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
         if eval_period:
             return episode_count
-        goal_distance = distance_between(self.worker_o1.achieved_goal, self.env.hsr_env.goal)
-            
+        goal_distance = distance_between(self.worker_o1.achieved_goal,
+                                         self.env.hsr_env.goal)
+
         episode_count['initial_value'] = self.boss_state.initial_value
         episode_count['goal_distance'] = goal_distance
         episode_count['boss_reward'] = self.boss_state.reward
@@ -225,4 +229,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

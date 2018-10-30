@@ -57,7 +57,6 @@ class Trainer:
             except RuntimeError:
                 self.preprocess_func = vectorize
 
-
         observation_space = spaces.Box(
             *[
                 self.preprocess_obs(get_space_attrs(observation_space, attr))
@@ -189,8 +188,7 @@ class Trainer:
                 return episode_count
 
     def train_step(self, add_fetch: list = None):
-        return self.agents.act.train_step(self.sample_buffer(),
-                                          add_fetch=add_fetch)
+        return self.agents.act.train_step(self.sample_buffer(), add_fetch=add_fetch)
 
     def perform_update(self):
         counter = Counter()

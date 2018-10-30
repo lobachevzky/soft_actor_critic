@@ -87,8 +87,7 @@ class AbstractAgent:
             # constructing V loss
             v1 = self.v_network(self.O1, 'V')
             self.v1 = v1
-            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1),
-                                'Q')
+            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
             log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
             self.V_loss = V_loss = tf.reduce_mean(
@@ -96,12 +95,10 @@ class AbstractAgent:
 
             # constructing Q loss
             v2 = self.v_network(self.O2, 'V_bar')
-            q = self.q_network(
-                self.O1, self.transform_action_sample(A), 'Q', reuse=True)
+            q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             # noinspection PyTypeChecker
             q_target = R + (1 - T) * gamma * v2
-            self.Q_loss = Q_loss = tf.reduce_mean(
-                0.5 * tf.square(q - q_target))
+            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * tf.square(q - q_target))
             self._td_error = tf.reduce_mean(.5 * tf.square(q_target - v1))
 
             # constructing pi loss
@@ -133,12 +130,9 @@ class AbstractAgent:
                     zip(gradients, variables), global_step=self.global_step)
                 return op, norm
 
-            self.train_V, self.V_grad = train_op(
-                loss=V_loss, var_list=xi)
-            self.train_Q, self.Q_grad = train_op(
-                loss=Q_loss, var_list=theta)
-            self.train_pi, self.pi_grad = train_op(
-                loss=pi_loss, var_list=phi)
+            self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi)
+            self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
+            self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
@@ -164,16 +158,16 @@ class AbstractAgent:
     def train_step(self, step: Step, add_fetch: dict = None) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A:  step.a,
-            self.R:  np.array(step.r) * self.reward_scale,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T:  step.t,
+            self.T: step.t,
         }
         train_values = self.default_train_values
         if add_fetch:
             train_values.append(add_fetch)
-        return self.sess.run(
-            {attr: getattr(self, attr) for attr in train_values}, feed_dict)
+        return self.sess.run({attr: getattr(self, attr)
+                              for attr in train_values}, feed_dict)
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
@@ -197,11 +191,15 @@ class AbstractAgent:
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
     def td_error(self, step: Step):
-        return self.sess.run(self._td_error, feed_dict={self.O1: step.o1,
-                                                        self.A: step.a,
-                                                        self.R: step.r,
-                                                        self.O2: step.o2,
-                                                        self.T: step.t})
+        return self.sess.run(
+            self._td_error,
+            feed_dict={
+                self.O1: step.o1,
+                self.A: step.a,
+                self.R: step.r,
+                self.O2: step.o2,
+                self.T: step.t
+            })
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

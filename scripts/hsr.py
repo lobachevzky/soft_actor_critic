@@ -14,7 +14,8 @@ from gym import spaces
 from gym.spaces import Box
 from gym.wrappers import TimeLimit
 
-from environments.hindsight_wrapper import HSRHindsightWrapper, MBHSRHindsightWrapper
+from environments.hindsight_wrapper import (HSRHindsightWrapper,
+                                            MBHSRHindsightWrapper)
 from environments.hsr import HSREnv, MultiBlockHSREnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer

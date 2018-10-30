@@ -47,7 +47,7 @@ class ReplayBuffer:
             key = np.arange(key.start or 0, 0 if key.stop is None else key.stop, key.step)
         return (key + self.pos) % self.maxlen
 
-    def sample(self, batch_size: int, seq_len: int=None):
+    def sample(self, batch_size: int, seq_len: int = None):
         # indices are negative because indices are relative to pos
         indices = np.random.randint(-len(self), 0, size=batch_size)  # type: np.ndarray
         if seq_len is not None:

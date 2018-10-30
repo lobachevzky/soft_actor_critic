@@ -10,7 +10,7 @@ from gym.utils import closer
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
 
 import mujoco
-from mujoco import ObjType, MujocoError
+from mujoco import MujocoError, ObjType
 
 
 class HSREnv:

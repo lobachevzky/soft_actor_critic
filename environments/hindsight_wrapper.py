@@ -11,7 +11,7 @@ from gym.spaces import Box
 import environments.hsr
 from environments import hsr
 from environments.frozen_lake import FrozenLakeEnv
-from environments.hsr import HSREnv, distance_between, MultiBlockHSREnv
+from environments.hsr import HSREnv, MultiBlockHSREnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize
 

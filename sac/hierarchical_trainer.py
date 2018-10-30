@@ -4,8 +4,10 @@ import numpy as np
 import tensorflow as tf
 from gym.spaces import Box
 
-from environments.hierarchical_wrapper import (
-    FrozenLakeHierarchicalWrapper, Hierarchical, HierarchicalAgents, HierarchicalWrapper)
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
+                                               Hierarchical,
+                                               HierarchicalAgents,
+                                               HierarchicalWrapper)
 from environments.hindsight_wrapper import Observation
 from sac.agent import NetworkOutput
 from sac.train import Agents, Trainer

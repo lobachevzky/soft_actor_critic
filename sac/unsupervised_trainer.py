@@ -1,14 +1,11 @@
-import random
-from collections import deque, namedtuple, defaultdict, Counter
+from collections import Counter, deque, namedtuple
 
 import numpy as np
 import tensorflow as tf
-from gym.spaces import Box
 
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
 from environments.hsr import distance_between
-from sac.replay_buffer import ReplayBuffer
 from sac.train import Agents, HindsightTrainer, Trainer
 from sac.utils import Step
 
@@ -150,13 +147,11 @@ class UnsupervisedTrainer(Trainer):
                 ones = np.ones(batch_size)
                 boss_step = self.agents.act.boss.train_step(
                     Step(s=0,
-                         o1=train_sample.s,
-                         a=goal - train_sample.s,
+                         o1=train_sample.s, # first observation in episode
+                         a=goal - train_sample.s,  # goal delta
                          r=ones * self.boss_state.reward,
-                         o2=np.zeros_like(train_sample.s),
-                         # dummy
-                         t=ones,
-                         # True
+                         o2=np.zeros_like(train_sample.s), # dummy
+                         t=ones, # True
                          ))
 
                 def count(step: Step, prefix: str) -> dict:

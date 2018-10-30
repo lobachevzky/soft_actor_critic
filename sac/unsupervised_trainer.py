@@ -16,41 +16,6 @@ BossState = namedtuple('BossState', 'goal action initial_obs initial_value rewar
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
-class WorkerTrainer(Trainer):
-    def perform_update(self):
-        return super().perform_update()
-
-    def train_step(self, add_fetch: list = None):
-        if add_fetch is None:
-            add_fetch = []
-        add_fetch.append('delta_td_error')
-        return super().train_step(add_fetch=add_fetch)
-
-
-class DictBuffer(ReplayBuffer):
-    def __init__(self):
-        super().__init__(maxlen=0)
-        self.buffer = defaultdict(0)
-
-    def __getitem__(self, key: Key):
-        assert self.buffer is not None
-        return self.buffer[key]
-
-    def __setitem__(self, key: Key, value):
-        self.buffer[key] = value
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def sample(self, batch_size: int, seq_len: int = None):
-        return random.choices(self.buffer.values(), batch_size)
-
-    def append(self, step: Step):
-        o1 = Observation(*step.o1)
-        key = Key(tuple(o1.achieved_goal), tuple(o1.desired_goal))
-        self[key] = step
-
-
 # TODO: can we get rid of this?
 def boss_preprocess_func(obs, _=None):
     return Observation(*obs).achieved_goal
@@ -243,6 +208,7 @@ class UnsupervisedTrainer(Trainer):
         episode_count['initial_value'] = self.boss_state.initial_value
         episode_count['goal_distance'] = distance_between(self.worker_o1.achieved_goal,
                                                           self.env.hsr_env.goal)
+        episode_count['boss_reward'] = self.boss_state.reward
 
         print('\nBoss Reward:', self.boss_state.reward, '\t Initial Value:',
               self.boss_state.initial_value)

@@ -204,14 +204,14 @@ class UnsupervisedTrainer(Trainer):
         episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
         if eval_period:
             return episode_count
-
+        goal_distance = distance_between(self.worker_o1.achieved_goal, self.env.hsr_env.goal)
+            
         episode_count['initial_value'] = self.boss_state.initial_value
-        episode_count['goal_distance'] = distance_between(self.worker_o1.achieved_goal,
-                                                          self.env.hsr_env.goal)
+        episode_count['goal_distance'] = goal_distance
         episode_count['boss_reward'] = self.boss_state.reward
 
-        print('\nBoss Reward:', self.boss_state.reward, '\t Initial Value:',
-              self.boss_state.initial_value)
+        print('\nBoss Reward:', self.boss_state.reward, '\t Goal Distance:',
+              goal_distance)
         return episode_count
 
 

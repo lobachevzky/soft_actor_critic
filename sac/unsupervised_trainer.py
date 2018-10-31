@@ -124,25 +124,28 @@ class UnsupervisedTrainer(Trainer):
                 o1=preprocess_obs(sample.o1), o2=preprocess_obs(sample.o2))
 
         batch_size = worker_trainer.batch_size
+        ones = np.ones(batch_size)
         if len(worker_trainer.buffer) >= batch_size:
             for i in range(self.n_train_steps):
+                # sample buffer
                 train_sample = self.sample_buffer()
                 test_sample = self.sample_buffer()
 
+                # extract goals
                 o1 = Observation(*train_sample.o1)
                 goal = o1.desired_goal
 
+                # preprocess observations
                 train_sample = preprocess_sample(train_sample)
                 test_sample = preprocess_sample(test_sample)
 
+                # get pre- and post-td-error
                 pre_td_error = worker_agent.td_error(test_sample)
-
                 worker_step = worker_agent.train_step(train_sample)
                 post_td_error = worker_agent.td_error(test_sample)
-                self.boss_state = self.boss_state._replace(reward=post_td_error -
-                                                           pre_td_error)
 
-                ones = np.ones(batch_size)
+                self.boss_state = self.boss_state._replace(reward=pre_td_error -
+                                                           post_td_error)
                 boss_step = self.agents.act.boss.train_step(
                     Step(
                         s=0,
@@ -150,7 +153,7 @@ class UnsupervisedTrainer(Trainer):
                         a=goal - train_sample.s,  # goal delta
                         r=ones * self.boss_state.reward,
                         o2=np.zeros_like(train_sample.s),  # dummy
-                        t=ones,  # True
+                        t=ones,  # All boss actions are terminal
                     ))
 
                 def count(step: Step, prefix: str) -> dict:
@@ -161,8 +164,8 @@ class UnsupervisedTrainer(Trainer):
 
                 counter.update(
                     Counter(
-                        **count(worker_step, 'worker_'),
-                        **count(boss_step, 'boss_'),
+                        **count(worker_step, prefix='worker_'),
+                        **count(boss_step, prefix='boss_'),
                     ))
         return counter
 

@@ -16,7 +16,8 @@ from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Step, create_sess, get_space_attrs, unwrap_env, vectorize
+from sac.utils import Obs, Step, create_sess, get_space_attrs, unwrap_env, vectorize, \
+    Shape
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -131,7 +132,7 @@ class Trainer:
 
             if save_path and episodes % 10 == 1 and passes_save_threshold:
                 print("model saved in path:", saver.save(self.sess, save_path=save_path))
-                saver.save(self.sess, save_path.replace('<episode>', str(episodes)))
+                saver.save(self.sess, str(save_path).replace('<episode>', str(episodes)))
 
             time_steps, _ = self.sess.run(
                 [self.global_step, self.increment_global_step],
@@ -210,11 +211,9 @@ class Trainer:
 
     def build_agent(self,
                     base_agent: AbstractAgent,
-                    action_space=None,
-                    observation_space=None,
-                    **kwargs):
-        if observation_space is None:
-            observation_space = self.observation_space
+                    observation_space: gym.Space,
+                    action_space: gym.Space = None,
+                    **kwargs) -> AbstractAgent:
         if action_space is None:
             action_space = self.action_space
 
@@ -242,7 +241,8 @@ class Trainer:
                     a_shape=[space_to_size(action_space)],
                     **kwargs)
 
-        return Agent()
+        agent = Agent()  # type: AbstractAgent
+        return agent
 
     def reset(self) -> Obs:
         self.episode_count = None
@@ -256,9 +256,10 @@ class Trainer:
             # noinspection PyTypeChecker
             return self.env.step(np.argmax(action))
         else:
-            return self.env.step(fit_to_space(action, space=self.action_space))
+            s, r, t, i = self.env.step(fit_to_space(action, space=self.action_space))
+            return s, r, t, i
 
-    def preprocess_obs(self, obs, shape: tuple = None):
+    def preprocess_obs(self, obs, shape: Shape = None):
         if self.preprocess_func is not None:
             obs = self.preprocess_func(obs, shape)
         return obs

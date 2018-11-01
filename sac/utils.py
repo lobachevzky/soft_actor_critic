@@ -1,11 +1,13 @@
 # stdlib
 from collections import namedtuple
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, Sequence
 
 # third party
 import gym
 import numpy as np
 import tensorflow as tf
+
+Shape = Union[int, Sequence[int]]
 
 
 def leaky_relu(x, alpha=0.2):
@@ -86,7 +88,7 @@ def assign_to_vector(x, vector: np.ndarray):
             assign_to_vector(_x, vector[tuple(indices)])
 
 
-def vectorize(x, shape: Optional[tuple] = None):
+def vectorize(x, shape: Shape = None):
     if isinstance(x, np.ndarray):
         return x
 

@@ -129,6 +129,7 @@ class UnsupervisedTrainer(Trainer):
                 worker_step = worker_agent.train_step(step=train_sample)
                 post_td_error = worker_agent.td_error(step=test_sample)
 
+                # noinspection PyProtectedMember
                 self.boss_state = self.boss_state._replace(reward=pre_td_error -
                                                            post_td_error)
 

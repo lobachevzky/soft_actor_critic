@@ -29,7 +29,7 @@ class AbstractAgent:
                  grad_clip: float,
                  device_num: int = 1,
                  reuse=False,
-                 name='agent') -> None:
+                 scope='agent') -> None:
 
         self.default_train_values = [
             'entropy',
@@ -52,7 +52,7 @@ class AbstractAgent:
         self.initial_state = None
         self.sess = sess
 
-        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(name, reuse=reuse):
+        with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
 
             seq_dim = [batch_size]
@@ -65,33 +65,33 @@ class AbstractAgent:
                 tf.float32, [batch_size] + list(a_shape), name='A')
             self.R = R = tf.placeholder(tf.float32, [batch_size], name='R')
             self.T = T = tf.placeholder(tf.float32, [batch_size], name='T')
-            gamma = 0.99
+            gamma = tf.constant(0.99)
             tau = 0.01
 
             processed_s, self.S_new = self.pi_network(self.O1)
             parameters = self.parameters = self.produce_policy_parameters(
                 a_shape[0], processed_s)
 
-            def pi_network_log_prob(a: tf.Tensor, name: str, reuse: bool) \
+            def pi_network_log_prob(a: tf.Tensor, name: str, _reuse: bool) \
                     -> tf.Tensor:
-                with tf.variable_scope(name, reuse=reuse):
+                with tf.variable_scope(name, reuse=_reuse):
                     return self.policy_parameters_to_log_prob(a, parameters)
 
-            def sample_pi_network(name: str, reuse: bool) -> tf.Tensor:
-                with tf.variable_scope(name, reuse=reuse):
+            def sample_pi_network(name: str, _reuse: bool) -> tf.Tensor:
+                with tf.variable_scope(name, reuse=_reuse):
                     return self.policy_parameters_to_sample(parameters)
 
             # generate actions:
             self.A_max_likelihood = tf.stop_gradient(
                 self.policy_parameters_to_max_likelihood_action(parameters))
             self.A_sampled1 = A_sampled1 = tf.stop_gradient(
-                sample_pi_network('pi', reuse=True))
+                sample_pi_network('pi', _reuse=True))
 
             # constructing V loss
             v1 = self.v_network(self.O1, 'V')
             self.v1 = v1
             q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
-            log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', reuse=True)
+            log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', _reuse=True)
             log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
             self.V_loss = V_loss = tf.reduce_mean(
                 0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
@@ -99,17 +99,17 @@ class AbstractAgent:
             # constructing Q loss
             v2 = self.v_network(self.O2, 'V_bar')
             q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
-            # noinspection PyTypeChecker
-            q_target = R + (1 - T) * gamma * v2
+            not_done = 1 - T  # type: tf.Tensor
+            q_target = R + gamma * not_done * v2
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * tf.square(q - q_target))
             self._td_error = tf.reduce_mean(tf.square(q_target - v1))
 
             # constructing pi loss
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
-                sample_pi_network('pi', reuse=True))
+                sample_pi_network('pi', _reuse=True))
             q2 = self.q_network(
                 self.O1, self.transform_action_sample(A_sampled2), 'Q', reuse=True)
-            log_pi_sampled2 = pi_network_log_prob(A_sampled2, 'pi', reuse=True)
+            log_pi_sampled2 = pi_network_log_prob(A_sampled2, 'pi', _reuse=True)
             log_pi_sampled2 *= entropy_scale  # type: tf.Tensor
             self.pi_loss = pi_loss = tf.reduce_mean(
                 log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
@@ -117,7 +117,7 @@ class AbstractAgent:
             # grabbing all the relevant variables
             def get_variables(var_name: str) -> List[tf.Variable]:
                 return tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{name}/{var_name}/')
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{scope}/{var_name}/')
 
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
@@ -161,10 +161,10 @@ class AbstractAgent:
     def train_step(self, step: Step, add_fetch: dict = None) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A: step.a,
-            self.R: np.array(step.r) * self.reward_scale,
+            self.A:  step.a,
+            self.R:  np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T: step.t,
+            self.T:  step.t,
         }
         train_values = self.default_train_values
         if add_fetch:
@@ -198,10 +198,10 @@ class AbstractAgent:
             self._td_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     @abstractmethod

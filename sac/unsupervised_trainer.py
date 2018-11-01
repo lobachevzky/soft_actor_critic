@@ -9,13 +9,8 @@ from environments.hsr import distance_between
 from sac.train import Agents, HindsightTrainer, Trainer
 from sac.utils import Step
 
-BossState = namedtuple('BossState', 'goal action initial_obs initial_value reward')
+BossState = namedtuple('BossState', 'goal action initial_achieved initial_value reward')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
-
-
-# TODO: can we get rid of this?
-def boss_preprocess_func(obs, _=None):
-    return Observation(*obs).achieved_goal
 
 
 class UnsupervisedTrainer(Trainer):
@@ -25,7 +20,6 @@ class UnsupervisedTrainer(Trainer):
                  sess: tf.Session,
                  worker_kwargs: dict,
                  boss_kwargs: dict,
-                 boss_freq: int = None,
                  n_train_steps: int = None,
                  update_worker: bool = True,
                  n_goals: int = None,
@@ -35,16 +29,6 @@ class UnsupervisedTrainer(Trainer):
         self.n_train_steps = n_train_steps
         self.update_worker = update_worker
         self.boss_state = None
-        self.worker_o1 = None
-        self.boss_o1 = None
-
-        self.boss_freq = boss_freq
-        self.reward_queue = deque(maxlen=boss_freq)
-        self.use_entropy_reward = boss_freq is None
-        if boss_freq:
-            X = np.ones((boss_freq, 2))
-            X[:, 1] = np.arange(boss_freq)
-            self.reward_operator = np.matmul(np.linalg.inv(np.matmul(X.T, X)), X.T)
 
         self.env = env
         self.action_space = env.action_space
@@ -54,7 +38,7 @@ class UnsupervisedTrainer(Trainer):
         boss_trainer = Trainer(
             observation_space=env.observation_space,
             action_space=env.goal_space,
-            preprocess_func=boss_preprocess_func,
+            preprocess_func=lambda obs, _: Observation(*obs).achieved_goal,
             env=env,
             sess=sess,
             name='boss',
@@ -102,9 +86,7 @@ class UnsupervisedTrainer(Trainer):
                 initial_state=0))
 
     def get_actions(self, o1, s, sample: bool):
-        assert isinstance(self.env, HSRHindsightWrapper)
-        self.worker_o1 = o1.replace(desired_goal=self.env.hsr_env.goal)
-        return self.trainers.worker.get_actions(o1=self.worker_o1, s=s, sample=sample)
+        return self.trainers.worker.get_actions(o1=o1, s=s, sample=sample)
 
     def sample_buffer(self) -> Step:
         worker = self.trainers.worker
@@ -132,27 +114,29 @@ class UnsupervisedTrainer(Trainer):
                 test_sample = self.sample_buffer()
 
                 # extract goals
-                o1 = Observation(*train_sample.o1)
-                goal = o1.desired_goal
+                goal = Observation(*train_sample.o1).desired_goal
+                initial_achieved = train_sample.s
 
-                # preprocess observations
-                train_sample = preprocess_sample(train_sample)
-                test_sample = preprocess_sample(test_sample)
+                # discard achieved goal and vectorize
+                test_sample = preprocess_sample(sample=test_sample)
+                train_sample = preprocess_sample(sample=train_sample)
 
                 # get pre- and post-td-error
-                pre_td_error = worker_agent.td_error(test_sample)
-                worker_step = worker_agent.train_step(train_sample)
-                post_td_error = worker_agent.td_error(test_sample)
+                pre_td_error = worker_agent.td_error(step=test_sample)
+                worker_step = worker_agent.train_step(step=train_sample)
+                post_td_error = worker_agent.td_error(step=test_sample)
 
                 self.boss_state = self.boss_state._replace(reward=pre_td_error -
                                                            post_td_error)
+
+                # TODO: would a boss buffer help or hurt?
                 boss_step = self.agents.act.boss.train_step(
                     Step(
                         s=0,
-                        o1=train_sample.s,  # first observation in episode
-                        a=goal - train_sample.s,  # goal delta
+                        o1=initial_achieved,  # 1st obs in episode
+                        a=goal - initial_achieved,  # goal delta
                         r=ones * self.boss_state.reward,
-                        o2=np.zeros_like(train_sample.s),  # dummy
+                        o2=np.zeros_like(initial_achieved),  # dummy
                         t=ones,  # All boss actions are terminal
                     ))
 
@@ -172,23 +156,19 @@ class UnsupervisedTrainer(Trainer):
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
 
-    def step(self, action: np.ndarray, render: bool):
-        o2, r, t, info = super().step(action=action, render=render)
-        self.reward_queue += [r]
-        return o2, r, t, info
-
     def add_to_buffer(self, step: Step):
         self.trainers.worker.buffer.append(
-            step.replace(
-                s=boss_preprocess_func(self.boss_state.initial_obs), o1=self.worker_o1))
+            step.replace(s=self.boss_state.initial_achieved))
 
     def reset(self):
         o1 = super().reset()
         if not self.is_eval_period():
-            goal_delta = self.trainers.boss.get_actions(o1, 0, sample=False).output
+            goal_delta = self.trainers.boss.get_actions(o1=o1, s=0, sample=False).output
             goal = o1.achieved_goal + goal_delta
             # goal = self.env.goal_space.sample()
             self.env.hsr_env.set_goal(goal)
+
+            o1 = o1.replace(desired_goal=goal)
 
             v1 = self.agents.act.worker.get_v1(
                 o1=self.trainers.worker.preprocess_func(o1))
@@ -196,7 +176,7 @@ class UnsupervisedTrainer(Trainer):
             self.boss_state = BossState(
                 goal=goal,
                 action=goal_delta,
-                initial_obs=o1,
+                initial_achieved=Observation(*o1).achieved_goal,
                 initial_value=normalized_v1,
                 reward=None)
         return o1
@@ -205,8 +185,12 @@ class UnsupervisedTrainer(Trainer):
         episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
         if eval_period:
             return episode_count
-        goal_distance = distance_between(self.worker_o1.achieved_goal,
-                                         self.env.hsr_env.goal)
+        assert np.allclose(o1.desired_goal, self.env.hsr_env.goal)
+
+        goal_distance = distance_between(
+            self.boss_state.initial_achieved,
+            o1.desired_goal,
+        )
 
         episode_count['initial_value'] = self.boss_state.initial_value
         episode_count['goal_distance'] = goal_distance

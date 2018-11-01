@@ -99,7 +99,11 @@ class AbstractAgent:
             # noinspection PyTypeChecker
             q_target = R + (1 - T) * gamma * v2
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * tf.square(q - q_target))
-            self._td_error = tf.reduce_mean(.5 * tf.square(q_target - v1))
+
+            self._v1 = v1
+            self._v2 = v2
+            self._q_target = q_target
+            self._td_error = tf.reduce_mean(tf.square(q_target - v1))
 
             # constructing pi loss
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -191,8 +195,8 @@ class AbstractAgent:
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
     def td_error(self, step: Step):
-        return self.sess.run(
-            self._td_error,
+        tde, v1, v2, q_target = self.sess.run(
+            [self._td_error, self._v1, self._v2, self._q_target],
             feed_dict={
                 self.O1: step.o1,
                 self.A: step.a,
@@ -200,6 +204,9 @@ class AbstractAgent:
                 self.O2: step.o2,
                 self.T: step.t
             })
+        assert np.allclose(step.r + .99 * (1 - step.t) * v2, q_target)
+        assert np.allclose(np.mean((v1 - q_target)**2), tde)
+        return tde
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

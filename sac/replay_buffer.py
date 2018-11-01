@@ -1,7 +1,10 @@
+# stdlib
 from typing import Iterable
 
+# third party
 import numpy as np
 
+# first party
 from sac.array_group import ArrayGroup, Key, X
 
 

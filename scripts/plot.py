@@ -1,12 +1,15 @@
 #! /usr/bin/env python
+# stdlib
 import argparse
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
-import pandas as pd
+# third party
 # noinspection PyUnresolvedReferences
+import matplotlib.pyplot as plt
+import pandas as pd
 from pandas.errors import EmptyDataError
+
+# first party
 from sac.utils import softmax
 
 

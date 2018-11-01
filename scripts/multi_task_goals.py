@@ -1,8 +1,10 @@
+# stdlib
 import itertools
 
+# third party
 import click
-import numpy as np
 from gym import spaces
+import numpy as np
 
 
 def parse_coordinate(ctx, param, string):

@@ -1,12 +1,15 @@
 #! /usr/bin/env python3
 """Agent that executes random actions"""
+# stdlib
 # import gym
 from pathlib import Path
 
+# third party
+from click._unicodefun import click
 import ipdb
 import numpy as np
-from click._unicodefun import click
 
+# first party
 from environments.hsr import HSREnv, print1
 from mujoco import ObjType
 from scripts.hsr import make_box, mutate_xml

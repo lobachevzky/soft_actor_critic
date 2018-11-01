@@ -1,14 +1,17 @@
-import itertools
+# stdlib
 from collections import namedtuple
 from contextlib import contextmanager
+import itertools
 from pathlib import Path
 from typing import Tuple
 
-import numpy as np
+# third party
 from gym import spaces
 from gym.utils import closer
 from gym.wrappers.monitoring.video_recorder import VideoRecorder
+import numpy as np
 
+# first party
 import mujoco
 from mujoco import MujocoError, ObjType
 

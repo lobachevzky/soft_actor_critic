@@ -1,20 +1,22 @@
-import itertools
-import time
+# stdlib
 from collections import Counter, deque, namedtuple
+import itertools
 from pathlib import Path
+import time
 from typing import Optional, Tuple
 
+# third party
 import gym
+from gym import Wrapper, spaces
 import numpy as np
 import tensorflow as tf
-from gym import Wrapper, spaces
 
+# first party
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import (Obs, Step, create_sess, get_space_attrs, unwrap_env,
-                       vectorize)
+from sac.utils import Obs, Step, create_sess, get_space_attrs, unwrap_env, vectorize
 
 Agents = namedtuple('Agents', 'train act')
 

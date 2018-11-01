@@ -1,7 +1,9 @@
+# third party
 import click
 import gym
 import tensorflow as tf
 
+# first party
 from environments.hindsight_wrapper import MountaincarHindsightWrapper
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer

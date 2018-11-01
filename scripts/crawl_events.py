@@ -1,11 +1,13 @@
 #! /usr/bin/env python
 
+# stdlib
 import argparse
 from collections import namedtuple
 from itertools import islice
 from pathlib import Path
 from typing import List, Optional
 
+# third party
 import tensorflow as tf
 from tensorflow.python.framework.errors_impl import DataLossError
 

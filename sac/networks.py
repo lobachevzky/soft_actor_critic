@@ -1,9 +1,12 @@
+# stdlib
 from typing import Tuple
 
+# third party
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.rnn import BasicLSTMCell, LSTMStateTuple
 
+# first party
 from sac.agent import AbstractAgent, NetworkOutput
 from sac.utils import ArrayLike, Step
 

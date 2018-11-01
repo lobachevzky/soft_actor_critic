@@ -1,6 +1,8 @@
+# stdlib
 from collections import namedtuple
 from typing import Any, Callable, Optional, Union
 
+# third party
 import gym
 import numpy as np
 import tensorflow as tf

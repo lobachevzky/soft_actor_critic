@@ -1,13 +1,16 @@
+# stdlib
 import sys
 import time
 from typing import Iterable, Tuple, Union
 
-import gym.envs.toy_text.frozen_lake
-import numpy as np
+# third party
 from gym import utils
+import gym.envs.toy_text.frozen_lake
 from gym.spaces import Discrete
+import numpy as np
 from six import StringIO
 
+# first party
 from environments.hsr import Observation
 
 MAPS = gym.envs.toy_text.frozen_lake.MAPS

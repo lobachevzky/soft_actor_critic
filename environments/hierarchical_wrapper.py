@@ -1,10 +1,12 @@
+# stdlib
 from collections import namedtuple
 
-import numpy as np
+# third party
 from gym import spaces
+import numpy as np
 
-from environments.hindsight_wrapper import (FrozenLakeHindsightWrapper,
-                                            HindsightWrapper)
+# first party
+from environments.hindsight_wrapper import FrozenLakeHindsightWrapper, HindsightWrapper
 from sac.utils import vectorize
 
 

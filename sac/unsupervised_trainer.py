@@ -1,8 +1,11 @@
-from collections import Counter, deque, namedtuple
+# stdlib
+from collections import Counter, namedtuple
 
+# third party
 import numpy as np
 import tensorflow as tf
 
+# first party
 from environments.hierarchical_wrapper import Hierarchical, HierarchicalAgents
 from environments.hindsight_wrapper import HSRHindsightWrapper, Observation
 from environments.hsr import distance_between

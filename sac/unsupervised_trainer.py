@@ -167,9 +167,11 @@ class UnsupervisedTrainer(Trainer):
     def reset(self):
         o1 = super().reset()
         if not self.is_eval_period():
-            goal_delta = self.trainers.boss.get_actions(o1=o1, s=0, sample=False).output
-            goal = o1.achieved_goal + goal_delta
-            # goal = self.env.goal_space.sample()
+            # goal_delta = self.trainers.boss.get_actions(o1=o1, s=0, sample=False).output
+            # goal = o1.achieved_goal + goal_delta
+            old_goal = self.env.hsr_env.goal.copy()
+            goal = self.env.goal_space.sample()
+            goal_delta = goal - old_goal
             self.env.hsr_env.set_goal(goal)
 
             o1 = o1.replace(desired_goal=goal)

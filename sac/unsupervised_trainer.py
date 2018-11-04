@@ -44,6 +44,7 @@ class UnsupervisedTrainer(Trainer):
 
                 if self.boss_state.history is not None:
                     fetch = dict(
+                        estimated_delta=agent.estimated_delta,
                         model_loss=agent.model_loss,
                         model_grad=agent.model_grad,
                         train_model=agent.train_model)
@@ -60,6 +61,7 @@ class UnsupervisedTrainer(Trainer):
                 for k, v in train_values.items():
                     if np.isscalar(v):
                         counter.update(**{k: v})
+                counter.update(delta_tde=float(np.mean(delta_tde)))
 
             self.boss_state = self.boss_state._replace(
                 history=np.hstack([test_sample.o1, test_sample.a]),
@@ -95,9 +97,7 @@ class UnsupervisedTrainer(Trainer):
             o1.desired_goal,
         )
 
-        # episode_count['initial_value'] = self.boss_state.initial_value
         episode_count['goal_distance'] = goal_distance
-        episode_count['boss_reward'] = self.boss_state.reward
 
         print('\nBoss Reward:', self.boss_state.reward, '\t Goal Distance:',
               goal_distance)

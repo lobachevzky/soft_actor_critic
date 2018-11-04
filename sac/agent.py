@@ -176,9 +176,10 @@ class AbstractAgent:
                          tf.reshape(key, shape=[batch_size, 1, layer_size]))
                 sims = tf.reduce_sum(diffs ** 2, axis=2)
 
-                self.estimated_tde = tf.squeeze(tf.matmul(sims, values), squeeze_dims=1)
+                estimated_delta = tf.squeeze(tf.matmul(sims, values), squeeze_dims=1)
+                self.estimated_delta = tf.reduce_mean(estimated_delta)
 
-            self.model_loss = tf.reduce_mean(.5 * tf.square(self.estimated_tde -
+            self.model_loss = tf.reduce_mean(.5 * tf.square(estimated_delta -
                                                             self.delta_tde))
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,

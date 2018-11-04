@@ -175,7 +175,8 @@ class AbstractAgent:
 
                 self.estimated_tde = tf.squeeze(tf.matmul(sims, values), squeeze_dims=1)
 
-            self.model_loss = .5 * tf.square(self.estimated_tde - self.delta_tde)
+            self.model_loss = tf.reduce_mean(.5 * tf.square(self.estimated_tde -
+                                                            self.delta_tde))
             self.train_model, self.model_grad = train_op(loss=self.model_loss,
                                                          var_list=get_variables('tde_model'))
 

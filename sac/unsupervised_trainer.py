@@ -45,7 +45,7 @@ class UnsupervisedTrainer(Trainer):
                 if self.boss_state.history is not None:
                     fetch = dict(
                         model_loss=agent.model_loss,
-                        model_gra=agent.model_grad,
+                        model_grad=agent.model_grad,
                         train_model=agent.train_model)
                     train_result = self.sess.run(
                         list(fetch.values()),

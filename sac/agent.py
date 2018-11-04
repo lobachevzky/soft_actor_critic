@@ -159,24 +159,17 @@ class AbstractAgent:
             self.old_delta_tde = tf.placeholder(tf.float32, [batch_size])
             self.delta_tde = tf.placeholder(tf.float32, [batch_size])
 
-            with tf.variable_scope('tde_keys'):
-                key, keys = tf.split(self.network(
-                    tf.concat([self.history, oa], axis=0)
-                ).output, 2, axis=0)
-
-            with tf.variable_scope('tde_values'):
-                batch_size = batch_size or -1
-                old_delta_tde = tf.reshape(self.old_delta_tde, [batch_size, 1])
-                values = tf.reshape(tf.layers.dense(self.network(
-                    tf.concat([self.history, old_delta_tde], axis=1)
-                ).output, 1), [batch_size, 1])
-
             with tf.variable_scope('tde_model'):
-                diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) -
-                         tf.reshape(key, shape=[batch_size, 1, layer_size]))
-                sims = tf.reduce_sum(diffs ** 2, axis=2)
 
-                estimated_delta = tf.squeeze(tf.matmul(sims, values), squeeze_dims=1)
+                _batch_size = 32
+                history = tf.reshape(self.history, [1, key_dim * _batch_size])
+                old_delta_tde = tf.reshape(self.old_delta_tde, [1, _batch_size])
+                past_mapping = tf.concat([history, old_delta_tde, ], axis=1)
+                past_mapping = tf.tile(past_mapping, [_batch_size, 1])
+                inputs = tf.concat([
+                    oa, past_mapping
+                ], axis=1)
+                estimated_delta = tf.layers.dense(self.network(inputs).output, 1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
             self.model_loss = tf.reduce_mean(tf.abs(estimated_delta - self.delta_tde))

@@ -172,7 +172,7 @@ class AbstractAgent:
                 estimated_delta = tf.layers.dense(self.network(inputs).output, 1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
-            self.model_loss = tf.reduce_mean(tf.abs(estimated_delta - self.delta_tde))
+            self.model_loss = tf.reduce_mean(tf.square(estimated_delta - self.delta_tde))
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,
                 var_list=[v for scope in ['tde_keys', 'tde_values', 'tde_model']

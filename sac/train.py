@@ -176,6 +176,7 @@ class Trainer:
                 print('Time step:', time_steps, info['print'])
             if not eval_period:
                 episode_mean.update(self.perform_update())
+
             self.add_to_buffer(Step(s=s, o1=o1, a=a, r=r, o2=o2, t=t))
             o1 = o2
             # noinspection PyTypeChecker
@@ -190,8 +191,8 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def train_step(self, add_fetch: list = None):
-        return self.agents.act.train_step(self.sample_buffer(), add_fetch=add_fetch)
+    def train_step(self):
+        return self.agents.act.train_step(self.sample_buffer())
 
     def perform_update(self):
         counter = Counter()

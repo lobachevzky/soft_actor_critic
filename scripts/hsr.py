@@ -241,7 +241,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             n_goals=n_goals,
             **kwargs)
     elif unsupervised:
-        trainer = UnsupervisedTrainer(env=env, **kwargs)
+        trainer = UnsupervisedTrainer(env=HSRHindsightWrapper(env, geofence=geofence),
+                                      **kwargs)
     else:
         trainer = Trainer(env=env, **kwargs)
     trainer.train(
@@ -269,7 +270,7 @@ def cli():
     scales.add_argument('--entropy-scale', type=float, default=1)
     p.add_argument('--learning-rate', type=float, required=True)
     p.add_argument('--max-steps', type=int, required=True)
-    p.add_argument('--n-goals', type=int, required=True)
+    p.add_argument('--n-goals', type=int)
     p.add_argument('--n-blocks', type=int, required=True)
     p.add_argument('--min-lift-height', type=float, default=None)
     p.add_argument('--grad-clip', type=float, required=True)

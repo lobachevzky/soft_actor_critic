@@ -16,8 +16,8 @@ Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
 class UnsupervisedTrainer(Trainer):
-    # noinspection PyMissingConstructor
     def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self.boss_state = BossState(
             history=None,
             delta_tde=None,
@@ -29,17 +29,11 @@ class UnsupervisedTrainer(Trainer):
     def perform_update(self):
         counter = Counter()
 
-        def preprocess_sample(sample: Step):
-            shape = [self.batch_size, -1]
-            return sample.replace(
-                o1=self.preprocess_obs(sample.o1, shape),
-                o2=self.preprocess_obs(sample.o2, shape))
-
         if self.buffer_ready():
             for i in range(self.n_train_steps):
                 # sample buffer
-                test_sample = preprocess_sample(sample=(self.sample_buffer()))
-                train_sample = preprocess_sample(sample=(self.sample_buffer()))
+                test_sample = self.sample_buffer()
+                train_sample = self.sample_buffer()
 
                 # get pre- and post-td-error
                 agent = self.agents.act
@@ -49,17 +43,21 @@ class UnsupervisedTrainer(Trainer):
                 delta_tde = pre_td_error - post_td_error
 
                 if self.boss_state.history is not None:
-                    train_values.update(self.sess.run(
-                        [agent.model_loss, agent.model_grad, agent.train_model],
-                        feed_dict={
-                            agent.O1:            test_sample.o1,
-                            agent.A:             test_sample.a,
-                            agent.history:       self.boss_state.history,
-                            agent.old_delta_tde: self.boss_state.delta_tde,
-                            agent.delta_tde:     delta_tde,
-                        }))
+                    fetch = dict(
+                        model_loss=agent.model_loss,
+                        model_gra=agent.model_grad,
+                        train_model=agent.train_model)
+                    train_result = self.sess.run(
+                        list(fetch.values()),
+                        feed_dict={agent.O1:            test_sample.o1,
+                                   agent.A:             test_sample.a,
+                                   agent.history:       self.boss_state.history,
+                                   agent.old_delta_tde: self.boss_state.delta_tde,
+                                   agent.delta_tde:     delta_tde, })
+                    for k, v in zip(fetch.keys(), train_result):
+                        train_values[k] = v
 
-                for k, v in train_values:
+                for k, v in train_values.items():
                     if np.isscalar(v):
                         counter.update(**{k: v})
 
@@ -71,10 +69,6 @@ class UnsupervisedTrainer(Trainer):
 
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
-
-    def add_to_buffer(self, step: Step):
-        self.trainers.worker.buffer.append(
-            step.replace(s=self.boss_state.initial_achieved))
 
     def reset(self):
         o1 = super().reset()
@@ -88,15 +82,12 @@ class UnsupervisedTrainer(Trainer):
 
             o1 = o1.replace(desired_goal=goal)
 
-            v1 = self.agents.act.worker.get_v1(
-                o1=self.trainers.worker.preprocess_func(o1))
-            normalized_v1 = v1 / self.agents.act.worker.reward_scale
-            self.boss_state = BossState(
-                goal=goal,
-                action=goal_delta,
-                initial_achieved=Observation(*o1).achieved_goal,
-                initial_value=normalized_v1,
-                reward=None)
+            # v1 = self.agents.act.get_v1(
+            #     o1=self.preprocess_func(o1))
+            # normalized_v1 = v1 / self.agents.act.reward_scale
+            self.boss_state = self.boss_state._replace(
+                initial_achieved=Observation(*o1).achieved_goal)
+                # initial_value=normalized_v1,
         return o1
 
     def run_episode(self, o1, eval_period, render):
@@ -110,7 +101,7 @@ class UnsupervisedTrainer(Trainer):
             o1.desired_goal,
         )
 
-        episode_count['initial_value'] = self.boss_state.initial_value
+        # episode_count['initial_value'] = self.boss_state.initial_value
         episode_count['goal_distance'] = goal_distance
         episode_count['boss_reward'] = self.boss_state.reward
 

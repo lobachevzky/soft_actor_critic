@@ -163,16 +163,17 @@ class AbstractAgent:
                 key, keys = tf.split(self.network(
                     tf.concat([self.history, oa], axis=0)
                 ).output, 2, axis=0)
-                keys = tf.layers.dense(keys, 15)  # TODO: for debugging
-                values = self.old_delta_tde
+
+                batch_size = batch_size or -1
+                values = tf.reshape(self.old_delta_tde, [batch_size, 1])
                 # values = tf.layers.dense(self.network(
                 #     tf.concat([self.history, self.old_delta_tde], axis=1)
                 # ).output, 1)
-                sims = tf.reduce_sum((
-                                             tf.reshape(keys, [1, batch_size, -1]) -
-                                             tf.reshape(key, [batch_size, 1, -1])
-                                     ) ** 2, axis=2, keepdims=True)
-                self.estimated_tde = tf.matmul(sims, values)
+                diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) -
+                         tf.reshape(key, shape=[batch_size, 1, layer_size]))
+                sims = tf.reduce_sum(diffs ** 2, axis=2)
+
+                self.estimated_tde = tf.squeeze(tf.matmul(sims, values), squeeze_dims=1)
 
             self.model_loss = .5 * tf.square(self.estimated_tde - self.delta_tde)
             self.train_model, self.model_grad = train_op(loss=self.model_loss,

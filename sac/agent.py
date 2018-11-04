@@ -101,7 +101,8 @@ class AbstractAgent:
             q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             not_done = 1 - T  # type: tf.Tensor
             q_target = R + gamma * not_done * v2
-            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * tf.square(q - q_target))
+            self._td_error = tf.square(q - q_target)
+            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self._td_error)
 
             # constructing pi loss
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -145,6 +146,38 @@ class AbstractAgent:
             self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
             # ensure that xi and xi_bar are the same at initialization
 
+            # TD error prediction model
+            key_dim = (list(o_shape)[0] +  # o1
+                       list(a_shape)[0]  # a
+                       )
+            # 1 +                 # r
+            # list(o_shape)[0] +  # o2
+            # 1)                  # t
+
+            self.history = tf.placeholder(tf.float32, [batch_size, key_dim])
+            oa = tf.concat([self.O1, self.A], axis=1)
+            self.old_delta_tde = tf.placeholder(tf.float32, [batch_size])
+            self.delta_tde = tf.placeholder(tf.float32, [batch_size])
+
+            with tf.variable_scope('tde_model'):
+                key, keys = tf.split(self.network(
+                    tf.concat([self.history, oa], axis=0)
+                ).output, 2, axis=0)
+                keys = tf.layers.dense(keys, 15)  # TODO: for debugging
+                values = self.old_delta_tde
+                # values = tf.layers.dense(self.network(
+                #     tf.concat([self.history, self.old_delta_tde], axis=1)
+                # ).output, 1)
+                sims = tf.reduce_sum((
+                                             tf.reshape(keys, [1, batch_size, -1]) -
+                                             tf.reshape(key, [batch_size, 1, -1])
+                                     ) ** 2, axis=2, keepdims=True)
+                self.estimated_tde = tf.matmul(sims, values)
+
+            self.model_loss = .5 * tf.square(self.estimated_tde - self.delta_tde)
+            self.train_model, self.model_grad = train_op(loss=self.model_loss,
+                                                         var_list=get_variables('tde_model'))
+
             sess.run(tf.global_variables_initializer())
 
             # ensure that xi and xi_bar are the same at initialization
@@ -153,11 +186,12 @@ class AbstractAgent:
             hard_update_xi_bar = tf.group(*hard_update_xi_bar_ops)
             sess.run(hard_update_xi_bar)
 
+
     @property
     def seq_len(self):
         return self._seq_len
 
-    def train_step(self, step: Step, add_fetch: dict = None) -> dict:
+    def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
             self.A:  step.a,
@@ -165,11 +199,8 @@ class AbstractAgent:
             self.O2: step.o2,
             self.T:  step.t,
         }
-        train_values = self.default_train_values
-        if add_fetch:
-            train_values.append(add_fetch)
         return self.sess.run({attr: getattr(self, attr)
-                              for attr in train_values}, feed_dict)
+                              for attr in self.default_train_values}, feed_dict)
 
     def get_actions(self, o: ArrayLike, sample: bool = True, state=None) -> NetworkOutput:
         A = self.A_sampled1 if sample else self.A_max_likelihood
@@ -194,7 +225,7 @@ class AbstractAgent:
 
     def td_error(self, step: Step):
         return self.sess.run(
-            self.Q_loss,
+            self._td_error,
             feed_dict={
                 self.O1: step.o1,
                 self.A:  step.a,

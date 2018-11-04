@@ -75,19 +75,13 @@ class UnsupervisedTrainer(Trainer):
         if not self.is_eval_period():
             # goal_delta = self.trainers.boss.get_actions(o1=o1, s=0, sample=False).output
             # goal = o1.achieved_goal + goal_delta
-            old_goal = self.env.hsr_env.goal.copy()
             goal = self.env.goal_space.sample()
-            goal_delta = goal - old_goal
             self.env.hsr_env.set_goal(goal)
 
             o1 = o1.replace(desired_goal=goal)
 
-            # v1 = self.agents.act.get_v1(
-            #     o1=self.preprocess_func(o1))
-            # normalized_v1 = v1 / self.agents.act.reward_scale
             self.boss_state = self.boss_state._replace(
                 initial_achieved=Observation(*o1).achieved_goal)
-                # initial_value=normalized_v1,
         return o1
 
     def run_episode(self, o1, eval_period, render):

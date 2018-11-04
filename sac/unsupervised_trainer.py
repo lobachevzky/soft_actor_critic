@@ -57,8 +57,8 @@ class UnsupervisedTrainer(Trainer):
                                    agent.delta_tde:     delta_tde, }))
                     estimated_delta_tde = train_result['estimated_delta']
                     counter.update(delta_tde=np.mean(delta_tde),
-                                   model_error=np.mean(np.abs(delta_tde -
-                                       estimated_delta_tde)))
+                                   model_error=np.mean(np.abs((delta_tde -
+                                       estimated_delta_tde) / delta_tde)))
 
                 for k, v in train_result.items():
                     if np.isscalar(v):

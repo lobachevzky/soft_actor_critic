@@ -169,7 +169,7 @@ class AbstractAgent:
                 inputs = tf.concat([
                     oa, past_mapping
                 ], axis=1)
-                estimated_delta = tf.layers.dense(self.network(inputs).output, 1)
+                estimated_delta = tf.layers.dense(self.network(oa).output, 1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
             self.model_loss = tf.reduce_mean(tf.square(estimated_delta - self.delta_tde))

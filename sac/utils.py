@@ -1,6 +1,6 @@
 # stdlib
 from collections import namedtuple
-from typing import Any, Callable, Optional, Union, Sequence
+from typing import Any, Callable, Sequence, Union
 
 # third party
 import gym

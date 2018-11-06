@@ -196,8 +196,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          goal_space, block_space, grad_clip, batch_size, n_train_steps,
          record_separate_episodes, steps_per_action, logdir, save_path, load_path, render,
          render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
-         record_path, temp_path, save_threshold, no_random_reset, obs_type,
-         multi_block, unsupervised):
+         record_path, temp_path, save_threshold, no_random_reset, obs_type, multi_block,
+         unsupervised):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(
@@ -241,8 +241,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             n_goals=n_goals,
             **kwargs)
     elif unsupervised:
-        trainer = UnsupervisedTrainer(env=HSRHindsightWrapper(env, geofence=geofence),
-                                      **kwargs)
+        trainer = UnsupervisedTrainer(
+            env=HSRHindsightWrapper(env, geofence=geofence), **kwargs)
     else:
         trainer = Trainer(env=env, **kwargs)
     trainer.train(

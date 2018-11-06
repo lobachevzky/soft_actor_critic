@@ -52,20 +52,28 @@ class UnsupervisedTrainer(Trainer):
                         fetch,
                         feed_dict={agent.O1:            test_sample.o1,
                                    agent.A:             test_sample.a,
+                                   agent.R:          test_sample.r,
+                                   agent.O2:             test_sample.o2,
+                                   agent.T:             test_sample.t,
                                    agent.history:       self.boss_state.history,
                                    agent.old_delta_tde: self.boss_state.delta_tde,
                                    agent.delta_tde:     delta_tde, }))
                     estimated_delta_tde = train_result['estimated_delta']
                     counter.update(delta_tde=np.mean(delta_tde),
                                    model_error=np.mean(np.abs((delta_tde -
-                                       estimated_delta_tde) / delta_tde)))
+                                                               estimated_delta_tde))),
+                                   )
 
                 for k, v in train_result.items():
                     if np.isscalar(v):
                         counter.update(**{k: v})
 
+            history = test_sample.replace(r=test_sample.r.reshape(-1, 1),
+                                          t=test_sample.t.reshape(-1, 1))
+
+            history = np.hstack(history[1:])
             self.boss_state = self.boss_state._replace(
-                history=np.hstack([test_sample.o1, test_sample.a]),
+                history=history,
                 delta_tde=delta_tde
             )
         return counter

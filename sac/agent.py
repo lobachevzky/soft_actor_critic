@@ -101,8 +101,8 @@ class AbstractAgent:
             q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             not_done = 1 - T  # type: tf.Tensor
             q_target = R + gamma * not_done * v2
-            self._td_error = tf.square(q - q_target)
-            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self._td_error)
+            self.q_error = tf.square(q - q_target)
+            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.q_error)
 
             # constructing pi loss
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -148,20 +148,23 @@ class AbstractAgent:
 
             # TD error prediction model
             key_dim = (list(o_shape)[0] +  # o1
-                       list(a_shape)[0]  # a
-                       )
-            # 1 +                 # r
-            # list(o_shape)[0] +  # o2
-            # 1)                  # t
+                       list(a_shape)[0] +  # a
+                       1 +  # r
+                       list(o_shape)[0] +  # o2
+                       1)  # t
 
-            self.history = tf.placeholder(tf.float32, [batch_size, key_dim])
-            oa = tf.concat([self.O1, self.A], axis=1)
-            self.old_delta_tde = tf.placeholder(tf.float32, [batch_size])
-            self.delta_tde = tf.placeholder(tf.float32, [batch_size])
+            self.history = tf.placeholder(tf.float32, [batch_size, key_dim], name='history')
+            present = tf.concat(
+                [self.O1, self.A, (tf.reshape(self.R, [-1, 1])), self.O2,
+                 (tf.reshape(self.T, [-1, 1])), ], axis=1)
+            self.old_delta_tde = tf.placeholder(tf.float32, [batch_size],
+                                                name='old_delta_tde')
+            self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
 
             with tf.variable_scope('tde_keys'):
+                concat = tf.concat([self.history, present], axis=0)
                 key, keys = tf.split(self.network(
-                    tf.concat([self.history, oa], axis=0)
+                    concat
                 ).output, 2, axis=0)
 
             with tf.variable_scope('tde_values'):
@@ -176,7 +179,7 @@ class AbstractAgent:
                          tf.reshape(key, shape=[batch_size, 1, layer_size]))
                 sims = tf.reduce_sum(diffs ** 2, axis=2)
 
-                estimated_delta = tf.squeeze(tf.matmul(sims, values), squeeze_dims=1)
+                estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
             self.model_loss = tf.reduce_mean(tf.abs(estimated_delta - self.delta_tde))
@@ -231,7 +234,7 @@ class AbstractAgent:
 
     def td_error(self, step: Step):
         return self.sess.run(
-            self._td_error,
+            self.q_error,
             feed_dict={
                 self.O1: step.o1,
                 self.A:  step.a,

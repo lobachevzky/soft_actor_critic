@@ -20,16 +20,19 @@ class AbstractAgent:
                  seq_len: int,
                  o_shape: Iterable,
                  a_shape: Sequence,
-                 activation: Callable,
                  reward_scale: float,
                  entropy_scale: float,
+                 activation: Callable,
                  n_layers: int,
                  layer_size: int,
                  learning_rate: float,
                  grad_clip: float,
                  device_num: int = 1,
-                 reuse=False,
-                 scope='agent') -> None:
+                 model_activation: Callable = None,
+                 model_n_layers: int = None,
+                 model_layer_size: int = None,
+                 reuse: bool =False,
+                 scope: str='agent') -> None:
 
         self.default_train_values = [
             'entropy',
@@ -51,6 +54,10 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
+
+        self.model_n_layers = model_n_layers or n_layers
+        self.model_layer_size = model_layer_size or layer_size
+        self.model_activation = model_activation or activation
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
@@ -148,11 +155,11 @@ class AbstractAgent:
 
             # TD error prediction model
             key_dim = (
-                list(o_shape)[0] +  # o1
-                list(a_shape)[0] +  # a
-                1 +  # r
-                list(o_shape)[0] +  # o2
-                1)  # t
+                    list(o_shape)[0] +  # o1
+                    list(a_shape)[0] +  # a
+                    1 +  # r
+                    list(o_shape)[0] +  # o2
+                    1)  # t
 
             self.history = tf.placeholder(
                 tf.float32, [batch_size, key_dim], name='history')
@@ -160,9 +167,9 @@ class AbstractAgent:
                 [
                     self.O1,
                     self.A,
-                    (tf.reshape(self.R, [-1, 1])),
+                    tf.reshape(self.R, [-1, 1]),
                     self.O2,
-                    (tf.reshape(self.T, [-1, 1])),
+                    tf.reshape(self.T, [-1, 1]),
                 ],
                 axis=1)
             self.old_delta_tde = tf.placeholder(
@@ -184,7 +191,7 @@ class AbstractAgent:
             with tf.variable_scope('tde_model'):
                 diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) - tf.reshape(
                     key, shape=[batch_size, 1, layer_size]))
-                sims = tf.reduce_sum(diffs**2, axis=2)
+                sims = tf.reduce_sum(diffs ** 2, axis=2)
 
                 estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
@@ -212,10 +219,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A: step.a,
-            self.R: np.array(step.r) * self.reward_scale,
+            self.A:  step.a,
+            self.R:  np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T: step.t,
+            self.T:  step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -247,11 +254,15 @@ class AbstractAgent:
             self.q_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
+
+    @abstractmethod
+    def model_network(self, inputs: tf.Tensor) -> NetworkOutput:
+        pass
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

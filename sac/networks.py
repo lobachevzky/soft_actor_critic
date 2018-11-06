@@ -31,6 +31,15 @@ class MlpAgent(AbstractAgent):
                 activation=self.activation),
             state=None)
 
+    def model_network(self, inputs: tf.Tensor):
+        return NetworkOutput(
+            output=mlp(
+                inputs=inputs,
+                layer_size=self.model_layer_size,
+                n_layers=self.model_n_layers,
+                activation=self.model_activation),
+            state=None)
+
 
 class SACXAgent(AbstractAgent):
     @property

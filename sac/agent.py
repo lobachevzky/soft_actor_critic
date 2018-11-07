@@ -178,14 +178,14 @@ class AbstractAgent:
 
             with tf.variable_scope('tde_keys'):
                 concat = tf.concat([self.history, present], axis=0)
-                key, keys = tf.split(self.network(concat).output, 2, axis=0)
+                key, keys = tf.split(self.model_network(concat).output, 2, axis=0)
 
             with tf.variable_scope('tde_values'):
                 batch_size = batch_size or -1
                 old_delta_tde = tf.reshape(self.old_delta_tde, [batch_size, 1])
                 values = tf.reshape(
                     tf.layers.dense(
-                        self.network(tf.concat([self.history, old_delta_tde],
+                        self.model_network(tf.concat([self.history, old_delta_tde],
                                                axis=1)).output, 1), [batch_size, 1])
 
             with tf.variable_scope('tde_model'):

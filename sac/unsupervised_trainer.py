@@ -10,7 +10,7 @@ from environments.hsr import distance_between
 from sac.train import Trainer
 
 BossState = namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                                    'reward')
+                       'reward')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
@@ -50,14 +50,14 @@ class UnsupervisedTrainer(Trainer):
                         self.sess.run(
                             fetch,
                             feed_dict={
-                                agent.O1:            test_sample.o1,
-                                agent.A:             test_sample.a,
-                                agent.R:             test_sample.r,
-                                agent.O2:            test_sample.o2,
-                                agent.T:             test_sample.t,
-                                agent.history:       self.boss_state.history,
+                                agent.O1: test_sample.o1,
+                                agent.A: test_sample.a,
+                                agent.R: test_sample.r,
+                                agent.O2: test_sample.o2,
+                                agent.T: test_sample.t,
+                                agent.history: self.boss_state.history,
                                 agent.old_delta_tde: self.boss_state.delta_tde,
-                                agent.delta_tde:     delta_tde,
+                                agent.delta_tde: delta_tde,
                             }))
                     estimated_delta_tde = train_result['estimated_delta']
 
@@ -67,8 +67,9 @@ class UnsupervisedTrainer(Trainer):
                     # noinspection PyTypeChecker
                     counter.update(
                         delta_tde=np.mean(delta_tde),
-                        model_error=np.mean(np.abs(normalize(delta_tde) -
-                                                   normalize(estimated_delta_tde))),
+                        model_error=np.mean(
+                            np.abs(normalize(delta_tde) -
+                                   normalize(estimated_delta_tde))),
                     )
 
                 for k, v in train_result.items():
@@ -133,4 +134,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

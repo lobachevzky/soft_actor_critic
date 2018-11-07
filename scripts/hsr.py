@@ -1,23 +1,24 @@
 # stdlib
 import argparse
+import re
+import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-import re
-import tempfile
 from typing import List, Tuple
 from xml.etree import ElementTree as ET
 
+import numpy as np
+import tensorflow as tf
 # third party
 from gym import spaces
 from gym.spaces import Box
 from gym.wrappers import TimeLimit
-import numpy as np
-import tensorflow as tf
 
 # first party
-from environments.hindsight_wrapper import HSRHindsightWrapper, MBHSRHindsightWrapper
+from environments.hindsight_wrapper import (HSRHindsightWrapper,
+                                            MBHSRHindsightWrapper)
 from environments.hsr import HSREnv, MultiBlockHSREnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
@@ -56,10 +57,8 @@ def cast_to_int(arg: str):
     return int(float(arg))
 
 
-ACTIVATIONS = dict(relu=tf.nn.relu,
-                   leaky=tf.nn.leaky_relu,
-                   elu=tf.nn.elu,
-                   selu=tf.nn.selu)
+ACTIVATIONS = dict(
+    relu=tf.nn.relu, leaky=tf.nn.leaky_relu, elu=tf.nn.elu, selu=tf.nn.selu)
 
 
 def parse_activation(arg: str):
@@ -136,7 +135,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
                         rgba=rgba[i],
                         condim='6',
                         solimp="0.99 0.99 "
-                               "0.01",
+                        "0.01",
                         solref='0.01 1'))
                 ET.SubElement(body, 'freejoint', attrib=dict(name=f'block{i}joint'))
 
@@ -195,18 +194,12 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
 
 @env_wrapper
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
-         activation,
-         n_layers,
-         layer_size,
-         model_activation,
-         model_n_layers,
-         model_layer_size,
-         learning_rate, reward_scale, entropy_scale,
-         goal_space, block_space, grad_clip, batch_size, n_train_steps,
-         record_separate_episodes, steps_per_action, logdir, save_path, load_path, render,
-         render_freq, n_goals, record, randomize_pose, image_dims, record_freq,
-         record_path, temp_path, save_threshold, no_random_reset, obs_type, multi_block,
-         unsupervised):
+         activation, n_layers, layer_size, model_activation, model_n_layers,
+         model_layer_size, learning_rate, reward_scale, entropy_scale, goal_space,
+         block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
+         steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
+         record, randomize_pose, image_dims, record_freq, record_path, temp_path,
+         save_threshold, no_random_reset, obs_type, multi_block, unsupervised):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(
@@ -269,12 +262,18 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
 def cli():
     p = argparse.ArgumentParser()
     p.add_argument('--seed', type=int, required=True)
-    p.add_argument('--activation', type=parse_activation, default=tf.nn.relu,
-                   choices=ACTIVATIONS.values())
+    p.add_argument(
+        '--activation',
+        type=parse_activation,
+        default=tf.nn.relu,
+        choices=ACTIVATIONS.values())
     p.add_argument('--n-layers', type=int, required=True)
     p.add_argument('--layer-size', type=int, required=True)
-    p.add_argument('--model-activation', type=parse_activation, default=tf.nn.relu,
-                   choices=ACTIVATIONS.values())
+    p.add_argument(
+        '--model-activation',
+        type=parse_activation,
+        default=tf.nn.relu,
+        choices=ACTIVATIONS.values())
     p.add_argument('--model-n-layers', type=int)
     p.add_argument('--model-layer-size', type=int)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)

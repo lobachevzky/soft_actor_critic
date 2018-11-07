@@ -31,8 +31,8 @@ class AbstractAgent:
                  model_activation: Callable = None,
                  model_n_layers: int = None,
                  model_layer_size: int = None,
-                 reuse: bool =False,
-                 scope: str='agent') -> None:
+                 reuse: bool = False,
+                 scope: str = 'agent') -> None:
 
         self.default_train_values = [
             'entropy',
@@ -196,7 +196,12 @@ class AbstractAgent:
                 estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
-            self.model_loss = tf.reduce_mean(tf.abs(estimated_delta - self.delta_tde))
+                def normalize(X):
+                    mean, std = tf.nn.moments(X, axes=())
+                    return (X - mean) / tf.maximum(std, 1e-6)
+
+            self.model_loss = tf.reduce_mean((normalize(estimated_delta) -
+                                              normalize(self.delta_tde) ** 2))
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,
                 var_list=[

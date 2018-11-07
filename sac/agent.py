@@ -177,7 +177,7 @@ class AbstractAgent:
             self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
 
             with tf.variable_scope('tde_model'):
-                estimated_delta = tf.layers.dense(self.model_network(present).output, 1)
+                estimated_delta = tf.squeeze(tf.layers.dense(self.model_network(present).output, 1), axis=1)
                 self.estimated_delta = estimated_delta
 
                 def normalize(X):

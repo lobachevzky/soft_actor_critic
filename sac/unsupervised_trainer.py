@@ -68,8 +68,9 @@ class UnsupervisedTrainer(Trainer):
                     norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
                     mean_sq_raw_diff = np.mean(np.square(raw_diff)**2)
                     mean_sq_norm_diff = np.mean(np.square(norm_diff)**2)
-                    model_loss = np.mean(
-                        np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
+                    # model_loss = np.mean(
+                    #     .5 * np.square(normalize(delta_tde) - normalize(estimated_delta_tde)))
+
                     # noinspection PyTypeChecker
                     counter.update(
                         estimated_delta_tde=np.mean(estimated_delta_tde),

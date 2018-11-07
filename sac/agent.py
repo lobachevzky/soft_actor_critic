@@ -179,6 +179,8 @@ class AbstractAgent:
             with tf.variable_scope('tde_keys'):
                 concat = tf.concat([self.history, present], axis=0)
                 key, keys = tf.split(self.model_network(concat).output, 2, axis=0)
+                key = tf.identity(key, name='key')
+                keys = tf.identity(keys, name='keys')
 
             with tf.variable_scope('tde_values'):
                 batch_size = batch_size or -1
@@ -187,14 +189,17 @@ class AbstractAgent:
                     tf.layers.dense(
                         self.model_network(
                             tf.concat([self.history, old_delta_tde], axis=1)).output, 1),
-                    [batch_size, 1])
+                    [batch_size, 1],
+                    name='value')
 
             with tf.variable_scope('tde_model'):
                 diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) - tf.reshape(
                     key, shape=[batch_size, 1, layer_size]))
-                sims = tf.sqrt(tf.reduce_sum(diffs**2, axis=2))
+                diffs = tf.identity(diffs, name='diffs')
+                sims = tf.sqrt(tf.reduce_sum(diffs**2, axis=2), name='sims')
 
-                estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
+                estimated_delta = tf.squeeze(
+                    tf.matmul(sims, values), axis=1, name='estimated_delta')
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
                 def normalize(X):

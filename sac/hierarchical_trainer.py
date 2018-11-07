@@ -1,13 +1,15 @@
 # stdlib
 from collections import Counter, namedtuple
 
-# third party
-from gym.spaces import Box
 import numpy as np
 import tensorflow as tf
+# third party
+from gym.spaces import Box
 
 # first party
-from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper, Hierarchical, HierarchicalAgents,
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
+                                               Hierarchical,
+                                               HierarchicalAgents,
                                                HierarchicalWrapper)
 from environments.hindsight_wrapper import Observation
 from sac.agent import NetworkOutput

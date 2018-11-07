@@ -3,8 +3,8 @@ import itertools
 
 # third party
 import click
-from gym import spaces
 import numpy as np
+from gym import spaces
 
 
 def parse_coordinate(ctx, param, string):

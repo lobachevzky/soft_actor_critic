@@ -178,7 +178,7 @@ class AbstractAgent:
 
             with tf.variable_scope('tde_model'):
                 estimated_delta = tf.layers.dense(self.model_network(present).output, 1)
-                self.estimated_delta = tf.reduce_mean(estimated_delta)
+                self.estimated_delta = estimated_delta
 
                 def normalize(X):
                     mean, var = tf.nn.moments(X, axes=0)

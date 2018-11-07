@@ -201,8 +201,8 @@ class AbstractAgent:
                     mean, std = tf.nn.moments(X, axes=())
                     return (X - mean) / tf.maximum(std, 1e-6)
 
-            self.model_loss = tf.reduce_mean(
-                tf.square((normalize(estimated_delta) - normalize(self.delta_tde))))
+            self.model_loss = tf.reduce_mean(.5 * tf.square(
+                (normalize(estimated_delta) - normalize(self.delta_tde))))
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,
                 var_list=[

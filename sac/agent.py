@@ -163,14 +163,15 @@ class AbstractAgent:
 
             self.history = tf.placeholder(
                 tf.float32, [batch_size, key_dim], name='history')
-            present = tf.concat([
-                self.O1,
-                self.A,
-                tf.reshape(self.R, [-1, 1]),
-                self.O2,
-                tf.reshape(self.T, [-1, 1]),
-            ],
-                                axis=1)
+            present = tf.concat(
+                [
+                    self.O1,
+                    self.A,
+                    tf.reshape(self.R, [-1, 1]),
+                    self.O2,
+                    tf.reshape(self.T, [-1, 1]),
+                ],
+                axis=1)
             self.old_delta_tde = tf.placeholder(
                 tf.float32, [batch_size], name='old_delta_tde')
             self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
@@ -191,7 +192,7 @@ class AbstractAgent:
             with tf.variable_scope('tde_model'):
                 diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) - tf.reshape(
                     key, shape=[batch_size, 1, layer_size]))
-                sims = tf.reduce_sum(diffs**2, axis=2)
+                sims = tf.sqrt(tf.reduce_sum(diffs**2, axis=2))
 
                 estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
@@ -200,8 +201,8 @@ class AbstractAgent:
                     mean, std = tf.nn.moments(X, axes=())
                     return (X - mean) / tf.maximum(std, 1e-6)
 
-            self.model_loss = tf.reduce_mean((normalize(estimated_delta) -
-                                              normalize(self.delta_tde) ** 2))
+            self.model_loss = tf.reduce_mean(
+                (normalize(estimated_delta) - normalize(self.delta_tde)**2))
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,
                 var_list=[

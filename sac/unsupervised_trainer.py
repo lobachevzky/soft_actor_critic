@@ -66,8 +66,8 @@ class UnsupervisedTrainer(Trainer):
 
                     raw_diff = delta_tde - estimated_delta_tde
                     norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
-                    rms_raw_diff = np.sqrt(np.mean(np.square(raw_diff)))
-                    rms_norm_diff = np.sqrt(np.mean(np.square(norm_diff)))
+                    mean_sq_raw_diff = np.mean(np.square(raw_diff)**2)
+                    mean_sq_norm_diff = np.mean(np.square(norm_diff)**2)
                     model_loss = np.mean(
                         np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
@@ -76,8 +76,8 @@ class UnsupervisedTrainer(Trainer):
                         delta_tde=np.mean(delta_tde),
                         raw_diff=np.mean(raw_diff),
                         norm_diff=np.mean(norm_diff),
-                        rms_raw_diff=rms_raw_diff,
-                        rms_norm_diff=rms_norm_diff,
+                        mean_sq_raw_diff=mean_sq_raw_diff,
+                        mean_sq_norm_diff=mean_sq_norm_diff,
                     )
 
                 for k, v in train_result.items():

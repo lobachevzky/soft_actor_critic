@@ -191,7 +191,7 @@ class AbstractAgent:
             with tf.variable_scope('tde_model'):
                 diffs = (tf.reshape(keys, shape=[1, batch_size, self.model_layer_size]) -
                          tf.reshape(key, shape=[batch_size, 1, self.model_layer_size]))
-                sims = tf.sqrt(tf.reduce_sum(diffs**2, axis=2), name='sims')
+                sims = tf.reduce_sum(diffs**2, axis=2, name='sims')
 
                 estimated_delta = tf.squeeze(
                     tf.matmul(sims, values), axis=1, name='estimated_delta')
@@ -201,8 +201,9 @@ class AbstractAgent:
                     mean, std = tf.nn.moments(X, axes=())
                     return (X - mean) / tf.maximum(std, 1e-6)
 
-            self.model_loss = tf.reduce_mean(.5 * tf.square(
-                (normalize(estimated_delta) - normalize(self.delta_tde))))
+            self.model_loss = tf.reduce_mean(
+                .5 * tf.square((normalize(estimated_delta) - normalize(self.delta_tde))),
+                name='model_loss')
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,
                 var_list=[

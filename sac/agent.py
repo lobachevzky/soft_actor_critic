@@ -184,13 +184,14 @@ class AbstractAgent:
 
             with tf.variable_scope('tde_values'):
                 batch_size = batch_size or -1
-                old_delta_tde = tf.reshape(self.old_delta_tde, [batch_size, 1])
+                old_delta_tde = tf.reshape(
+                    self.old_delta_tde, [batch_size, 1], name='old_delta_tde')
                 values = tf.reshape(
                     tf.layers.dense(
                         self.model_network(
                             tf.concat([self.history, old_delta_tde], axis=1)).output, 1),
                     [batch_size, 1],
-                    name='value')
+                    name='values')
 
             with tf.variable_scope('tde_model'):
                 diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) - tf.reshape(

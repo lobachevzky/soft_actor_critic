@@ -163,15 +163,14 @@ class AbstractAgent:
 
             self.history = tf.placeholder(
                 tf.float32, [batch_size, key_dim], name='history')
-            present = tf.concat(
-                [
-                    self.O1,
-                    self.A,
-                    tf.reshape(self.R, [-1, 1]),
-                    self.O2,
-                    tf.reshape(self.T, [-1, 1]),
-                ],
-                axis=1)
+            present = tf.concat([
+                self.O1,
+                self.A,
+                tf.reshape(self.R, [-1, 1]),
+                self.O2,
+                tf.reshape(self.T, [-1, 1]),
+            ],
+                                axis=1)
             self.old_delta_tde = tf.placeholder(
                 tf.float32, [batch_size], name='old_delta_tde')
             self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')

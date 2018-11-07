@@ -176,33 +176,17 @@ class AbstractAgent:
                 tf.float32, [batch_size], name='old_delta_tde')
             self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
 
-            with tf.variable_scope('tde_keys'):
-                concat = tf.concat([self.history, present], axis=0)
-                key, keys = tf.split(self.network(concat).output, 2, axis=0)
-
-            with tf.variable_scope('tde_values'):
-                batch_size = batch_size or -1
-                old_delta_tde = tf.reshape(self.old_delta_tde, [batch_size, 1])
-                values = tf.reshape(
-                    tf.layers.dense(
-                        self.network(tf.concat([self.history, old_delta_tde],
-                                               axis=1)).output, 1), [batch_size, 1])
-
             with tf.variable_scope('tde_model'):
-                diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) - tf.reshape(
-                    key, shape=[batch_size, 1, layer_size]))
-                sims = tf.reduce_sum(diffs ** 2, axis=2)
-
-                estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
-                self.estimated_delta = tf.reduce_mean(estimated_delta)
-
-            self.model_loss = tf.reduce_mean(tf.square(estimated_delta - self.delta_tde))
-            self.train_model, self.model_grad = train_op(
-                loss=self.model_loss,
-                var_list=[
-                    v for scope in ['tde_keys', 'tde_values', 'tde_model']
-                    for v in get_variables(scope)
-                ])
+                self.estimated_delta = tf.layers.dense(
+                    self.model_network( present).output, 1)
+                self.model_loss = tf.reduce_mean(tf.square(self.estimated_delta -
+                                                           self.delta_tde))
+                self.train_model, self.model_grad = train_op(
+                    loss=self.model_loss,
+                    var_list=[
+                        v for scope in ['tde_keys', 'tde_values', 'tde_model']
+                        for v in get_variables(scope)
+                    ])
 
             sess.run(tf.global_variables_initializer())
 

@@ -72,6 +72,7 @@ class UnsupervisedTrainer(Trainer):
                         np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
                     counter.update(
+                        estimated_delta_tde=np.mean(estimated_delta_tde),
                         delta_tde=np.mean(delta_tde),
                         raw_diff=np.mean(raw_diff),
                         norm_diff=np.mean(norm_diff),

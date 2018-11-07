@@ -193,9 +193,8 @@ class AbstractAgent:
                          tf.reshape(key, shape=[batch_size, 1, self.model_layer_size]))
                 sims = tf.reduce_sum(diffs**2, axis=2, name='sims')
 
-                estimated_delta = tf.squeeze(
+                self.estimated_delta = estimated_delta = tf.squeeze(
                     tf.matmul(sims, values), axis=1, name='estimated_delta')
-                self.estimated_delta = tf.reduce_mean(estimated_delta)
 
                 def normalize(X):
                     mean, std = tf.nn.moments(X, axes=0)

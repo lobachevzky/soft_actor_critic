@@ -197,8 +197,8 @@ class AbstractAgent:
                     tf.matmul(sims, values), axis=1, name='estimated_delta')
 
                 def normalize(X):
-                    mean, std = tf.nn.moments(X, axes=0)
-                    return (X - mean) / tf.maximum(std, 1e-6)
+                    mean, var = tf.nn.moments(X, axes=0)
+                    return (X - mean) / tf.maximum(tf.sqrt(var), 1e-6)
 
             self.model_loss = tf.reduce_mean(
                 .5 * tf.square((normalize(estimated_delta) - normalize(self.delta_tde))),

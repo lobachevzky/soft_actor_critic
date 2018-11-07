@@ -1,15 +1,14 @@
 #! /usr/bin/env python
 # stdlib
+# stdlib
 import argparse
 from pathlib import Path
 
-# third party
+# first party
 # noinspection PyUnresolvedReferences
 import matplotlib.pyplot as plt
 import pandas as pd
 from pandas.errors import EmptyDataError
-
-# first party
 from sac.utils import softmax
 
 

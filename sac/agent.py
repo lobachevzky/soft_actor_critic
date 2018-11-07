@@ -155,43 +155,43 @@ class AbstractAgent:
 
             # TD error prediction model
             key_dim = (
-                    list(o_shape)[0] +  # o1
-                    list(a_shape)[0] +  # a
-                    1 +  # r
-                    list(o_shape)[0] +  # o2
-                    1)  # t
+                list(o_shape)[0] +  # o1
+                list(a_shape)[0] +  # a
+                1 +  # r
+                list(o_shape)[0] +  # o2
+                1)  # t
 
             self.history = tf.placeholder(
                 tf.float32, [batch_size, key_dim], name='history')
-            present = tf.concat(
-                [
-                    self.O1,
-                    self.A,
-                    tf.reshape(self.R, [-1, 1]),
-                    self.O2,
-                    tf.reshape(self.T, [-1, 1]),
-                ],
-                axis=1)
+            present = tf.concat([
+                self.O1,
+                self.A,
+                tf.reshape(self.R, [-1, 1]),
+                self.O2,
+                tf.reshape(self.T, [-1, 1]),
+            ],
+                                axis=1)
             self.old_delta_tde = tf.placeholder(
                 tf.float32, [batch_size], name='old_delta_tde')
             self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
 
             with tf.variable_scope('tde_keys'):
                 concat = tf.concat([self.history, present], axis=0)
-                key, keys = tf.split(self.network(concat).output, 2, axis=0)
+                key, keys = tf.split(self.model_network(concat).output, 2, axis=0)
 
             with tf.variable_scope('tde_values'):
                 batch_size = batch_size or -1
                 old_delta_tde = tf.reshape(self.old_delta_tde, [batch_size, 1])
                 values = tf.reshape(
                     tf.layers.dense(
-                        self.network(tf.concat([self.history, old_delta_tde],
-                                               axis=1)).output, 1), [batch_size, 1])
+                        self.model_network(
+                            tf.concat([self.history, old_delta_tde], axis=1)).output, 1),
+                    [batch_size, 1])
 
             with tf.variable_scope('tde_model'):
                 diffs = (tf.reshape(keys, shape=[1, batch_size, layer_size]) - tf.reshape(
                     key, shape=[batch_size, 1, layer_size]))
-                sims = tf.reduce_sum(diffs ** 2, axis=2)
+                sims = tf.reduce_sum(diffs**2, axis=2)
 
                 estimated_delta = tf.squeeze(tf.matmul(sims, values), axis=1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
@@ -224,10 +224,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A:  step.a,
-            self.R:  np.array(step.r) * self.reward_scale,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T:  step.t,
+            self.T: step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -259,10 +259,10 @@ class AbstractAgent:
             self.q_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A:  step.a,
-                self.R:  step.r,
+                self.A: step.a,
+                self.R: step.r,
                 self.O2: step.o2,
-                self.T:  step.t
+                self.T: step.t
             })
 
     @abstractmethod

@@ -31,8 +31,8 @@ class AbstractAgent:
                  model_activation: Callable = None,
                  model_n_layers: int = None,
                  model_layer_size: int = None,
-                 reuse: bool =False,
-                 scope: str='agent') -> None:
+                 reuse: bool = False,
+                 scope: str = 'agent') -> None:
 
         self.default_train_values = [
             'entropy',
@@ -155,11 +155,11 @@ class AbstractAgent:
 
             # TD error prediction model
             key_dim = (
-                    list(o_shape)[0] +  # o1
-                    list(a_shape)[0] +  # a
-                    1 +  # r
-                    list(o_shape)[0] +  # o2
-                    1)  # t
+                list(o_shape)[0] +  # o1
+                list(a_shape)[0] +  # a
+                1 +  # r
+                list(o_shape)[0] +  # o2
+                1)  # t
 
             self.history = tf.placeholder(
                 tf.float32, [batch_size, key_dim], name='history')
@@ -178,9 +178,14 @@ class AbstractAgent:
 
             with tf.variable_scope('tde_model'):
                 self.estimated_delta = tf.layers.dense(
-                    self.model_network( present).output, 1)
-                self.model_loss = tf.reduce_mean(tf.square(self.estimated_delta -
-                                                           self.delta_tde))
+                    self.model_network(present).output, 1)
+
+                def normalize(X):
+                    mean, std = tf.nn.moments(X, axes=())
+                    return (X - mean) / tf.maximum(std, 1e-6)
+
+                self.model_loss = tf.reduce_mean(
+                    (normalize(self.estimated_delta) - normalize(self.delta_tde))**2)
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     var_list=[
@@ -203,10 +208,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A:  step.a,
-            self.R:  np.array(step.r) * self.reward_scale,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T:  step.t,
+            self.T: step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -238,10 +243,10 @@ class AbstractAgent:
             self.q_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A:  step.a,
-                self.R:  step.r,
+                self.A: step.a,
+                self.R: step.r,
                 self.O2: step.o2,
-                self.T:  step.t
+                self.T: step.t
             })
 
     @abstractmethod

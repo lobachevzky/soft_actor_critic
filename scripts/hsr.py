@@ -269,12 +269,12 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
 def cli():
     p = argparse.ArgumentParser()
     p.add_argument('--seed', type=int, required=True)
-    p.add_argument(
-        '--activation', type=parse_activation, default='relu', choices=ACTIVATIONS.keys())
+    p.add_argument('--activation', type=parse_activation, default=tf.nn.relu,
+                   choices=ACTIVATIONS.values())
     p.add_argument('--n-layers', type=int, required=True)
     p.add_argument('--layer-size', type=int, required=True)
-    p.add_argument('--model-activation', type=parse_activation, default='relu',
-                   choices=ACTIVATIONS.keys())
+    p.add_argument('--model-activation', type=parse_activation, default=tf.nn.relu,
+                   choices=ACTIVATIONS.values())
     p.add_argument('--model-n-layers', type=int)
     p.add_argument('--model-layer-size', type=int)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)

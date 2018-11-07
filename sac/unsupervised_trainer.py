@@ -62,7 +62,7 @@ class UnsupervisedTrainer(Trainer):
                     estimated_delta_tde = train_result['estimated_delta']
 
                     def normalize(X: np.ndarray):
-                        return (X - np.mean(X)) / max(np.std(X), 1e-6)
+                        return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
 
                     # noinspection PyTypeChecker
                     counter.update(

@@ -6,6 +6,7 @@ from typing import Any, Callable, Sequence, Union
 import gym
 import numpy as np
 import tensorflow as tf
+from tensorflow.python import debug as tf_debug
 
 Shape = Union[int, Sequence[int]]
 
@@ -131,11 +132,14 @@ def unwrap_env(env: gym.Env, condition: Callable[[gym.Env], bool]):
     return env
 
 
-def create_sess():
+def create_sess(debug=False):
     config = tf.ConfigProto(allow_soft_placement=True)
     config.gpu_options.allow_growth = True
     config.inter_op_parallelism_threads = 1
-    return tf.Session(config=config)
+    sess = tf.Session(config=config)
+    if debug:
+        return tf_debug.LocalCLIDebugWrapperSession(sess)
+    return sess
 
 
 def softmax(X, theta=1.0, axis=None):

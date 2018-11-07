@@ -4,10 +4,10 @@
 # import gym
 from pathlib import Path
 
-import ipdb
-import numpy as np
 # third party
 from click._unicodefun import click
+import ipdb
+import numpy as np
 
 # first party
 from environments.hsr import HSREnv, print1

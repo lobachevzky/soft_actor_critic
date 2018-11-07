@@ -155,11 +155,11 @@ class AbstractAgent:
 
             # TD error prediction model
             key_dim = (
-                    list(o_shape)[0] +  # o1
-                    list(a_shape)[0] +  # a
-                    1 +  # r
-                    list(o_shape)[0] +  # o2
-                    1)  # t
+                list(o_shape)[0] +  # o1
+                list(a_shape)[0] +  # a
+                1 +  # r
+                list(o_shape)[0] +  # o2
+                1)  # t
 
             self.history = tf.placeholder(
                 tf.float32, [batch_size, key_dim], name='history')
@@ -177,8 +177,7 @@ class AbstractAgent:
             self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
 
             with tf.variable_scope('tde_model'):
-                estimated_delta = tf.layers.dense(
-                    self.model_network(present).output, 1)
+                estimated_delta = tf.layers.dense(self.model_network(present).output, 1)
                 self.estimated_delta = tf.reduce_mean(estimated_delta)
 
                 def normalize(X):
@@ -186,7 +185,7 @@ class AbstractAgent:
                     return (X - mean) / tf.maximum(std, 1e-6)
 
                 self.model_loss = tf.reduce_mean(
-                    (normalize(estimated_delta) - normalize(self.delta_tde)) ** 2)
+                    (normalize(estimated_delta) - normalize(self.delta_tde))**2)
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     var_list=[
@@ -209,10 +208,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A:  step.a,
-            self.R:  np.array(step.r) * self.reward_scale,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T:  step.t,
+            self.T: step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -244,10 +243,10 @@ class AbstractAgent:
             self.q_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A:  step.a,
-                self.R:  step.r,
+                self.A: step.a,
+                self.R: step.r,
                 self.O2: step.o2,
-                self.T:  step.t
+                self.T: step.t
             })
 
     @abstractmethod

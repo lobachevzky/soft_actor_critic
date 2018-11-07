@@ -3,12 +3,11 @@ from pathlib import Path
 
 # third party
 import click
-import tensorflow as tf
 from gym.wrappers import TimeLimit
+import tensorflow as tf
 
 # first party
-from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper,
-                                               HierarchicalWrapper,
+from environments.hierarchical_wrapper import (FrozenLakeHierarchicalWrapper, HierarchicalWrapper,
                                                ShiftHierarchicalWrapper)
 from environments.shift import ShiftEnv
 from sac.hierarchical_trainer import HierarchicalTrainer

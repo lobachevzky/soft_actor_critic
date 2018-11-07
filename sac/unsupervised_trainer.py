@@ -62,14 +62,22 @@ class UnsupervisedTrainer(Trainer):
                     estimated_delta_tde = train_result['estimated_delta']
 
                     def normalize(X: np.ndarray):
-                        return (X - np.mean(X)) / max(np.std(X), 1e-6)
+                        return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
 
+                    raw_diff = delta_tde - estimated_delta_tde
+                    norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
+                    mean_sq_raw_diff = np.mean(np.square(raw_diff)**2)
+                    mean_sq_norm_diff = np.mean(np.square(norm_diff)**2)
+                    model_loss = np.mean(
+                        np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
                     counter.update(
+                        estimated_delta_tde=np.mean(estimated_delta_tde),
                         delta_tde=np.mean(delta_tde),
-                        model_error=np.mean(
-                            np.abs(normalize(delta_tde) -
-                                   normalize(estimated_delta_tde))),
+                        raw_diff=np.mean(raw_diff),
+                        norm_diff=np.mean(norm_diff),
+                        mean_sq_raw_diff=mean_sq_raw_diff,
+                        mean_sq_norm_diff=mean_sq_norm_diff,
                     )
 
                 for k, v in train_result.items():

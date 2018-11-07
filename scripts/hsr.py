@@ -198,7 +198,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, multi_block, unsupervised):
+         save_threshold, no_random_reset, obs_type, multi_block, unsupervised, debug):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(
@@ -236,6 +236,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
+        debug=debug,
         n_train_steps=n_train_steps)
 
     if hindsight_geofence:
@@ -312,6 +313,7 @@ def cli():
     p.add_argument('--use-dof', type=str, action='append')
     p.add_argument('--multi-block', action='store_true')
     p.add_argument('--unsupervised', action='store_true')
+    p.add_argument('--debug', action='store_true')
     main(**vars(p.parse_args()))
 
 

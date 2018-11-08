@@ -173,19 +173,19 @@ class AbstractAgent:
                 ],
                 axis=1)
             self.old_delta_tde = tf.placeholder(
-                tf.float32, [batch_size], name='old_delta_tde')
-            self.delta_tde = tf.placeholder(tf.float32, [batch_size], name='delta_tde')
+                tf.float32, (), name='old_delta_tde')
+            self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
             with tf.variable_scope('tde_model'):
                 estimated_delta = tf.squeeze(tf.layers.dense(self.model_network(present).output, 1), axis=1)
                 self.estimated_delta = estimated_delta
 
-                def normalize(X):
-                    mean, var = tf.nn.moments(X, axes=0)
-                    return (X - mean) / tf.maximum(tf.sqrt(var), 1e-6)
+                # def normalize(X):
+                #     mean, var = tf.nn.moments(X, axes=0)
+                #     return (X - mean) / tf.maximum(tf.sqrt(var), 1e-6)
 
                 self.model_loss = tf.reduce_mean(.5 * tf.square(
-                    (normalize(estimated_delta) - normalize(self.delta_tde))))
+                    (estimated_delta - self.delta_tde)))
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     var_list=[

@@ -40,54 +40,57 @@ class UnsupervisedTrainer(Trainer):
                 agent = self.agents.act
                 pre_td_error = agent.td_error(step=test_sample)
                 pre_train = agent.td_error(step=train_sample)
-                pre_static = agent.td_error(step=self.static_sample)
+                if self.static_sample is not None:
+                    pre_static = agent.td_error(step=self.static_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)
                 post_train = agent.td_error(step=train_sample)
-                post_static = agent.td_error(step=self.static_sample)
+                if self.static_sample is not None:
+                    post_static = agent.td_error(step=self.static_sample)
                 delta_tde = np.mean(pre_td_error - post_td_error)
 
-                if self.boss_state.history is not None:
-                    fetch = dict(
-                        estimated_delta=agent.estimated_delta,
-                        model_loss=agent.model_loss,
-                        model_grad=agent.model_grad,
-                        train_model=agent.train_model)
-                    train_result.update(
-                        self.sess.run(
-                            fetch,
-                            feed_dict={
-                                agent.O1: train_sample.o1,
-                                agent.A: train_sample.a,
-                                agent.R: train_sample.r,
-                                agent.O2: train_sample.o2,
-                                agent.T: train_sample.t,
-                                agent.history: self.boss_state.history,
-                                agent.old_delta_tde: self.boss_state.delta_tde,
-                                agent.delta_tde: delta_tde,
-                            }))
-                    estimated_delta_tde = train_result['estimated_delta']
-
-                    # def normalize(X: np.ndarray):
-                    #     return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
-
-                    diff = delta_tde - estimated_delta_tde
-                    # norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
-                    mean_sq_diff = np.mean(.5 * np.square(diff))
+                # if self.boss_state.history is not None:
+                #     fetch = dict(
+                #         estimated_delta=agent.estimated_delta,
+                #         model_loss=agent.model_loss,
+                #         model_grad=agent.model_grad,
+                #         train_model=agent.train_model)
+                #     train_result.update(
+                #         self.sess.run(
+                #             fetch,
+                #             feed_dict={
+                #                 agent.O1: train_sample.o1,
+                #                 agent.A: train_sample.a,
+                #                 agent.R: train_sample.r,
+                #                 agent.O2: train_sample.o2,
+                #                 agent.T: train_sample.t,
+                #                 agent.history: self.boss_state.history,
+                #                 agent.old_delta_tde: self.boss_state.delta_tde,
+                #                 agent.delta_tde: delta_tde,
+                #             }))
+                #     estimated_delta_tde = train_result['estimated_delta']
+                #
+                #     # def normalize(X: np.ndarray):
+                #     #     return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
+                #
+                #     diff = delta_tde - estimated_delta_tde
+                #     # norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
+                #     mean_sq_diff = np.mean(.5 * np.square(diff))
                     # mean_sq_norm_diff = np.mean(.5 * np.square(norm_diff))
                     # model_loss = np.mean(
                     #     np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
-                    counter.update(
-                        estimated_delta_tde=np.mean(estimated_delta_tde),
-                        delta_tde=np.mean(delta_tde),
-                        diff=np.mean(diff),
-                        mean_sq_diff=mean_sq_diff,
-                        train_delta_tde=np.mean(pre_train - post_train),
-                        static_delta_tde=np.mean(pre_static - post_static),
-                        # norm_diff=np.mean(norm_diff),
-                        # mean_sq_norm_diff=mean_sq_norm_diff,
-                    )
+                counter.update(
+                    # estimated_delta_tde=np.mean(estimated_delta_tde),
+                    delta_tde=np.mean(delta_tde),
+                    # diff=np.mean(diff),
+                    # mean_sq_diff=mean_sq_diff,
+                    train_delta_tde=np.mean(pre_train - post_train),
+                    # norm_diff=np.mean(norm_diff),
+                    # mean_sq_norm_diff=mean_sq_norm_diff,
+                )
+                if self.static_sample is not None:
+                    counter.update(static_delta_tde=np.mean(pre_static - post_static))
 
                 for k, v in train_result.items():
                     if np.isscalar(v):

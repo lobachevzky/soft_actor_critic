@@ -38,7 +38,7 @@ class UnsupervisedTrainer(Trainer):
                 pre_td_error = agent.td_error(step=test_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)
-                delta_tde = pre_td_error - post_td_error
+                delta_tde = np.mean(pre_td_error - post_td_error)
 
                 if self.boss_state.history is not None:
                     fetch = dict(
@@ -50,34 +50,34 @@ class UnsupervisedTrainer(Trainer):
                         self.sess.run(
                             fetch,
                             feed_dict={
-                                agent.O1: test_sample.o1,
-                                agent.A: test_sample.a,
-                                agent.R: test_sample.r,
-                                agent.O2: test_sample.o2,
-                                agent.T: test_sample.t,
+                                agent.O1: train_sample.o1,
+                                agent.A: train_sample.a,
+                                agent.R: train_sample.r,
+                                agent.O2: train_sample.o2,
+                                agent.T: train_sample.t,
                                 agent.history: self.boss_state.history,
                                 agent.old_delta_tde: self.boss_state.delta_tde,
                                 agent.delta_tde: delta_tde,
                             }))
                     estimated_delta_tde = train_result['estimated_delta']
 
-                    def normalize(X: np.ndarray):
-                        return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
+                    # def normalize(X: np.ndarray):
+                    #     return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
 
-                    raw_diff = delta_tde - estimated_delta_tde
-                    norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
-                    mean_sq_raw_diff = np.mean(.5 * np.square(raw_diff))
-                    mean_sq_norm_diff = np.mean(.5 * np.square(norm_diff))
-                    model_loss = np.mean(
-                        np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
+                    diff = delta_tde - estimated_delta_tde
+                    # norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
+                    mean_sq_diff = np.mean(.5 * np.square(diff))
+                    # mean_sq_norm_diff = np.mean(.5 * np.square(norm_diff))
+                    # model_loss = np.mean(
+                    #     np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
                     counter.update(
                         estimated_delta_tde=np.mean(estimated_delta_tde),
                         delta_tde=np.mean(delta_tde),
-                        raw_diff=np.mean(raw_diff),
-                        norm_diff=np.mean(norm_diff),
-                        mean_sq_raw_diff=mean_sq_raw_diff,
-                        mean_sq_norm_diff=mean_sq_norm_diff,
+                        diff=np.mean(diff),
+                        mean_sq_diff=mean_sq_diff,
+                        # norm_diff=np.mean(norm_diff),
+                        # mean_sq_norm_diff=mean_sq_norm_diff,
                     )
 
                 for k, v in train_result.items():

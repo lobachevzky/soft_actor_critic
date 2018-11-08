@@ -17,6 +17,7 @@ Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 class UnsupervisedTrainer(Trainer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.static_sample = None
         self.boss_state = BossState(
             history=None,
             delta_tde=None,
@@ -32,14 +33,18 @@ class UnsupervisedTrainer(Trainer):
                 # sample buffer
                 test_sample = self.sample_buffer()
                 train_sample = self.sample_buffer()
+                if self.buffer.full and self.static_sample is None:
+                    self.static_sample = self.sample_buffer()
 
                 # get pre- and post-td-error
                 agent = self.agents.act
                 pre_td_error = agent.td_error(step=test_sample)
                 pre_train = agent.td_error(step=train_sample)
+                pre_static = agent.td_error(step=self.static_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)
                 post_train = agent.td_error(step=train_sample)
+                post_static = agent.td_error(step=self.static_sample)
                 delta_tde = np.mean(pre_td_error - post_td_error)
 
                 if self.boss_state.history is not None:
@@ -78,7 +83,8 @@ class UnsupervisedTrainer(Trainer):
                         delta_tde=np.mean(delta_tde),
                         diff=np.mean(diff),
                         mean_sq_diff=mean_sq_diff,
-                        train_delta_tde=np.mean(pre_train - post_train)
+                        train_delta_tde=np.mean(pre_train - post_train),
+                        static_delta_tde=np.mean(pre_static - post_static),
                         # norm_diff=np.mean(norm_diff),
                         # mean_sq_norm_diff=mean_sq_norm_diff,
                     )

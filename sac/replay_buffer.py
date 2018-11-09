@@ -5,7 +5,7 @@ from typing import Iterable
 import numpy as np
 
 # first party
-from sac.array_group import ArrayGroup, Key, X
+from sac.array_group import ArrayGroup, Key, X, allocate, get_shapes
 
 
 def get_index(value):
@@ -66,3 +66,10 @@ class ReplayBuffer:
         if self.pos + stop >= self.maxlen:
             self.full = True
         self.pos = self.modulate(stop)
+
+    def extend(self, x: X):
+        if self.buffer is None:
+            self.buffer = ArrayGroup.shape_like(x=ArrayGroup(x)[0],
+                                                pre_shape=(self.maxlen,))
+
+        self.append(x)

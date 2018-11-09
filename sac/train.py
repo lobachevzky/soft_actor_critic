@@ -273,11 +273,12 @@ class Trainer:
     def buffer_ready(self):
         return len(self.buffer) >= self.batch_size
 
-    def sample_buffer(self) -> Step:
-        sample = Step(*self.buffer.sample(self.batch_size, seq_len=self.seq_len))
+    def sample_buffer(self, batch_size=None) -> Step:
+        batch_size = batch_size or self.batch_size
+        sample = Step(*self.buffer.sample(batch_size, seq_len=self.seq_len))
         if self.seq_len is None:
             # leave state as dummy value for non-recurrent
-            shape = [self.batch_size, -1]
+            shape = [batch_size, -1]
             return Step(
                 o1=self.preprocess_obs(sample.o1, shape=shape),
                 o2=self.preprocess_obs(sample.o2, shape=shape),
@@ -287,7 +288,7 @@ class Trainer:
                 t=sample.t)
         else:
             # adjust state for recurrent networks
-            shape = [self.batch_size, self.seq_len, -1]
+            shape = [batch_size, self.seq_len, -1]
             return Step(
                 o1=self.preprocess_obs(sample.o1, shape=shape),
                 o2=self.preprocess_obs(sample.o2, shape=shape),

@@ -7,7 +7,9 @@ import numpy as np
 # first party
 from environments.hindsight_wrapper import Observation
 from environments.hsr import distance_between
+from sac.replay_buffer import ReplayBuffer
 from sac.train import Trainer
+from sac.utils import Step
 
 BossState = namedtuple('BossState', 'history tde initial_achieved initial_value '
                                     'reward td_error ')
@@ -17,6 +19,7 @@ Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 class UnsupervisedTrainer(Trainer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.test_sample = None
         self.boss_state = BossState(
             td_error=None,
             history=None,
@@ -29,13 +32,19 @@ class UnsupervisedTrainer(Trainer):
         counter = Counter()
 
         if self.buffer_ready():
+            if self.test_sample is None:
+                self.test_sample = ReplayBuffer(maxlen=self.batch_size)
+                self.test_sample.extend(self.sample_buffer())
             for i in range(self.n_train_steps):
                 # sample buffer
-                test_sample = self.sample_buffer()
+                sample = self.sample_buffer(batch_size=1)
+                self.test_sample.append(sample)
                 train_sample = self.sample_buffer()
 
                 # get pre- and post-td-error
                 agent = self.agents.act
+                test_sample = Step(*self.test_sample.buffer)
+
                 pre_td_error = agent.td_error(step=test_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)

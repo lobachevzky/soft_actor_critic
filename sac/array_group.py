@@ -25,11 +25,12 @@ def setitem(array_group: Union[list, np.ndarray], key: Key, x: X):
             setitem(_group, key, _x)
 
 
-def allocate(pre_shape: tuple, shapes: Union[tuple, Iterable]):
+def allocate(shapes: Iterable, pre_shape: tuple = None):
+    pre_shape = pre_shape or ()
     try:
-        return np.zeros(pre_shape + shapes)
+        return np.zeros(tuple(pre_shape) + shapes)
     except TypeError:
-        return [allocate(pre_shape, shape) for shape in shapes]
+        return [allocate(shape, pre_shape) for shape in shapes]
 
 
 def get_shapes(x, subset=None):
@@ -67,8 +68,8 @@ def zip_op(op: Callable[[X, X], list],
 
 class ArrayGroup:
     @staticmethod
-    def shape_like(x: X, pre_shape: tuple):
-        return ArrayGroup(allocate(pre_shape=pre_shape, shapes=get_shapes(x)))
+    def shape_like(x: X, pre_shape: tuple = None):
+        return ArrayGroup(allocate(shapes=get_shapes(x), pre_shape=pre_shape))
 
     def __init__(self, values):
         self.values = values

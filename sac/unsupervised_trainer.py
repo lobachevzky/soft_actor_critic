@@ -77,6 +77,7 @@ class UnsupervisedTrainer(Trainer):
                                 agent.old_delta_tde: np.mean(self.boss_state.delta_tde),
                                 agent.delta_tde: delta_tde,
                             }))
+
                     estimated_delta_tde = train_result['estimated_delta_tde']
 
                     diff = delta_tde - estimated_delta_tde

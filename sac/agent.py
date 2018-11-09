@@ -200,9 +200,9 @@ class AbstractAgent:
                     sim = tf.reduce_mean(tf.reduce_sum(h * p, axis=1) / (tf.linalg.norm(h) * tf.linalg.norm(p)))
                 with tf.variable_scope('delta_tde'):
                     old = self.old_delta_tde
-                    new = tf.layers.dense(inputs=self.model_network(present).output,
-                                          units=1,
-                                          name='new')
+                    new = tf.reduce_mean(tf.layers.dense(inputs=self.model_network(present).output,
+                                                     units=1, name='new'))
+
                     self.estimated_delta_tde = sim * old + (1 - sim) * new
 
             if model_type is ModelType.simple:

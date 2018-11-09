@@ -199,7 +199,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, multi_block, model_type, debug):
+         save_threshold, no_random_reset, obs_type, multi_block, model_type, debug, alpha):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(
@@ -251,7 +251,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             trainer = Trainer(env=env, **kwargs)
     else:
         trainer = UnsupervisedTrainer(
-            env=HSRHindsightWrapper(env, geofence=geofence), model_type=model_type, **kwargs)
+            env=HSRHindsightWrapper(env, geofence=geofence), model_type=model_type, alpha=alpha, **kwargs)
     trainer.train(
         load_path=load_path,
         logdir=logdir,
@@ -296,6 +296,7 @@ def cli():
     p.add_argument('--obs-type', type=str, default=None)
     p.add_argument('--geofence', type=float, required=True)
     p.add_argument('--hindsight-geofence', type=float)
+    p.add_argument('--alpha', type=float)
     p.add_argument('--no-random-reset', action='store_true')
     p.add_argument('--randomize-pose', action='store_true')
     p.add_argument('--logdir', type=str, default=None)

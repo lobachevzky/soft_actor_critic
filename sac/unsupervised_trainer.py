@@ -17,8 +17,9 @@ Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
 class UnsupervisedTrainer(Trainer):
-    def __init__(self, **kwargs):
+    def __init__(self, alpha: float, **kwargs):
         super().__init__(**kwargs)
+        self.alpha = alpha
         self.test_sample = None
         self.boss_state = BossState(
             td_error=None,
@@ -47,8 +48,9 @@ class UnsupervisedTrainer(Trainer):
                 pre_td_error = agent.td_error(step=test_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)
-                delta_tde = np.mean(pre_td_error - post_td_error)
-                old_delta_tde = self.boss_state.delta_tde or delta_tde
+                new_delta_tde = np.mean(pre_td_error - post_td_error)
+                old_delta_tde = self.boss_state.delta_tde or new_delta_tde
+                delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
 
                 if self.boss_state.history is not None:
                     fetch = dict(

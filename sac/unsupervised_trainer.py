@@ -10,7 +10,7 @@ from environments.hsr import distance_between
 from sac.train import Trainer
 
 BossState = namedtuple('BossState', 'history tde initial_achieved initial_value '
-                                    'reward td_error ')
+                       'reward td_error ')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
@@ -53,14 +53,14 @@ class UnsupervisedTrainer(Trainer):
                         self.sess.run(
                             fetch,
                             feed_dict={
-                                agent.O1:            train_sample.o1,
-                                agent.A:             train_sample.a,
-                                agent.R:             train_sample.r,
-                                agent.O2:            train_sample.o2,
-                                agent.T:             train_sample.t,
-                                agent.history:       self.boss_state.history,
-                                agent.old_tde:       np.mean(self.boss_state.tde),
-                                agent.tde:           np.mean(post_td_error),
+                                agent.O1: train_sample.o1,
+                                agent.A: train_sample.a,
+                                agent.R: train_sample.r,
+                                agent.O2: train_sample.o2,
+                                agent.T: train_sample.t,
+                                agent.history: self.boss_state.history,
+                                agent.old_tde: np.mean(self.boss_state.tde),
+                                agent.tde: np.mean(post_td_error),
                             }))
                     estimated_tde = train_result['estimated_tde']
 
@@ -96,8 +96,7 @@ class UnsupervisedTrainer(Trainer):
 
             history = np.hstack(history[1:])
             self.boss_state = self.boss_state._replace(
-                td_error=post_td_error,
-                history=history, tde=post_td_error)
+                td_error=post_td_error, history=history, tde=post_td_error)
         return counter
 
     def trajectory(self, time_steps: int, final_index=None):
@@ -150,4 +149,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

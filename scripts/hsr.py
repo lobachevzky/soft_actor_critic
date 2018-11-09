@@ -19,6 +19,7 @@ import tensorflow as tf
 # first party
 from environments.hindsight_wrapper import HSRHindsightWrapper, MBHSRHindsightWrapper
 from environments.hsr import HSREnv, MultiBlockHSREnv
+from sac.agent import ModelType
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
 from sac.unsupervised_trainer import UnsupervisedTrainer
@@ -198,7 +199,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, multi_block, unsupervised, debug):
+         save_threshold, no_random_reset, obs_type, multi_block, model_type, debug):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(
@@ -239,17 +240,18 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         debug=debug,
         n_train_steps=n_train_steps)
 
-    if hindsight_geofence:
-        trainer = HindsightTrainer(
-            env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(
-                env=env, geofence=hindsight_geofence),
-            n_goals=n_goals,
-            **kwargs)
-    elif unsupervised:
-        trainer = UnsupervisedTrainer(
-            env=HSRHindsightWrapper(env, geofence=geofence), **kwargs)
+    if model_type is ModelType.none:
+        if hindsight_geofence:
+            trainer = HindsightTrainer(
+                env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(
+                    env=env, geofence=hindsight_geofence),
+                n_goals=n_goals,
+                **kwargs)
+        else:
+            trainer = Trainer(env=env, **kwargs)
     else:
-        trainer = Trainer(env=env, **kwargs)
+        trainer = UnsupervisedTrainer(
+            env=HSRHindsightWrapper(env, geofence=geofence), model_type=model_type, **kwargs)
     trainer.train(
         load_path=load_path,
         logdir=logdir,
@@ -312,8 +314,8 @@ def cli():
     p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
     p.add_argument('--use-dof', type=str, action='append')
     p.add_argument('--multi-block', action='store_true')
-    p.add_argument('--unsupervised', action='store_true')
     p.add_argument('--debug', action='store_true')
+    p.add_argument('--model-type', type=ModelType, default=ModelType.none, choices=list(ModelType))
     main(**vars(p.parse_args()))
 
 

@@ -10,7 +10,7 @@ from environments.hsr import distance_between
 from sac.train import Trainer
 
 BossState = namedtuple('BossState', 'history tde initial_achieved initial_value '
-                       'reward td_error ')
+                                    'reward td_error ')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
@@ -37,15 +37,13 @@ class UnsupervisedTrainer(Trainer):
                 # get pre- and post-td-error
                 agent = self.agents.act
                 pre_td_error = agent.td_error(step=test_sample)
-                pre_train = agent.td_error(step=train_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)
-                post_train = agent.td_error(step=train_sample)
                 delta_tde = np.mean(pre_td_error - post_td_error)
 
                 if self.boss_state.history is not None:
                     fetch = dict(
-                        estimated_tde=agent.estimated_tde,
+                        estimated_delta_tde=agent.estimated_delta_tde,
                         model_loss=agent.model_loss,
                         model_grad=agent.model_grad,
                         train_model=agent.train_model)
@@ -59,15 +57,15 @@ class UnsupervisedTrainer(Trainer):
                                 agent.O2: train_sample.o2,
                                 agent.T: train_sample.t,
                                 agent.history: self.boss_state.history,
-                                agent.old_tde: np.mean(self.boss_state.tde),
-                                agent.tde: np.mean(post_td_error),
+                                agent.old_delta_tde: np.mean(self.boss_state.tde),
+                                agent.delta_tde: np.mean(pre_td_error - post_td_error),
                             }))
-                    estimated_tde = train_result['estimated_tde']
+                    estimated_delta_tde = train_result['estimated_delta_tde']
 
                     # def normalize(X: np.ndarray):
                     #     return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
 
-                    diff = delta_tde - estimated_tde
+                    diff = delta_tde - estimated_delta_tde
                     # norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
                     mean_sq_diff = np.mean(.5 * np.square(diff))
                     # mean_sq_norm_diff = np.mean(.5 * np.square(norm_diff))
@@ -76,27 +74,27 @@ class UnsupervisedTrainer(Trainer):
                     # noinspection PyTypeChecker
                     counter.update(
                         td_error=np.mean(post_td_error),
-                        estimated_tde=np.mean(estimated_tde),
+                        estimated_delta_tde=np.mean(estimated_delta_tde),
                         delta_tde=np.mean(delta_tde),
                         diff=np.mean(diff),
                         mean_sq_diff=mean_sq_diff,
-                        train_delta_tde=np.mean(pre_train - post_train),
                         episodic_delta_tde=np.mean(post_td_error -
                                                    self.boss_state.td_error),
                         # norm_diff=np.mean(norm_diff),
                         # mean_sq_norm_diff=mean_sq_norm_diff,
                     )
+                history = train_sample.replace(
+                    r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
+
+                td_error = train_result['q_error'].reshape(-1, 1)
+                history = np.hstack(list(history[1:]) + [td_error])
+                self.boss_state = self.boss_state._replace(
+                    td_error=post_td_error, history=history, tde=post_td_error)
 
                 for k, v in train_result.items():
                     if np.isscalar(v):
                         counter.update(**{k: v})
 
-            history = test_sample.replace(
-                r=test_sample.r.reshape(-1, 1), t=test_sample.t.reshape(-1, 1))
-
-            history = np.hstack(history[1:])
-            self.boss_state = self.boss_state._replace(
-                td_error=post_td_error, history=history, tde=post_td_error)
         return counter
 
     def trajectory(self, time_steps: int, final_index=None):
@@ -149,4 +147,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

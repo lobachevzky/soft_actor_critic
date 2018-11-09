@@ -11,7 +11,7 @@ from sac.replay_buffer import ReplayBuffer
 from sac.train import Trainer
 from sac.utils import Step
 
-BossState = namedtuple('BossState', 'history tde initial_achieved initial_value '
+BossState = namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
                                     'reward td_error ')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
@@ -23,7 +23,7 @@ class UnsupervisedTrainer(Trainer):
         self.boss_state = BossState(
             td_error=None,
             history=None,
-            tde=None,
+            delta_tde=None,
             initial_achieved=None,
             initial_value=None,
             reward=None)
@@ -36,19 +36,19 @@ class UnsupervisedTrainer(Trainer):
                 self.test_sample = ReplayBuffer(maxlen=self.batch_size)
                 self.test_sample.extend(self.sample_buffer())
             for i in range(self.n_train_steps):
-                # sample buffer
+                # get train and test samples
                 sample = self.sample_buffer(batch_size=1)
                 self.test_sample.append(sample)
                 train_sample = self.sample_buffer()
+                test_sample = Step(*self.test_sample.buffer)
 
                 # get pre- and post-td-error
                 agent = self.agents.act
-                test_sample = Step(*self.test_sample.buffer)
-
                 pre_td_error = agent.td_error(step=test_sample)
                 train_result = agent.train_step(step=train_sample)
                 post_td_error = agent.td_error(step=test_sample)
                 delta_tde = np.mean(pre_td_error - post_td_error)
+                old_delta_tde = self.boss_state.delta_tde or delta_tde
 
                 if self.boss_state.history is not None:
                     fetch = dict(
@@ -66,20 +66,13 @@ class UnsupervisedTrainer(Trainer):
                                 agent.O2: train_sample.o2,
                                 agent.T: train_sample.t,
                                 agent.history: self.boss_state.history,
-                                agent.old_delta_tde: np.mean(self.boss_state.tde),
-                                agent.delta_tde: np.mean(pre_td_error - post_td_error),
+                                agent.old_delta_tde: np.mean(self.boss_state.delta_tde),
+                                agent.delta_tde: delta_tde,
                             }))
                     estimated_delta_tde = train_result['estimated_delta_tde']
 
-                    # def normalize(X: np.ndarray):
-                    #     return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
-
                     diff = delta_tde - estimated_delta_tde
-                    # norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
                     mean_sq_diff = np.mean(.5 * np.square(diff))
-                    # mean_sq_norm_diff = np.mean(.5 * np.square(norm_diff))
-                    # model_loss = np.mean(
-                    #     np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
                     counter.update(
                         td_error=np.mean(post_td_error),
@@ -89,8 +82,6 @@ class UnsupervisedTrainer(Trainer):
                         mean_sq_diff=mean_sq_diff,
                         episodic_delta_tde=np.mean(post_td_error -
                                                    self.boss_state.td_error),
-                        # norm_diff=np.mean(norm_diff),
-                        # mean_sq_norm_diff=mean_sq_norm_diff,
                     )
                 history = train_sample.replace(
                     r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
@@ -98,7 +89,7 @@ class UnsupervisedTrainer(Trainer):
                 td_error = train_result['q_error'].reshape(-1, 1)
                 history = np.hstack(list(history[1:]) + [td_error])
                 self.boss_state = self.boss_state._replace(
-                    td_error=post_td_error, history=history, tde=post_td_error)
+                    td_error=post_td_error, history=history, delta_tde=delta_tde)
 
                 for k, v in train_result.items():
                     if np.isscalar(v):

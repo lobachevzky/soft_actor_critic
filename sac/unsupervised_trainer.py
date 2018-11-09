@@ -10,7 +10,7 @@ from environments.hsr import distance_between
 from sac.train import Trainer
 
 BossState = namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                       'reward')
+                                    'reward td_error ')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
@@ -18,6 +18,7 @@ class UnsupervisedTrainer(Trainer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.boss_state = BossState(
+            td_error=None,
             history=None,
             delta_tde=None,
             initial_achieved=None,
@@ -52,14 +53,14 @@ class UnsupervisedTrainer(Trainer):
                         self.sess.run(
                             fetch,
                             feed_dict={
-                                agent.O1: train_sample.o1,
-                                agent.A: train_sample.a,
-                                agent.R: train_sample.r,
-                                agent.O2: train_sample.o2,
-                                agent.T: train_sample.t,
-                                agent.history: self.boss_state.history,
+                                agent.O1:            train_sample.o1,
+                                agent.A:             train_sample.a,
+                                agent.R:             train_sample.r,
+                                agent.O2:            train_sample.o2,
+                                agent.T:             train_sample.t,
+                                agent.history:       self.boss_state.history,
                                 agent.old_delta_tde: self.boss_state.delta_tde,
-                                agent.delta_tde: delta_tde,
+                                agent.delta_tde:     delta_tde,
                             }))
                     estimated_delta_tde = train_result['estimated_delta']
 
@@ -78,7 +79,9 @@ class UnsupervisedTrainer(Trainer):
                         delta_tde=np.mean(delta_tde),
                         diff=np.mean(diff),
                         mean_sq_diff=mean_sq_diff,
-                        train_delta_tde=np.mean(pre_train - post_train)
+                        train_delta_tde=np.mean(pre_train - post_train),
+                        episodic_delta_tde=np.mean(post_td_error -
+                                                   self.boss_state.td_error),
                         # norm_diff=np.mean(norm_diff),
                         # mean_sq_norm_diff=mean_sq_norm_diff,
                     )
@@ -92,6 +95,7 @@ class UnsupervisedTrainer(Trainer):
 
             history = np.hstack(history[1:])
             self.boss_state = self.boss_state._replace(
+                td_error=post_td_error,
                 history=history, delta_tde=delta_tde)
         return counter
 
@@ -145,4 +149,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

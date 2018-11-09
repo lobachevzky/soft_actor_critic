@@ -11,8 +11,14 @@ from sac.replay_buffer import ReplayBuffer
 from sac.train import Trainer
 from sac.utils import Step
 
-BossState = namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                                    'reward td_error ')
+
+class BossState(namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
+                                        'reward td_error ')):
+    def replace(self, **kwargs):
+        # noinspection PyProtectedMember
+        return super()._replace(**kwargs)
+
+
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
 
@@ -90,7 +96,7 @@ class UnsupervisedTrainer(Trainer):
 
                 td_error = train_result['q_error'].reshape(-1, 1)
                 history = np.hstack(list(history[1:]) + [td_error])
-                self.boss_state = self.boss_state._replace(
+                self.boss_state = self.boss_state.replace(
                     td_error=post_td_error, history=history, delta_tde=delta_tde)
 
                 for k, v in train_result.items():
@@ -112,7 +118,7 @@ class UnsupervisedTrainer(Trainer):
 
             o1 = o1.replace(desired_goal=goal)
 
-            self.boss_state = self.boss_state._replace(
+            self.boss_state = self.boss_state.replace(
                 initial_achieved=Observation(*o1).achieved_goal)
         return o1
 

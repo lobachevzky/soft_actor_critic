@@ -1,23 +1,24 @@
 # stdlib
 import argparse
+import re
+import tempfile
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-import re
-import tempfile
 from typing import List, Tuple
 from xml.etree import ElementTree as ET
 
+import numpy as np
+import tensorflow as tf
 # third party
 from gym import spaces
 from gym.spaces import Box
 from gym.wrappers import TimeLimit
-import numpy as np
-import tensorflow as tf
 
 # first party
-from environments.hindsight_wrapper import HSRHindsightWrapper, MBHSRHindsightWrapper
+from environments.hindsight_wrapper import (HSRHindsightWrapper,
+                                            MBHSRHindsightWrapper)
 from environments.hsr import HSREnv, MultiBlockHSREnv
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer

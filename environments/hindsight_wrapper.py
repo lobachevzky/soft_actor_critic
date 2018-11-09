@@ -5,15 +5,15 @@ from copy import deepcopy
 
 # third party
 import gym
+import numpy as np
 from gym import spaces
 from gym.envs.classic_control import Continuous_MountainCarEnv
 from gym.spaces import Box
-import numpy as np
 
+import environments.hsr
 # first party
 from environments import hsr
 from environments.frozen_lake import FrozenLakeEnv
-import environments.hsr
 from environments.hsr import HSREnv, MultiBlockHSREnv
 from sac.array_group import ArrayGroup
 from sac.utils import Step, unwrap_env, vectorize

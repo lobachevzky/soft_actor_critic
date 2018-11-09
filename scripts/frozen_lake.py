@@ -1,7 +1,7 @@
 # third party
 import click
-from gym.wrappers import TimeLimit
 import tensorflow as tf
+from gym.wrappers import TimeLimit
 
 # first party
 from environments.frozen_lake import FrozenLakeEnv

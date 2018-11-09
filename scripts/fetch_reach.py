@@ -1,10 +1,10 @@
 # third party
 import click
 import gym
-from gym.envs.robotics import FetchReachEnv
-from gym.envs.robotics.fetch_env import goal_distance
 import numpy as np
 import tensorflow as tf
+from gym.envs.robotics import FetchReachEnv
+from gym.envs.robotics.fetch_env import goal_distance
 
 # first party
 from environments.hindsight_wrapper import HindsightWrapper

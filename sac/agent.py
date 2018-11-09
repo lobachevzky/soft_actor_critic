@@ -172,12 +172,12 @@ class AbstractAgent:
                     tf.reshape(self.T, [-1, 1]),
                 ],
                 axis=1)
-            self.old_delta_tde = tf.placeholder(
-                tf.float32, (), name='old_delta_tde')
+            self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
             self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
             with tf.variable_scope('tde_model'):
-                estimated_delta = tf.squeeze(tf.layers.dense(self.model_network(present).output, 1), axis=1)
+                estimated_delta = tf.squeeze(
+                    tf.layers.dense(self.model_network(present).output, 1), axis=1)
                 self.estimated_delta = estimated_delta
 
                 # def normalize(X):

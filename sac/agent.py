@@ -172,13 +172,13 @@ class AbstractAgent:
                     tf.reshape(self.T, [-1, 1]),
                 ],
                 axis=1)
-            self.old_delta_tde = tf.placeholder(
-                tf.float32, (), name='old_delta_tde')
-            self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
+            self.old_tde = tf.placeholder(
+                tf.float32, (), name='old_tde')
+            self.tde = tf.placeholder(tf.float32, (), name='tde')
 
             with tf.variable_scope('tde_model'):
                 concat = tf.concat([self.history, present], axis=0)
-                pad = tf.pad(concat, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
+                pad = tf.pad(concat, [[0, 0], [0, 1]], constant_values=self.old_tde)
                 history_rep, present_rep = tf.split(self.model_network(pad).output,
                                                     2, axis=0)
                 history_rep = tf.reduce_sum(history_rep, axis=0, keepdims=True)
@@ -191,12 +191,12 @@ class AbstractAgent:
                 # self.model_layer_size]))
                 #     sims = tf.reduce_sum(diffs**2, axis=2, name='sims')
 
-                self.estimated_delta = estimated_delta = tf.squeeze(tf.layers.dense(
+                self.estimated_tde = estimated_tde = tf.squeeze(tf.layers.dense(
                     inputs=tf.concat([history_rep, present_rep], axis=1),
                     units=1,
                     name='estimated_delta'))
 
-            self.model_loss = .5 * tf.square(estimated_delta - self.delta_tde)
+            self.model_loss = .5 * tf.square(estimated_tde - self.tde)
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,
                 var_list=[

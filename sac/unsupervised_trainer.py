@@ -9,7 +9,7 @@ from environments.hindsight_wrapper import Observation
 from environments.hsr import distance_between
 from sac.train import Trainer
 
-BossState = namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
+BossState = namedtuple('BossState', 'history tde initial_achieved initial_value '
                                     'reward td_error ')
 Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 
@@ -20,7 +20,7 @@ class UnsupervisedTrainer(Trainer):
         self.boss_state = BossState(
             td_error=None,
             history=None,
-            delta_tde=None,
+            tde=None,
             initial_achieved=None,
             initial_value=None,
             reward=None)
@@ -45,7 +45,7 @@ class UnsupervisedTrainer(Trainer):
 
                 if self.boss_state.history is not None:
                     fetch = dict(
-                        estimated_delta=agent.estimated_delta,
+                        estimated_tde=agent.estimated_tde,
                         model_loss=agent.model_loss,
                         model_grad=agent.model_grad,
                         train_model=agent.train_model)
@@ -59,15 +59,15 @@ class UnsupervisedTrainer(Trainer):
                                 agent.O2:            train_sample.o2,
                                 agent.T:             train_sample.t,
                                 agent.history:       self.boss_state.history,
-                                agent.old_delta_tde: self.boss_state.delta_tde,
-                                agent.delta_tde:     delta_tde,
+                                agent.old_tde:       np.mean(self.boss_state.tde),
+                                agent.tde:           np.mean(post_td_error),
                             }))
-                    estimated_delta_tde = train_result['estimated_delta']
+                    estimated_tde = train_result['estimated_tde']
 
                     # def normalize(X: np.ndarray):
                     #     return (X - np.mean(X)) / max(float(np.std(X)), 1e-6)
 
-                    diff = delta_tde - estimated_delta_tde
+                    diff = delta_tde - estimated_tde
                     # norm_diff = normalize(delta_tde) - normalize(estimated_delta_tde)
                     mean_sq_diff = np.mean(.5 * np.square(diff))
                     # mean_sq_norm_diff = np.mean(.5 * np.square(norm_diff))
@@ -75,7 +75,8 @@ class UnsupervisedTrainer(Trainer):
                     #     np.abs(normalize(delta_tde) - normalize(estimated_delta_tde)))
                     # noinspection PyTypeChecker
                     counter.update(
-                        estimated_delta_tde=np.mean(estimated_delta_tde),
+                        td_error=np.mean(post_td_error),
+                        estimated_tde=np.mean(estimated_tde),
                         delta_tde=np.mean(delta_tde),
                         diff=np.mean(diff),
                         mean_sq_diff=mean_sq_diff,
@@ -96,7 +97,7 @@ class UnsupervisedTrainer(Trainer):
             history = np.hstack(history[1:])
             self.boss_state = self.boss_state._replace(
                 td_error=post_td_error,
-                history=history, delta_tde=delta_tde)
+                history=history, tde=post_td_error)
         return counter
 
     def trajectory(self, time_steps: int, final_index=None):

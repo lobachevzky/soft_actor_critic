@@ -223,7 +223,6 @@ class AbstractAgent:
             #                 units=1,
             #                 name='estimated_delta'))
 
-            present = tf.Print(present, [tf.shape(present)], message='present')
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
                     self.estimated = tf.squeeze(tf.layers.dense(
@@ -237,11 +236,6 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.estimated = tf.Print(self.estimated, [tf.shape(self.estimated)],
-                                          message='estimated')
-                self.model_target = tf.Print(self.model_target,
-                                             [tf.shape(self.model_target)],
-                                             message='model_target')
                 self.model_loss = tf.reduce_mean(
                     .5 * tf.square(self.estimated - self.model_target))
                 self.train_model, self.model_grad = train_op(

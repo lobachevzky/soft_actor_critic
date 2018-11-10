@@ -5,7 +5,7 @@ from typing import Iterable
 import numpy as np
 
 # first party
-from sac.array_group import ArrayGroup, Key, X, allocate, get_shapes
+from sac.array_group import ArrayGroup, Key, X
 
 
 def get_index(value):

@@ -84,7 +84,8 @@ class UnsupervisedTrainer(Trainer):
 
                     # noinspection PyTypeChecker
                     counter.update(
-                        td_error=np.mean(test_post_td_error),
+                        test_td_error=np.mean(test_post_td_error),
+                        train_td_error=np.mean(train_post_td_error),
                         estimated_delta_tde=np.mean(estimated_delta_tde),
                         delta_tde=delta_tde,
                         train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),

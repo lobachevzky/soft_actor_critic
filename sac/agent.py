@@ -127,7 +127,7 @@ class AbstractAgent:
             not_done = 1 - T  # type: tf.Tensor
             self.q_target = q_target = R + gamma * not_done * v2
             self.Q_error = tf.square(q - q_target)
-            self.model_target = q
+            self.model_target = q - q_target
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.Q_error)
 
             # constructing pi loss

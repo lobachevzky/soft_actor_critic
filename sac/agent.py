@@ -46,7 +46,8 @@ class AbstractAgent:
                  model_layer_size: int = None,
                  reuse: bool = False,
                  scope: str = 'agent',
-                 model_type: ModelType = ModelType.none, model_learning_rate: float=None) -> None:
+                 model_type: ModelType = ModelType.none,
+                 model_learning_rate: float = None) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -126,7 +127,7 @@ class AbstractAgent:
             not_done = 1 - T  # type: tf.Tensor
             self.q_target = q_target = R + gamma * not_done * v2
             self.Q_error = tf.square(q - q_target)
-            self.model_target = not_done * v2
+            self.model_target = self.q_target
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.Q_error)
 
             # constructing pi loss
@@ -182,12 +183,15 @@ class AbstractAgent:
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
                 present = tf.reshape(
-                    tf.concat([
-                        # self.q1,
-                               # self.R,
-                        self.T,
-                        self.v2
-                               ], axis=0), [-1, 1])
+                    tf.concat(
+                        [
+                            # self.q1,
+                            self.R,
+                            self.T,
+                            self.v2
+                        ],
+                        axis=0),
+                    [-1, 1])
                 # self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
                 # self.history = tf.placeholder(
                 #     tf.float32, [batch_size, key_dim], name='history')
@@ -221,9 +225,9 @@ class AbstractAgent:
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
-                            inputs=self.model_network(present).output,
-                            units=1,
-                            name='estimated')
+                        inputs=self.model_network(present).output,
+                        units=1,
+                        name='estimated')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
@@ -235,10 +239,7 @@ class AbstractAgent:
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     lr=model_learning_rate,
-                    var_list=[
-                        v for scope in ['model']
-                        for v in get_variables(scope)
-                    ])
+                    var_list=[v for scope in ['model'] for v in get_variables(scope)])
 
             sess.run(tf.global_variables_initializer())
 

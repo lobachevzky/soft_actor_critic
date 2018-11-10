@@ -45,21 +45,19 @@ class UnsupervisedTrainer(Trainer):
                 self.test_sample.extend(self.sample_buffer())
             for i in range(self.n_train_steps):
                 # get train and test samples
-                sample = self.sample_buffer(batch_size=1)
-                self.test_sample.append(sample)
+                # sample = self.sample_buffer(batch_size=1)
+                # self.test_sample.append(sample)
                 train_sample = self.sample_buffer()
-                test_sample = Step(*self.test_sample.buffer)
+                # test_sample = Step(*self.test_sample.buffer)
 
                 # get pre- and post-td-error
                 agent = self.agents.act
-                test_pre_td_error = agent.td_error(step=test_sample)
-                train_pre_td_error = agent.td_error(step=train_sample)
+                # test_pre_td_error = agent.td_error(step=test_sample)
                 train_result = agent.train_step(step=train_sample)
-                test_post_td_error = agent.td_error(step=test_sample)
-                train_post_td_error = agent.td_error(step=train_sample)
-                new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
-                old_delta_tde = self.boss_state.delta_tde or new_delta_tde
-                delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
+                # test_post_td_error = agent.td_error(step=test_sample)
+                # new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
+                # old_delta_tde = self.boss_state.delta_tde or new_delta_tde
+                # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
 
                 if self.boss_state.history is not None:
                     fetch = dict(
@@ -76,30 +74,33 @@ class UnsupervisedTrainer(Trainer):
                                 agent.R: train_sample.r,
                                 agent.O2: train_sample.o2,
                                 agent.T: train_sample.t,
-                                agent.history: self.boss_state.history,
-                                agent.old_delta_tde: self.boss_state.delta_tde,
-                                agent.delta_tde: delta_tde,
+                                # agent.history: self.boss_state.history,
+                                # agent.old_delta_tde: self.boss_state.delta_tde,
+                                # agent.delta_tde: delta_tde,
                             }))
                     estimated_delta_tde = train_result['estimated_delta_tde']
 
                     # noinspection PyTypeChecker
                     counter.update(
-                        test_td_error=np.mean(test_post_td_error),
-                        train_td_error=np.mean(train_post_td_error),
+                        # test_td_error=np.mean(test_post_td_error),
+                        # train_td_error=np.mean(train_post_td_error),
                         estimated_delta_tde=np.mean(estimated_delta_tde),
-                        delta_tde=delta_tde,
-                        train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),
-                        diff=np.mean(delta_tde - estimated_delta_tde),
-                        episodic_delta_tde=np.mean(test_post_td_error -
-                                                   self.boss_state.td_error),
+                        # delta_tde=delta_tde,
+                        # train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),
+                        # diff=np.mean(delta_tde - estimated_delta_tde),
+                        # episodic_delta_tde=np.mean(test_post_td_error -
+                        #                            self.boss_state.td_error),
                     )
                 history = train_sample.replace(
                     r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
 
                 td_error = train_result['TDError'].reshape(-1, 1)
                 history = np.hstack(list(history[1:]) + [td_error])
-                self.boss_state = self.boss_state.replace(
-                    td_error=test_post_td_error, history=history, delta_tde=delta_tde)
+                # self.boss_state = self.boss_state.replace(
+                    # td_error=test_post_td_error,
+                    # history=history,
+                    # delta_tde=delta_tde
+                # )
 
                 for k, v in train_result.items():
                     if np.isscalar(v):

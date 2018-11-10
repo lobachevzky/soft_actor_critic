@@ -112,14 +112,15 @@ class AbstractAgent:
             # constructing V loss
             v1 = self.v_network(self.O1, 'V')
             self.v1 = v1
-            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
+            self.q1 = q1 = self.q_network(self.O1, self.transform_action_sample(
+                A_sampled1), 'Q')
             log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', _reuse=True)
             log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
             self.V_loss = V_loss = tf.reduce_mean(
                 0.5 * tf.square(v1 - (q1 - log_pi_sampled1)))
 
             # constructing Q loss
-            v2 = self.v_network(self.O2, 'V_bar')
+            self.v2 = v2 = self.v_network(self.O2, 'V_bar')
             q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             not_done = 1 - T  # type: tf.Tensor
             self.q_target = q_target = R + gamma * not_done * v2
@@ -171,58 +172,52 @@ class AbstractAgent:
 
             # TD error prediction model
             if model_type is not ModelType.none:
-                key_dim = (
-                    list(o_shape)[0] +  # o1
-                    list(a_shape)[0] +  # a
+                dim = (
+                    1 +  # q1
                     1 +  # r
-                    list(o_shape)[0] +  # o2
-                    1 +  # t
-                    1  # td error
+                    1    # v2
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
-                present = tf.concat([
-                    self.O1,
-                    self.A,
-                    tf.reshape(self.R, [-1, 1]),
-                    self.O2,
-                    tf.reshape(self.T, [-1, 1]),
-                    tf.reshape(self.TDError, [-1, 1]),
+                present = tf.reshape(tf.concat([
+                    self.q1,
+                    self.R,
+                    self.v2,
                 ],
-                                    axis=1)
-                self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
-                self.history = tf.placeholder(
-                    tf.float32, [batch_size, key_dim], name='history')
-                sarst = tf.concat([self.history, present], axis=0, name='sarst')
+                                    axis=0), [-1, dim])
+                # self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
+                # self.history = tf.placeholder(
+                #     tf.float32, [batch_size, key_dim], name='history')
+                # sarst = tf.concat([self.history, present], axis=0, name='sarst')
 
-            if model_type is ModelType.complex:
-                h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
-                with tf.variable_scope('sarst'):
-                    sim = tf.reduce_mean(
-                        tf.reduce_sum(h * p, axis=1) /
-                        (tf.linalg.norm(h) * tf.linalg.norm(p)))
-                with tf.variable_scope('delta_tde'):
-                    old = self.old_delta_tde
-                    new = tf.layers.dense(
-                        inputs=self.model_network(present).output, units=1, name='new')
+            # if model_type is ModelType.complex:
+            #     h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
+            #     with tf.variable_scope('sarst'):
+            #         sim = tf.reduce_mean(
+            #             tf.reduce_sum(h * p, axis=1) /
+            #             (tf.linalg.norm(h) * tf.linalg.norm(p)))
+            #     with tf.variable_scope('delta_tde'):
+            #         old = self.old_delta_tde
+            #         new = tf.layers.dense(
+            #             inputs=self.model_network(present).output, units=1, name='new')
+            #
+            #         self.estimated_tde = sim * old + (1 - sim) * new
 
-                    self.estimated_delta_tde = sim * old + (1 - sim) * new
-
-            if model_type is ModelType.simple:
-                pad = tf.pad(sarst, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
-                h, p = tf.split(self.model_network(pad).output, 2, axis=0)
-                h = tf.reduce_sum(h, axis=0, keepdims=True)
-                p = tf.reduce_sum(p, axis=0, keepdims=True)
-                with tf.variable_scope('delta_tde'):
-                    self.estimated_delta_tde = tf.squeeze(
-                        tf.layers.dense(
-                            inputs=tf.concat([h, p], axis=1),
-                            units=1,
-                            name='estimated_delta'))
+            # if model_type is ModelType.simple:
+            #     pad = tf.pad(sarst, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
+            #     h, p = tf.split(self.model_network(pad).output, 2, axis=0)
+            #     h = tf.reduce_sum(h, axis=0, keepdims=True)
+            #     p = tf.reduce_sum(p, axis=0, keepdims=True)
+            #     with tf.variable_scope('delta_tde'):
+            #         self.estimated_tde = tf.squeeze(
+            #             tf.layers.dense(
+            #                 inputs=tf.concat([h, p], axis=1),
+            #                 units=1,
+            #                 name='estimated_delta'))
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('delta_tde'):
-                    self.estimated_delta_tde = tf.squeeze(
+                    self.estimated_tde = tf.squeeze(
                         tf.layers.dense(
                             inputs=self.model_network(present).output,
                             units=1,
@@ -230,11 +225,11 @@ class AbstractAgent:
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('delta_tde'):
-                    self.estimated_delta_tde = tf.get_variable('estimated_delta', 1)
+                    self.estimated_tde = tf.get_variable('estimated_delta', 1)
 
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(
-                    .5 * tf.square(self.estimated_delta_tde - self.delta_tde))
+                    .5 * tf.square(self.estimated_tde - self.TDError))
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     var_list=[

@@ -175,10 +175,10 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 dim = (
-                    1 +  # q1
-                    1 +  # r
-                    1 +  # t
-                    1  # v2
+                        1 +  # q1
+                        # 1 +  # r
+                        # 1 +  # t
+                        1  # v2
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
@@ -190,8 +190,9 @@ class AbstractAgent:
                             self.v2
                         ],
                         axis=0),
-                    [-1, 1])
-                # self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
+                    [-1, dim])
+                # self.old_delta_tde = tf.placeholder(tf.float32, (),
+                # name='old_delta_tde')
                 # self.history = tf.placeholder(
                 #     tf.float32, [batch_size, key_dim], name='history')
                 # sarst = tf.concat([self.history, present], axis=0, name='sarst')
@@ -210,7 +211,8 @@ class AbstractAgent:
             #         self.estimated_tde = sim * old + (1 - sim) * new
 
             # if model_type is ModelType.simple:
-            #     pad = tf.pad(sarst, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
+            #     pad = tf.pad(sarst, [[0, 0], [0, 1]],
+            # constant_values=self.old_delta_tde)
             #     h, p = tf.split(self.model_network(pad).output, 2, axis=0)
             #     h = tf.reduce_sum(h, axis=0, keepdims=True)
             #     p = tf.reduce_sum(p, axis=0, keepdims=True)
@@ -221,19 +223,25 @@ class AbstractAgent:
             #                 units=1,
             #                 name='estimated_delta'))
 
+            present = tf.Print(present, [tf.shape(present)], message='present')
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
-                    self.estimated = tf.layers.dense(
+                    self.estimated = tf.squeeze(tf.layers.dense(
                         inputs=self.model_network(present).output,
                         activation=None,
                         units=1,
-                        name='estimated')
+                        name='estimated'), axis=1)
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
+                self.estimated = tf.Print(self.estimated, [tf.shape(self.estimated)],
+                                          message='estimated')
+                self.model_target = tf.Print(self.model_target,
+                                             [tf.shape(self.model_target)],
+                                             message='model_target')
                 self.model_loss = tf.reduce_mean(
                     .5 * tf.square(self.estimated - self.model_target))
                 self.train_model, self.model_grad = train_op(
@@ -256,10 +264,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A: step.a,
-            self.R: np.array(step.r) * self.reward_scale,
+            self.A:  step.a,
+            self.R:  np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T: step.t,
+            self.T:  step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -291,10 +299,10 @@ class AbstractAgent:
             dict(q1=self.q1, v2=self.v2, q_target=self.q_target),
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     def td_error(self, step: Step):
@@ -302,10 +310,10 @@ class AbstractAgent:
             self.model_target,
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     @abstractmethod

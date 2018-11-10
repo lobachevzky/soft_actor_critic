@@ -25,6 +25,17 @@ from sac.train import HindsightTrainer, Trainer
 from sac.unsupervised_trainer import UnsupervisedTrainer
 
 
+def parametric_relu(_x):
+    alphas = tf.get_variable(
+        'alpha',
+        _x.get_shape()[-1],
+        initializer=tf.constant_initializer(0.0),
+        dtype=tf.float32)
+    pos = tf.nn.relu(_x)
+    neg = alphas * (_x - abs(_x)) * 0.5
+    return pos + neg
+
+
 def make_box(*tuples: Tuple[float, float]):
     low, high = map(np.array, zip(*[(map(float, m)) for m in tuples]))
     return spaces.Box(low=low, high=high, dtype=np.float32)
@@ -58,7 +69,12 @@ def cast_to_int(arg: str):
 
 
 ACTIVATIONS = dict(
-    relu=tf.nn.relu, leaky=tf.nn.leaky_relu, elu=tf.nn.elu, selu=tf.nn.selu)
+    relu=tf.nn.relu,
+    leaky=tf.nn.leaky_relu,
+    elu=tf.nn.elu,
+    selu=tf.nn.selu,
+    prelu=parametric_relu,
+)
 
 
 def parse_activation(arg: str):
@@ -199,8 +215,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, multi_block, model_type, debug,
-         alpha, model_learning_rate):
+         save_threshold, no_random_reset, obs_type, multi_block, model_type, debug, alpha,
+         model_learning_rate):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(

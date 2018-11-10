@@ -112,8 +112,7 @@ class AbstractAgent:
             # constructing V loss
             v1 = self.v_network(self.O1, 'V')
             self.v1 = v1
-            q1 = self.q_network(self.O1, self.transform_action_sample(
-                A_sampled1), 'Q')
+            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', _reuse=True)
             log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
             self.V_loss = V_loss = tf.reduce_mean(
@@ -121,11 +120,12 @@ class AbstractAgent:
 
             # constructing Q loss
             self.v2 = v2 = self.v_network(self.O2, 'V_bar')
-            self.q1 = q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
+            self.q1 = q = self.q_network(
+                self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             not_done = 1 - T  # type: tf.Tensor
             self.q_target = q_target = R + gamma * not_done * v2
             self.Q_error = tf.square(q - q_target)
-            self.model_target = q
+            self.model_target = q - q_target
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.Q_error)
 
             # constructing pi loss
@@ -175,11 +175,13 @@ class AbstractAgent:
                 dim = (
                     1 +  # q1
                     1 +  # r
-                    1    # v2
+                    1 +  # t
+                    1  # v2
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
-                present = tf.reshape(self.q1, [-1, 1])
+                present = tf.reshape(
+                    tf.concat([self.q1, self.R, self.T, self.v2], axis=0), [-1, 1])
                 # self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
                 # self.history = tf.placeholder(
                 #     tf.float32, [batch_size, key_dim], name='history')
@@ -211,16 +213,15 @@ class AbstractAgent:
             #                 name='estimated_delta'))
 
             if model_type is ModelType.memoryless:
-                with tf.variable_scope('delta_tde'):
-                    self.estimated = tf.squeeze(
-                        tf.layers.dense(
+                with tf.variable_scope('model'):
+                    self.estimated = tf.layers.dense(
                             inputs=self.model_network(present).output,
                             units=1,
-                            name='estimated_delta'), 1)
+                            name='estimated')
 
             if model_type is ModelType.prior:
-                with tf.variable_scope('delta_tde'):
-                    self.estimated = tf.get_variable('estimated_delta', 1)
+                with tf.variable_scope('model'):
+                    self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(
@@ -228,7 +229,7 @@ class AbstractAgent:
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     var_list=[
-                        v for scope in ['sarst', 'delta_tde']
+                        v for scope in ['model']
                         for v in get_variables(scope)
                     ])
 

@@ -51,7 +51,7 @@ class AbstractAgent:
         self.default_train_values = [
             'entropy',
             'soft_update_xi_bar',
-            'q_error',
+            'TDError',
             'V_loss',
             'Q_loss',
             'pi_loss',
@@ -112,7 +112,8 @@ class AbstractAgent:
             # constructing V loss
             v1 = self.v_network(self.O1, 'V')
             self.v1 = v1
-            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
+            q1 = self.q_network(self.O1, self.transform_action_sample(
+                A_sampled1), 'Q')
             log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', _reuse=True)
             log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
             self.V_loss = V_loss = tf.reduce_mean(
@@ -122,9 +123,10 @@ class AbstractAgent:
             v2 = self.v_network(self.O2, 'V_bar')
             q = self.q_network(self.O1, self.transform_action_sample(A), 'Q', reuse=True)
             not_done = 1 - T  # type: tf.Tensor
-            q_target = R + gamma * not_done * v2
-            self.q_error = tf.square(q - q_target)
-            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.q_error)
+            self.q_target = q_target = R + gamma * not_done * v2
+            self.Q_error = tf.square(q - q_target)
+            self.TDError = tf.abs(q - q_target)
+            self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.Q_error)
 
             # constructing pi loss
             self.A_sampled2 = A_sampled2 = tf.stop_gradient(
@@ -186,7 +188,7 @@ class AbstractAgent:
                     tf.reshape(self.R, [-1, 1]),
                     self.O2,
                     tf.reshape(self.T, [-1, 1]),
-                    tf.reshape(self.q_error, [-1, 1]),
+                    tf.reshape(self.TDError, [-1, 1]),
                 ],
                     axis=1)
                 self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
@@ -284,9 +286,19 @@ class AbstractAgent:
     def get_v1(self, o1: np.ndarray):
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
+    def get_values(self, step: Step):
+        return self.sess.run(dict(q1=self.q1, v2=self.v2, q_target=self.q_target),
+                             feed_dict={
+                                 self.O1: step.o1,
+                                 self.A: step.a,
+                                 self.R: step.r,
+                                 self.O2: step.o2,
+                                 self.T: step.t
+                             })
+
     def td_error(self, step: Step):
         return self.sess.run(
-            self.q_error,
+            self.TDError,
             feed_dict={
                 self.O1: step.o1,
                 self.A: step.a,

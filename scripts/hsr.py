@@ -200,7 +200,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
          save_threshold, no_random_reset, obs_type, multi_block, model_type, debug,
-         alpha):
+         alpha, model_learning_rate):
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=(MultiBlockHSREnv if multi_block else HSREnv)(
@@ -234,6 +234,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         model_activation=model_activation,
         model_n_layers=model_n_layers,
         model_layer_size=model_layer_size,
+        model_learning_rate=model_learning_rate,
         reward_scale=reward_scale,
         entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
@@ -282,6 +283,7 @@ def cli():
         choices=ACTIVATIONS.values())
     p.add_argument('--model-n-layers', type=int)
     p.add_argument('--model-layer-size', type=int)
+    p.add_argument('--model-learning-rate', type=float)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)
     p.add_argument('--n-train-steps', type=int, required=True)
     p.add_argument('--steps-per-action', type=int, required=True)

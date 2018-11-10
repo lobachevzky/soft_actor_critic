@@ -46,7 +46,7 @@ class AbstractAgent:
                  model_layer_size: int = None,
                  reuse: bool = False,
                  scope: str = 'agent',
-                 model_type: ModelType = ModelType.none) -> None:
+                 model_type: ModelType = ModelType.none, model_learning_rate: float=None) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -73,6 +73,7 @@ class AbstractAgent:
         self.model_n_layers = model_n_layers or n_layers
         self.model_layer_size = model_layer_size or layer_size
         self.model_activation = model_activation or activation
+        model_learning_rate = model_learning_rate or learning_rate
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
@@ -145,8 +146,8 @@ class AbstractAgent:
 
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
-            def train_op(loss, var_list):
-                optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            def train_op(loss, var_list, lr=learning_rate):
+                optimizer = tf.train.AdamOptimizer(learning_rate=lr)
                 gradients, variables = zip(
                     *optimizer.compute_gradients(loss, var_list=var_list))
                 if grad_clip:
@@ -233,6 +234,7 @@ class AbstractAgent:
                     .5 * tf.square(self.estimated - self.model_target))
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
+                    lr=model_learning_rate,
                     var_list=[
                         v for scope in ['model']
                         for v in get_variables(scope)

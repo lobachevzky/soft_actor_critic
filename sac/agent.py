@@ -125,7 +125,7 @@ class AbstractAgent:
             not_done = 1 - T  # type: tf.Tensor
             self.q_target = q_target = R + gamma * not_done * v2
             self.Q_error = tf.square(q - q_target)
-            self.model_target = q - q_target
+            self.model_target = q # - q_target
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.Q_error)
 
             # constructing pi loss
@@ -181,7 +181,9 @@ class AbstractAgent:
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
                 present = tf.reshape(
-                    tf.concat([self.q1, self.R, self.T, self.v2], axis=0), [-1, 1])
+                    tf.concat([self.q1,
+                               # self.R, self.T, self.v2
+                               ], axis=0), [-1, 1])
                 # self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
                 # self.history = tf.placeholder(
                 #     tf.float32, [batch_size, key_dim], name='history')

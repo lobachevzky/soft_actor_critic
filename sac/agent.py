@@ -1,7 +1,7 @@
 # stdlib
-import enum
 from abc import abstractmethod
 from collections import namedtuple
+import enum
 from typing import Callable, Iterable, List, Sequence
 
 # third party
@@ -112,8 +112,7 @@ class AbstractAgent:
             # constructing V loss
             v1 = self.v_network(self.O1, 'V')
             self.v1 = v1
-            q1 = self.q_network(self.O1, self.transform_action_sample(
-                A_sampled1), 'Q')
+            q1 = self.q_network(self.O1, self.transform_action_sample(A_sampled1), 'Q')
             log_pi_sampled1 = pi_network_log_prob(A_sampled1, 'pi', _reuse=True)
             log_pi_sampled1 *= entropy_scale  # type: tf.Tensor
             self.V_loss = V_loss = tf.reduce_mean(
@@ -173,12 +172,12 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 key_dim = (
-                        list(o_shape)[0] +  # o1
-                        list(a_shape)[0] +  # a
-                        1 +  # r
-                        list(o_shape)[0] +  # o2
-                        1 +  # t
-                        1  # td error
+                    list(o_shape)[0] +  # o1
+                    list(a_shape)[0] +  # a
+                    1 +  # r
+                    list(o_shape)[0] +  # o2
+                    1 +  # t
+                    1  # td error
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
@@ -190,7 +189,7 @@ class AbstractAgent:
                     tf.reshape(self.T, [-1, 1]),
                     tf.reshape(self.TDError, [-1, 1]),
                 ],
-                    axis=1)
+                                    axis=1)
                 self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
                 self.history = tf.placeholder(
                     tf.float32, [batch_size, key_dim], name='history')
@@ -199,17 +198,18 @@ class AbstractAgent:
             if model_type is ModelType.complex:
                 h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
                 with tf.variable_scope('sarst'):
-                    sim = tf.reduce_mean(tf.reduce_sum(h * p, axis=1) / (tf.linalg.norm(h) * tf.linalg.norm(p)))
+                    sim = tf.reduce_mean(
+                        tf.reduce_sum(h * p, axis=1) /
+                        (tf.linalg.norm(h) * tf.linalg.norm(p)))
                 with tf.variable_scope('delta_tde'):
                     old = self.old_delta_tde
-                    new = tf.layers.dense(inputs=self.model_network(present).output,
-                                                     units=1, name='new')
+                    new = tf.layers.dense(
+                        inputs=self.model_network(present).output, units=1, name='new')
 
                     self.estimated_delta_tde = sim * old + (1 - sim) * new
 
             if model_type is ModelType.simple:
-                pad = tf.pad(sarst, [[0, 0], [0, 1]],
-                             constant_values=self.old_delta_tde)
+                pad = tf.pad(sarst, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
                 h, p = tf.split(self.model_network(pad).output, 2, axis=0)
                 h = tf.reduce_sum(h, axis=0, keepdims=True)
                 p = tf.reduce_sum(p, axis=0, keepdims=True)
@@ -233,7 +233,8 @@ class AbstractAgent:
                     self.estimated_delta_tde = tf.get_variable('estimated_delta', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(.5 * tf.square(self.estimated_delta_tde - self.delta_tde))
+                self.model_loss = tf.reduce_mean(
+                    .5 * tf.square(self.estimated_delta_tde - self.delta_tde))
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     var_list=[
@@ -287,14 +288,15 @@ class AbstractAgent:
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
     def get_values(self, step: Step):
-        return self.sess.run(dict(q1=self.q1, v2=self.v2, q_target=self.q_target),
-                             feed_dict={
-                                 self.O1: step.o1,
-                                 self.A: step.a,
-                                 self.R: step.r,
-                                 self.O2: step.o2,
-                                 self.T: step.t
-                             })
+        return self.sess.run(
+            dict(q1=self.q1, v2=self.v2, q_target=self.q_target),
+            feed_dict={
+                self.O1: step.o1,
+                self.A: step.a,
+                self.R: step.r,
+                self.O2: step.o2,
+                self.T: step.t
+            })
 
     def td_error(self, step: Step):
         return self.sess.run(

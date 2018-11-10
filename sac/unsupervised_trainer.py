@@ -12,8 +12,9 @@ from sac.train import Trainer
 from sac.utils import Step
 
 
-class BossState(namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                                        'reward td_error ')):
+class BossState(
+        namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
+                   'reward td_error ')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -86,8 +87,7 @@ class UnsupervisedTrainer(Trainer):
                         td_error=np.mean(test_post_td_error),
                         estimated_delta_tde=np.mean(estimated_delta_tde),
                         delta_tde=delta_tde,
-                        train_delta_tde=np.mean(train_pre_td_error -
-                                                train_post_td_error),
+                        train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),
                         diff=np.mean(delta_tde - estimated_delta_tde),
                         episodic_delta_tde=np.mean(test_post_td_error -
                                                    self.boss_state.td_error),
@@ -156,4 +156,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

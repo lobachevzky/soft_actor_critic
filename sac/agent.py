@@ -225,6 +225,7 @@ class AbstractAgent:
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
                         inputs=self.model_network(present).output,
+                        activation=None,
                         units=1,
                         name='estimated')
 

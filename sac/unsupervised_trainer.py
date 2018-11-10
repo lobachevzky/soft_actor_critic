@@ -60,7 +60,7 @@ class UnsupervisedTrainer(Trainer):
                 # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
 
                 fetch = dict(
-                    estimated_tde=agent.estimated_tde,
+                    estimated=agent.estimated,
                     model_loss=agent.model_loss,
                     model_grad=agent.model_grad,
                     train_model=agent.train_model)
@@ -78,13 +78,13 @@ class UnsupervisedTrainer(Trainer):
                             # agent.delta_tde: delta_tde,
                         }))
 
-                estimated_tde = train_result['estimated_tde']
+                estimated = train_result['estimated']
 
                 # noinspection PyTypeChecker
                 counter.update(
                     # test_td_error=np.mean(test_post_td_error),
                     # train_td_error=np.mean(train_post_td_error),
-                    estimated_delta_tde=np.mean(estimated_tde),
+                    estimated_delta_tde=np.mean(estimated),
                     # delta_tde=delta_tde,
                     # train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),
                     # diff=np.mean(delta_tde - estimated_delta_tde),
@@ -94,8 +94,8 @@ class UnsupervisedTrainer(Trainer):
                 history = train_sample.replace(
                     r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
 
-                td_error = train_result['TDError'].reshape(-1, 1)
-                history = np.hstack(list(history[1:]) + [td_error])
+                # td_error = train_result['TDError'].reshape(-1, 1)
+                # history = np.hstack(list(history[1:]) + [td_error])
                 # self.boss_state = self.boss_state.replace(
                     # td_error=test_post_td_error,
                     # history=history,

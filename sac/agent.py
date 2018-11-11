@@ -233,15 +233,15 @@ class AbstractAgent:
                     loss / tf.maximum(model_target, 1e-6))
 
             with tf.control_dependencies([
-                    tf.Print(self.estimated, [self.estimated], message='estimated'),
-                    tf.Print(self.estimated, [model_target], message='target'),
+                    # tf.Print(self.estimated, [self.estimated], message='estimated'),
+                    # tf.Print(self.estimated, [model_target], message='target'),
                     # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
                     # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
-                    tf.Print(self.estimated, [kernel], message='kernel'),
-                    tf.Print(self.estimated, [self.model_loss], message='loss'),
-                    tf.Print(
-                        self.estimated, [self.normalized_model_loss],
-                        message='norm loss'),
+                    # tf.Print(self.estimated, [kernel], message='kernel'),
+                    # tf.Print(self.estimated, [self.model_loss], message='loss'),
+                    # tf.Print(
+                    # self.estimated, [self.normalized_model_loss],
+                    # message='norm loss'),
                     # tf.Print(self.estimated, [self.global_step], message='step'),
             ]):
                 self.train_model, self.model_grad = train_op(

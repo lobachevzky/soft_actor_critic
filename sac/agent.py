@@ -220,8 +220,7 @@ class AbstractAgent:
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
                     final_batchwise = tf.layers.dense(
-                        # inputs=self.model_network(present).output,
-                        inputs=present,
+                        inputs=self.model_network(present).output,
                         activation=None,
                         units=1,
                         name='final_batchwise')

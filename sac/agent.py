@@ -219,20 +219,12 @@ class AbstractAgent:
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
-                    final_batchwise = tf.layers.dense(
-                        inputs=self.model_network(present).output,
-                        activation=None,
-                        units=1,
-                        name='final_batchwise')
-
-                    self.estimated = tf.squeeze(
+                    self.estimated = tf.reduce_mean(
                         tf.layers.dense(
-                            # tf.reshape(final_batchwise, [1, batch_size]),
-                            tf.reshape(final_batchwise, [1, batch_size]),
-                            1,
+                            inputs=self.model_network(present).output,
                             activation=None,
-                            name='final_aggregate'),
-                        axis=1)
+                            units=1,
+                            name='final_batchwise'))
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):

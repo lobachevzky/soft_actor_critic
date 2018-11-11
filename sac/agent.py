@@ -218,8 +218,9 @@ class AbstractAgent:
                         use_bias=False,
                         units=1,
                     )
-            with tf.variable_scope('model', reuse=True):
-                kernel = tf.get_variable('dense/kernel')
+            if model_type in [ModelType.memoryless, ModelType.simple]:
+                with tf.variable_scope('model', reuse=True):
+                    kernel = tf.get_variable('dense/kernel')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):

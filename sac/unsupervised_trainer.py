@@ -65,24 +65,28 @@ class UnsupervisedTrainer(Trainer):
                     estimated=agent.estimated,
                     model_loss=agent.model_loss,
                     # model_grad=agent.model_grad,
-                    # kernel=agent.kernel,
                     train_model=agent.train_model)
                 train_result.update(
                     self.sess.run(
                         fetch,
                         feed_dict={
-                            agent.O1: train_sample.o1,
-                            agent.A: train_sample.a,
-                            agent.R: train_sample.r,
-                            agent.O2: train_sample.o2,
-                            agent.T: train_sample.t,
+                            agent.O1:
+                            train_sample.o1,
+                            agent.A:
+                            train_sample.a,
+                            agent.R:
+                            train_sample.r,
+                            agent.O2:
+                            train_sample.o2,
+                            agent.T:
+                            train_sample.t,
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
-                            agent.delta_tde: train_result['Q_loss'],
+                            agent.delta_tde:
+                            train_result['Q_loss'],
                         }))
 
                 estimated = train_result['estimated']
-                # print(train_result['kernel'])
                 # print(np.sqrt(np.mean(train_result['model_loss'])))
 
                 # noinspection PyTypeChecker

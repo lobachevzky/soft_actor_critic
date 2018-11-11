@@ -220,13 +220,15 @@ class AbstractAgent:
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
                     final_batchwise = tf.layers.dense(
-                        inputs=self.model_network(present).output,
+                        # inputs=self.model_network(present).output,
+                        inputs=present,
                         activation=None,
                         units=1,
                         name='final_batchwise')
 
                     self.estimated = tf.squeeze(
                         tf.layers.dense(
+                            # tf.reshape(final_batchwise, [1, batch_size]),
                             tf.reshape(final_batchwise, [1, batch_size]),
                             1,
                             activation=None,

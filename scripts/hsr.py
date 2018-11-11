@@ -258,21 +258,21 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         debug=debug,
         n_train_steps=n_train_steps)
 
-    if model_type is ModelType.none:
-        if hindsight_geofence:
-            trainer = HindsightTrainer(
-                env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(
-                    env=env, geofence=hindsight_geofence),
-                n_goals=n_goals,
-                **kwargs)
-        else:
-            trainer = Trainer(env=env, **kwargs)
-    else:
-        trainer = UnsupervisedTrainer(
-            env=HSRHindsightWrapper(env, geofence=geofence),
-            model_type=model_type,
-            alpha=alpha,
-            **kwargs)
+    # if model_type is ModelType.none:
+    #     if hindsight_geofence:
+    #         trainer = HindsightTrainer(
+    #             env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(
+    #                 env=env, geofence=hindsight_geofence),
+    #             n_goals=n_goals,
+    #             **kwargs)
+    #     else:
+    #         trainer = Trainer(env=env, **kwargs)
+    # else:
+    trainer = UnsupervisedTrainer(
+        env=HSRHindsightWrapper(env, geofence=geofence),
+        model_type=model_type,
+        alpha=alpha,
+        **kwargs)
     trainer.train(
         load_path=load_path,
         logdir=logdir,

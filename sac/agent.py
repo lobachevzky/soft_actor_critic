@@ -146,7 +146,7 @@ class AbstractAgent:
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
             def train_op(loss, var_list, lr=learning_rate):
-                optimizer = tf.train.AdamOptimizer(learning_rate=lr)
+                optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
                 gradients, variables = zip(
                     *optimizer.compute_gradients(loss, var_list=var_list))
                 if grad_clip:
@@ -232,18 +232,6 @@ class AbstractAgent:
                 self.normalized_model_loss = tf.reduce_mean(
                     loss / tf.maximum(model_target, 1e-6))
 
-            with tf.control_dependencies([
-                    # tf.Print(self.estimated, [self.estimated], message='estimated'),
-                    # tf.Print(self.estimated, [model_target], message='target'),
-                    # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
-                    # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
-                    # tf.Print(self.estimated, [kernel], message='kernel'),
-                    # tf.Print(self.estimated, [self.model_loss], message='loss'),
-                    # tf.Print(
-                    # self.estimated, [self.normalized_model_loss],
-                    # message='norm loss'),
-                    # tf.Print(self.estimated, [self.global_step], message='step'),
-            ]):
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
                     lr=model_learning_rate,

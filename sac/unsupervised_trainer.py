@@ -81,8 +81,8 @@ class UnsupervisedTrainer(Trainer):
                         }))
 
                 estimated = train_result['estimated']
-                print(train_result['kernel'])
-                print(np.sqrt(np.mean(train_result['model_loss'])))
+                # print(train_result['kernel'])
+                # print(np.sqrt(np.mean(train_result['model_loss'])))
 
                 # noinspection PyTypeChecker
                 # counter.update(

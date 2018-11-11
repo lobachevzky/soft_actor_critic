@@ -221,7 +221,7 @@ class AbstractAgent:
                 with tf.variable_scope('model'):
                     self.estimated = tf.reduce_mean(
                         tf.layers.dense(
-                            inputs=self.model_network(present).output,
+                            inputs=present,
                             activation=None,
                             units=1,
                             name='final_batchwise'))

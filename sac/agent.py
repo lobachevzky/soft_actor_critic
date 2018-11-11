@@ -178,7 +178,8 @@ class AbstractAgent:
                     1 +  # t
                     1  # v2
                 )
-                self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
+                self.delta_tde = tf.placeholder(
+                    tf.float32, [batch_size], name='delta_tde')
 
                 present = tf.stack([self.q1, self.R, self.T, self.v2], axis=1)
                 self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
@@ -219,12 +220,11 @@ class AbstractAgent:
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
-                    self.estimated = tf.reduce_mean(
-                        tf.layers.dense(
+                    self.estimated = tf.layers.dense(
                             inputs=present,
                             activation=None,
                             units=1,
-                            name='final_batchwise'))
+                            name='final_batchwise')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
@@ -232,7 +232,7 @@ class AbstractAgent:
 
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(
-                    tf.square(self.estimated - tf.reduce_mean(self.q1)))
+                    tf.square(self.estimated - self.delta_tde))
 
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,

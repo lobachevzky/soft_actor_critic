@@ -55,8 +55,10 @@ class UnsupervisedTrainer(Trainer):
                 # get pre- and post-td-error
                 agent = self.agents.act
                 test_pre_td_error = agent.td_error(step=test_sample)
+                train_pre_td_error = agent.td_error(step=train_sample)
                 train_result = agent.train_step(step=train_sample)
                 test_post_td_error = agent.td_error(step=test_sample)
+                train_post_td_error = agent.td_error(step=train_sample)
                 new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
                 old_delta_tde = self.boss_state.delta_tde or new_delta_tde
                 delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
@@ -83,7 +85,7 @@ class UnsupervisedTrainer(Trainer):
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
                             agent.delta_tde:
-                            train_result['Q_loss'],
+                            train_post_td_error - train_pre_td_error,
                         }))
 
                 estimated = train_result['estimated']

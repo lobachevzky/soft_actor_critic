@@ -173,7 +173,7 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 dim = (
-                    # 1 +  # q1
+                    1 +  # q1
                     1 +  # r
                     1 +  # t
                     1  # v2
@@ -222,6 +222,8 @@ class AbstractAgent:
                     final_batchwise = tf.layers.dense(
                         # inputs=self.model_network(present).output,
                         inputs=present,
+                        kernel_initializer=tf.constant_initializer([1, 0, 0, 0]),
+                        use_bias=False,
                         activation=None,
                         units=1,
                         name='final_batchwise')
@@ -230,10 +232,16 @@ class AbstractAgent:
                         tf.layers.dense(
                             # tf.reshape(final_batchwise, [1, batch_size]),
                             tf.reshape(final_batchwise, [1, batch_size]),
-                            1,
+                            kernel_initializer=tf.constant_initializer(
+                                [1 / batch_size, 1 / batch_size, 1 / batch_size]),
+                            units=1,
+                            use_bias=False,
                             activation=None,
                             name='final_aggregate'),
                         axis=1)
+                with tf.variable_scope('model', reuse=True):
+                    kernel1 = tf.get_variable('final_batchwise/kernel')
+                    kernel2 = tf.get_variable('final_aggregate/kernel')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
@@ -242,17 +250,6 @@ class AbstractAgent:
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(
                     tf.square(self.estimated - tf.reduce_mean(self.q1)))
-
-                optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                gradients, variables = zip(*optimizer.compute_gradients(
-                    self.model_loss, var_list=get_variables('model')))
-                if grad_clip:
-                    gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
-                else:
-                    norm = tf.global_norm(gradients)
-                op = optimizer.apply_gradients(
-                    zip(gradients, variables), global_step=self.global_step)
-                self.model_grad = norm
 
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,

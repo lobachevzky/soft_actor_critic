@@ -27,9 +27,6 @@ class ModelType(enum.Enum):
 
 
 class AbstractAgent:
-    def _print(self, tensor, name: str):
-        return tf.Print(tensor, [tensor], message=name, summarize=1e5)
-
     def __init__(self,
                  sess: tf.Session,
                  batch_size: int,
@@ -208,6 +205,7 @@ class AbstractAgent:
                     self.estimated = tf.layers.dense(
                         inputs=self.model_network(concat).output,
                         activation=None,
+                        use_bias=False,
                         units=1,
                         name='final_batchwise',
                     )
@@ -217,21 +215,34 @@ class AbstractAgent:
                     self.estimated = tf.layers.dense(
                         inputs=self.model_network(Q_error).output,
                         activation=None,
+                        use_bias=False,
                         units=1,
-                        name='final_batchwise',
                     )
+            with tf.variable_scope('model', reuse=True):
+                kernel = tf.get_variable('dense/kernel')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(tf.square(self.estimated - Q_error))
+                model_target = self.history
+                loss = tf.square(self.estimated - model_target)
+                self.model_loss = tf.reduce_mean(loss)
+                self.normalized_model_loss = tf.reduce_mean(loss / model_target)
 
-            self.train_model, self.model_grad = train_op(
-                loss=self.model_loss,
-                lr=model_learning_rate,
-                var_list=[v for scope in ['model'] for v in get_variables(scope)])
+            with tf.control_dependencies([
+                    # tf.Print(self.estimated, [self.estimated[0]], message='estimated'),
+                    # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
+                    # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
+                    # tf.Print(self.estimated, [kernel], message='kernel'),
+                    # tf.Print(self.estimated, [self.model_loss], message='loss'),
+                    # tf.Print(self.estimated, [self.global_step], message='step'),
+            ]):
+                self.train_model, self.model_grad = train_op(
+                    loss=self.model_loss,
+                    lr=model_learning_rate,
+                    var_list=[v for scope in ['model'] for v in get_variables(scope)])
 
             sess.run(tf.global_variables_initializer())
 
@@ -299,6 +310,9 @@ class AbstractAgent:
                 self.O2: step.o2,
                 self.T: step.t
             })
+
+    def _print(self, tensor, name: str):
+        return tf.Print(tensor, [tensor], message=name, summarize=1e5)
 
     @abstractmethod
     def model_network(self, inputs: tf.Tensor) -> NetworkOutput:

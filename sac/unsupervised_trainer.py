@@ -68,6 +68,7 @@ class UnsupervisedTrainer(Trainer):
                     fetch = dict(
                         estimated=agent.estimated,
                         model_loss=agent.model_loss,
+                        normalized_model_loss=agent.normalized_model_loss,
                         # model_grad=agent.model_grad,
                         train_model=agent.train_model)
                     train_result.update(
@@ -92,7 +93,7 @@ class UnsupervisedTrainer(Trainer):
                             }))
 
                     # estimated = train_result['estimated']
-                    # print(np.sqrt(np.mean(train_result['model_loss'])))
+                    # print('loss', train_result['model_loss'])
 
                     # noinspection PyTypeChecker
                     # counter.update(

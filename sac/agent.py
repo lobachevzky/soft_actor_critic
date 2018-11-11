@@ -208,6 +208,7 @@ class AbstractAgent:
                     self.estimated = tf.layers.dense(
                         inputs=concat,
                         activation=None,
+                        use_bias=False,
                         units=1,
                         name='final_batchwise',
                     )
@@ -217,8 +218,8 @@ class AbstractAgent:
                     self.estimated = tf.layers.dense(
                         inputs=Q_error,
                         activation=None,
+                        use_bias=False,
                         units=1,
-                        name='final_batchwise',
                     )
 
             if model_type is ModelType.prior:

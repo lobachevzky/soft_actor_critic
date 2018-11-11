@@ -223,6 +223,7 @@ class AbstractAgent:
                         # inputs=self.model_network(present).output,
                         inputs=present,
                         kernel_initializer=tf.constant_initializer([1, 0, 0, 0]),
+                        trainable=False,
                         use_bias=False,
                         activation=None,
                         units=1,
@@ -232,7 +233,7 @@ class AbstractAgent:
                         tf.layers.dense(
                             tf.reshape(final_batchwise, [1, batch_size]),
                             # kernel_initializer=tf.constant_initializer(
-                                # [1 / batch_size, 1 / batch_size, 1 / batch_size]),
+                            # [1 / batch_size, 1 / batch_size, 1 / batch_size]),
                             units=1,
                             use_bias=False,
                             activation=None,

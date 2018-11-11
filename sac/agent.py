@@ -27,9 +27,6 @@ class ModelType(enum.Enum):
 
 
 class AbstractAgent:
-    def _print(self, tensor, name: str):
-        return tf.Print(tensor, [tensor], message=name, summarize=1e5)
-
     def __init__(self,
                  sess: tf.Session,
                  batch_size: int,
@@ -229,15 +226,18 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(tf.square(self.estimated - Q_error))
+                model_target = Q_error
+                loss = tf.square(self.estimated - model_target)
+                self.model_loss = tf.reduce_mean(loss)
+                self.normalized_model_loss = tf.reduce_mean(loss / model_target)
 
             with tf.control_dependencies([
-                    tf.Print(self.estimated, [self.estimated[0]], message='estimated'),
-                    tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
-                    tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
-                    tf.Print(self.estimated, [kernel], message='kernel'),
-                    tf.Print(self.estimated, [self.model_loss], message='loss'),
-                    tf.Print(self.estimated, [self.global_step], message='step'),
+                    # tf.Print(self.estimated, [self.estimated[0]], message='estimated'),
+                    # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
+                    # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
+                    # tf.Print(self.estimated, [kernel], message='kernel'),
+                    # tf.Print(self.estimated, [self.model_loss], message='loss'),
+                    # tf.Print(self.estimated, [self.global_step], message='step'),
             ]):
                 self.train_model, self.model_grad = train_op(
                     loss=self.model_loss,
@@ -310,6 +310,9 @@ class AbstractAgent:
                 self.O2: step.o2,
                 self.T: step.t
             })
+
+    def _print(self, tensor, name: str):
+        return tf.Print(tensor, [tensor], message=name, summarize=1e5)
 
     @abstractmethod
     def model_network(self, inputs: tf.Tensor) -> NetworkOutput:

@@ -244,7 +244,6 @@ class Trainer:
                     a_shape=[space_to_size(action_space)],
                     **kwargs)
 
-
         agent = Agent()  # type: AbstractAgent
         return agent
 

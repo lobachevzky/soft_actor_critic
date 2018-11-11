@@ -227,20 +227,19 @@ class AbstractAgent:
                 self._q1= tf.placeholder(tf.float32, [None])
                 self._v2= tf.placeholder(tf.float32, [None])
                 concat = tf.reshape(tf.stack([self._q1, self._v2], axis=0), [-1, dim])
-                # out = tf.layers.dense(concat, 1, activation=None, use_bias=False)
-                self.kernel = tf.get_variable('dense/kernel', shape=(2, 1))
-                out = self._q1 * self.kernel[0] + self._v2 * self.kernel[1]
+                self.estimated = out = tf.layers.dense(concat, 1, activation=None,
+                                                use_bias=False)
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                self._model_loss = tf.square((self._q1 - self._v2) - out)
+                self.model_loss = tf.square((self._q1 - self._v2) - out)
 
             with tf.variable_scope('fuck', reuse=True):
                 self.kernel = tf.get_variable('dense/kernel', shape=(2, 1))
 
             variables = get_variables('fuck')
 
-            op = optimizer.minimize(self._model_loss, var_list=variables)
-            self._train_model = op
+            op = optimizer.minimize(self.model_loss, var_list=variables)
+            self.train_model = op
 
             # if model_type is ModelType.memoryless:
             #     with tf.variable_scope('model'):

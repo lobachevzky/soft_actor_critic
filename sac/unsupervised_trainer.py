@@ -63,33 +63,29 @@ class UnsupervisedTrainer(Trainer):
                 q1 = np.random.uniform(0, 10, size=[1])
                 v2 = np.random.uniform(0, 10, size=[1])
 
-                dammit = self.sess.run(
-                    dict(loss=agent._model_loss,
-                         op=agent._train_model,
-                         kernel=agent.kernel),
-                    feed_dict={agent._q1: q1, agent._v2: v2})
-                print(dammit['kernel'])
 
-                # fetch = dict(
-                #     estimated=agent.estimated,
-                #     model_loss=agent.model_loss,
-                #     # model_grad=agent.model_grad,
-                #     train_model=agent.train_model)
-                # train_result.update(
-                #     self.sess.run(
-                #         fetch,
-                #         feed_dict={
-                #             agent.O1: train_sample.o1,
-                #             agent.A:  train_sample.a,
-                #             agent.R:  train_sample.r,
-                #             agent.O2: train_sample.o2,
-                #             agent.T:  train_sample.t,
-                #             # agent.history: self.boss_state.history,
-                #             # agent.old_delta_tde: self.boss_state.delta_tde,
-                #             # agent.delta_tde: delta_tde,
-                #         }))
-                #
-                # estimated = train_result['estimated']
+                fetch = dict(
+                    estimated=agent.estimated,
+                    model_loss=agent.model_loss,
+                    # model_grad=agent.model_grad,
+                    kernel=agent.kernel,
+                    train_model=agent.train_model)
+                train_result.update(
+                    self.sess.run(
+                        fetch,
+                        feed_dict={
+                            agent.O1: train_sample.o1,
+                            agent.A:  train_sample.a,
+                            agent.R:  train_sample.r,
+                            agent.O2: train_sample.o2,
+                            agent.T:  train_sample.t,
+                            agent._q1: q1, agent._v2: v2,
+                            # agent.history: self.boss_state.history,
+                            # agent.old_delta_tde: self.boss_state.delta_tde,
+                            # agent.delta_tde: delta_tde,
+                        }))
+
+                estimated = train_result['estimated']
 
                 # noinspection PyTypeChecker
                 # counter.update(

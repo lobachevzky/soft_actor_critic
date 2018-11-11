@@ -146,7 +146,7 @@ class AbstractAgent:
             phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
             def train_op(loss, var_list, lr=learning_rate):
-                optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
+                optimizer = tf.train.AdamOptimizer(learning_rate=lr)
                 gradients, variables = zip(
                     *optimizer.compute_gradients(loss, var_list=var_list))
                 if grad_clip:

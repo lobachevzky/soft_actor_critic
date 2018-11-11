@@ -27,6 +27,9 @@ class ModelType(enum.Enum):
 
 
 class AbstractAgent:
+    def _print(self, tensor, name: str):
+        return tf.Print(tensor, [tensor], message=name, summarize=1e5)
+
     def __init__(self,
                  sess: tf.Session,
                  batch_size: int,

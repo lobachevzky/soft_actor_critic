@@ -52,7 +52,7 @@ class AbstractAgent:
         self.default_train_values = [
             'entropy',
             'soft_update_xi_bar',
-            # 'TDError',
+            'Q_error',
             'V_loss',
             'Q_loss',
             'pi_loss',
@@ -173,17 +173,17 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 dim = (
-                    1 +  # q1
-                    1 +  # r
-                    1 +  # t
-                    1  # v2
+                    1 +  # prev_Q_error
+                    1    # prev_delta_tde
                 )
-                self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
+                self.delta_tde = tf.placeholder(
+                    tf.float32, [batch_size], name='delta_tde')
 
                 present = tf.stack([self.q1, self.R, self.T, self.v2], axis=1)
                 self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
                 self.history = tf.placeholder(
                     tf.float32, [batch_size, dim], name='history')
+                Q_error = tf.reshape(self.Q_error, [batch_size, 1])
 
             if model_type is ModelType.complex:
                 sarst = tf.concat([self.history, present], axis=0, name='sarst')
@@ -200,39 +200,28 @@ class AbstractAgent:
                     self.estimated_tde = sim * old + (1 - sim) * new
 
             if model_type is ModelType.simple:
-                sarst = tf.concat([self.history, present], axis=0, name='sarst')
-                pad = tf.pad(sarst, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
-                h, p = tf.split(self.model_network(pad).output, 2, axis=0)
-                h = tf.reduce_sum(h, axis=0, keepdims=True)
-                p = tf.reduce_sum(p, axis=0, keepdims=True)
-                with tf.variable_scope('delta_tde'):
-                    self.estimated_tde = tf.squeeze(
-                        tf.layers.dense(
-                            inputs=tf.concat([h, p], axis=1),
-                            units=1,
-                            name='estimated_delta'))
-
-            with tf.variable_scope('model'):
-                concat = tf.stack([self.q1, self.v2], axis=1)
-                self.estimated = tf.squeeze(
-                    tf.layers.dense(concat, 1, activation=None, use_bias=False), axis=1)
+                with tf.variable_scope('model'):
+                    concat = tf.concat([Q_error, self.history], axis=1)
+                    self.estimated = tf.layers.dense(
+                        inputs=self.model_network(concat).output,
+                        activation=None,
+                        units=1,
+                        name='final_batchwise')
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
-                    self.estimated = tf.reduce_mean(
-                        tf.layers.dense(
-                            inputs=present,
-                            activation=None,
-                            units=1,
-                            name='final_batchwise'))
+                    self.estimated = tf.layers.dense(
+                        inputs=self.model_network(Q_error).output,
+                        activation=None,
+                        units=1,
+                        name='final_batchwise')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(
-                    tf.square(self.estimated - tf.reduce_mean(self.q1)))
+                self.model_loss = tf.reduce_mean(tf.square(self.estimated - Q_error))
 
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,

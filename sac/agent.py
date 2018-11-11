@@ -162,8 +162,6 @@ class AbstractAgent:
             self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
 
-            self.model_target = self.Q_grad
-
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
                 for (xbar, x) in zip(xi_bar, xi)

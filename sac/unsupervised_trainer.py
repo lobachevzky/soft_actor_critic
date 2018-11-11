@@ -27,6 +27,7 @@ Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
 class UnsupervisedTrainer(Trainer):
     def __init__(self, alpha: float, **kwargs):
         super().__init__(**kwargs)
+        assert alpha is not None
         self.alpha = alpha
         self.test_sample = None
         self.boss_state = BossState(
@@ -77,7 +78,7 @@ class UnsupervisedTrainer(Trainer):
                             agent.T: train_sample.t,
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
-                            agent.delta_tde: delta_tde,
+                            agent.delta_tde: train_result['Q_loss'],
                         }))
 
                 estimated = train_result['estimated']

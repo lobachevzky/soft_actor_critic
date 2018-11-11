@@ -14,8 +14,8 @@ from sac.utils import Step
 
 
 class BossState(
-    namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                            'reward td_error ')):
+        namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
+                   'reward td_error ')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -64,17 +64,17 @@ class UnsupervisedTrainer(Trainer):
                     estimated=agent.estimated,
                     model_loss=agent.model_loss,
                     # model_grad=agent.model_grad,
-                    kernel=agent.kernel,
+                    # kernel=agent.kernel,
                     train_model=agent.train_model)
                 train_result.update(
                     self.sess.run(
                         fetch,
                         feed_dict={
-                            agent.O1:  train_sample.o1,
-                            agent.A:   train_sample.a,
-                            agent.R:   train_sample.r,
-                            agent.O2:  train_sample.o2,
-                            agent.T:   train_sample.t,
+                            agent.O1: train_sample.o1,
+                            agent.A: train_sample.a,
+                            agent.R: train_sample.r,
+                            agent.O2: train_sample.o2,
+                            agent.T: train_sample.t,
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
                             # agent.delta_tde: delta_tde,
@@ -163,4 +163,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

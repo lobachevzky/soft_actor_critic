@@ -221,10 +221,10 @@ class AbstractAgent:
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
-                            inputs=present,
-                            activation=None,
-                            units=1,
-                            name='final_batchwise')
+                        inputs=self.model_network(present).output,
+                        activation=None,
+                        units=1,
+                        name='final_batchwise')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):

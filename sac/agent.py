@@ -231,7 +231,8 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(tf.square(self.estimated - self.Q_loss))
+                self.model_loss = tf.reduce_mean(
+                    tf.square(self.estimated - tf.reduce_mean(self.q1)))
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
                 gradients, variables = zip(*optimizer.compute_gradients(

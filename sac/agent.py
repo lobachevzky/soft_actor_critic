@@ -222,8 +222,8 @@ class AbstractAgent:
                     final_batchwise = tf.layers.dense(
                         # inputs=self.model_network(present).output,
                         inputs=present,
-                        kernel_initializer=tf.constant_initializer([1, 0, 0, 0]),
-                        trainable=False,
+                        # kernel_initializer=tf.constant_initializer([1, 0, 0, 0]),
+                        # trainable=False,
                         use_bias=False,
                         activation=None,
                         units=1,

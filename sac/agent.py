@@ -79,16 +79,15 @@ class AbstractAgent:
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
 
-            seq_dim = [batch_size]
+            seq_dim = [None]
             if self.seq_len is not None:
-                seq_dim = [batch_size, self.seq_len]
+                seq_dim = [None, self.seq_len]
 
             self.O1 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O1')
             self.O2 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O2')
-            self.A = A = tf.placeholder(
-                tf.float32, [batch_size] + list(a_shape), name='A')
-            self.R = R = tf.placeholder(tf.float32, [batch_size], name='R')
-            self.T = T = tf.placeholder(tf.float32, [batch_size], name='T')
+            self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
+            self.R = R = tf.placeholder(tf.float32, [None], name='R')
+            self.T = T = tf.placeholder(tf.float32, [None], name='T')
             gamma = tf.constant(0.99)
             tau = 0.01
 
@@ -220,13 +219,18 @@ class AbstractAgent:
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
+                    final_batchwise = tf.layers.dense(
+                        inputs=self.model_network(present).output,
+                        activation=None,
+                        units=1,
+                        name='final_batchwise')
+
                     self.estimated = tf.squeeze(
                         tf.layers.dense(
-                            inputs=self.model_network(present).output,
+                            tf.reshape(final_batchwise, [1, batch_size]),
+                            1,
                             activation=None,
-                            use_bias=False,
-                            units=1,
-                            name='estimated'),
+                            name='final_aggregate'),
                         axis=1)
 
             if model_type is ModelType.prior:
@@ -234,8 +238,8 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(tf.square(self.estimated -
-                    self.Q_error))
+                self.model_loss = tf.reduce_mean(
+                    tf.square(self.estimated - tf.reduce_mean(self.q1)))
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
                 gradients, variables = zip(*optimizer.compute_gradients(

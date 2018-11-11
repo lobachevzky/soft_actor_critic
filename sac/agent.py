@@ -222,48 +222,56 @@ class AbstractAgent:
             #                 inputs=tf.concat([h, p], axis=1),
             #                 units=1,
             #                 name='estimated_delta'))
+
             with tf.variable_scope('fuck'):
-                concat = tf.reshape(tf.concat([self.q1, self.v2], axis=0), [-1, dim])
-                out = tf.layers.dense(concat, 1, activation=None, use_bias=False)
-
-                self.kernel = tf.get_variable('agent/fuck/dense/kernel', shape=(2, 1))
-
-                optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                self.model_loss = tf.square(self.q1 - self.v2 - out)
-
-                op = optimizer.minimize(self.model_loss)
-                self.train_model = op
-
-            if model_type is ModelType.memoryless:
-                with tf.variable_scope('model'):
-                    self.estimated = tf.squeeze(
-                        tf.layers.dense(
-                            inputs=self.model_network(present).output,
-                            activation=None,
-                            units=1,
-                            name='estimated'),
-                        axis=1)
-                    kernel = tf.get_variable('agent/model/estimated/kernel', shape=(2, 1))
-                    bias = tf.get_variable('agent/model/bias/kernel', shape=(1,))
-
-            if model_type is ModelType.prior:
-                with tf.variable_scope('model'):
-                    self.estimated = tf.get_variable('estimated', 1)
-
-            if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(
-                    .5 * tf.square(self.estimated - self.model_target))
+                self._q1= tf.placeholder(tf.float32, [None])
+                self._v2= tf.placeholder(tf.float32, [None])
+                concat = tf.reshape(tf.stack([self._q1, self._v2], axis=0), [-1, dim])
+                # out = tf.layers.dense(concat, 1, activation=None, use_bias=False)
+                self.kernel = tf.get_variable('dense/kernel', shape=(2, 1))
+                out = self._q1 * self.kernel[0] + self._v2 * self.kernel[1]
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                gradients, variables = zip(*optimizer.compute_gradients(
-                    self.model_loss, var_list=get_variables('model')))
-                if grad_clip:
-                    gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
-                else:
-                    norm = tf.global_norm(gradients)
-                op = optimizer.apply_gradients(
-                    zip(gradients, variables), global_step=self.global_step)
-                self.model_grad = norm
+                self._model_loss = tf.square((self._q1 - self._v2) - out)
+
+            with tf.variable_scope('fuck', reuse=True):
+                self.kernel = tf.get_variable('dense/kernel', shape=(2, 1))
+
+            variables = get_variables('fuck')
+
+            op = optimizer.minimize(self._model_loss, var_list=variables)
+            self._train_model = op
+
+            # if model_type is ModelType.memoryless:
+            #     with tf.variable_scope('model'):
+            #         self.estimated = tf.squeeze(
+            #             tf.layers.dense(
+            #                 inputs=self.model_network(present).output,
+            #                 activation=None,
+            #                 units=1,
+            #                 name='estimated'),
+            #             axis=1)
+            #         kernel = tf.get_variable('agent/model/estimated/kernel', shape=(2, 1))
+            #         bias = tf.get_variable('agent/model/bias/kernel', shape=(1,))
+            #
+            # if model_type is ModelType.prior:
+            #     with tf.variable_scope('model'):
+            #         self.estimated = tf.get_variable('estimated', 1)
+            #
+            # if model_type is not ModelType.none:
+            #     self.model_loss = tf.reduce_mean(
+            #         .5 * tf.square(self.estimated - self.model_target))
+            #
+            #     optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
+            #     gradients, variables = zip(*optimizer.compute_gradients(
+            #         self.model_loss, var_list=get_variables('model')))
+            #     if grad_clip:
+            #         gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
+            #     else:
+            #         norm = tf.global_norm(gradients)
+            #     op = optimizer.apply_gradients(
+            #         zip(gradients, variables), global_step=self.global_step)
+            #     self.model_grad = norm
 
                 # self.train_model, self.model_grad = train_op(
                 # loss=self.model_loss,

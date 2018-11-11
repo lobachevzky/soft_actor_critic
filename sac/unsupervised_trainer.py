@@ -59,48 +59,52 @@ class UnsupervisedTrainer(Trainer):
                 # new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
                 # old_delta_tde = self.boss_state.delta_tde or new_delta_tde
                 # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
-                q1, v2, _ = agent.get_values(train_sample)
+                # q1, v2, _ = agent.get_values(train_sample)
+                q1 = np.random.uniform(0, 10, size=[1])
+                v2 = np.random.uniform(0, 10, size=[1])
 
                 dammit = self.sess.run(
-                    dict(loss=self.loss, op=self.op, kernel=self.kernel),
-                    feed_dict={self.q1: q1, self.v2: v2})
+                    dict(loss=agent._model_loss,
+                         op=agent._train_model,
+                         kernel=agent.kernel),
+                    feed_dict={agent._q1: q1, agent._v2: v2})
                 print(dammit['kernel'])
 
-                fetch = dict(
-                    estimated=agent.estimated,
-                    model_loss=agent.model_loss,
-                    # model_grad=agent.model_grad,
-                    train_model=agent.train_model)
-                train_result.update(
-                    self.sess.run(
-                        fetch,
-                        feed_dict={
-                            agent.O1: train_sample.o1,
-                            agent.A:  train_sample.a,
-                            agent.R:  train_sample.r,
-                            agent.O2: train_sample.o2,
-                            agent.T:  train_sample.t,
-                            # agent.history: self.boss_state.history,
-                            # agent.old_delta_tde: self.boss_state.delta_tde,
-                            # agent.delta_tde: delta_tde,
-                        }))
-
-                estimated = train_result['estimated']
+                # fetch = dict(
+                #     estimated=agent.estimated,
+                #     model_loss=agent.model_loss,
+                #     # model_grad=agent.model_grad,
+                #     train_model=agent.train_model)
+                # train_result.update(
+                #     self.sess.run(
+                #         fetch,
+                #         feed_dict={
+                #             agent.O1: train_sample.o1,
+                #             agent.A:  train_sample.a,
+                #             agent.R:  train_sample.r,
+                #             agent.O2: train_sample.o2,
+                #             agent.T:  train_sample.t,
+                #             # agent.history: self.boss_state.history,
+                #             # agent.old_delta_tde: self.boss_state.delta_tde,
+                #             # agent.delta_tde: delta_tde,
+                #         }))
+                #
+                # estimated = train_result['estimated']
 
                 # noinspection PyTypeChecker
-                counter.update(
-                    # test_td_error=np.mean(test_post_td_error),
-                    # train_td_error=np.mean(train_post_td_error),
-                    estimated_delta_tde=np.mean(estimated),
-                    # delta_tde=delta_tde,
-                    # train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),
-                    # diff=np.mean(delta_tde - estimated_delta_tde),
-                    # episodic_delta_tde=np.mean(test_post_td_error -
-                    #                            self.boss_state.td_error),
-                    fuck_loss=np.mean(dammit['loss'])
-                )
-                history = train_sample.replace(
-                    r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
+                # counter.update(
+                #     # test_td_error=np.mean(test_post_td_error),
+                #     # train_td_error=np.mean(train_post_td_error),
+                #     estimated_delta_tde=np.mean(estimated),
+                #     # delta_tde=delta_tde,
+                #     # train_delta_tde=np.mean(train_pre_td_error - train_post_td_error),
+                #     # diff=np.mean(delta_tde - estimated_delta_tde),
+                #     # episodic_delta_tde=np.mean(test_post_td_error -
+                #     #                            self.boss_state.td_error),
+                #     fuck_loss=np.mean(dammit['loss'])
+                # )
+                # history = train_sample.replace(
+                #     r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
 
                 # td_error = train_result['TDError'].reshape(-1, 1)
                 # history = np.hstack(list(history[1:]) + [td_error])

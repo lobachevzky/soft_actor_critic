@@ -230,10 +230,9 @@ class AbstractAgent:
 
                     self.estimated = tf.squeeze(
                         tf.layers.dense(
-                            # tf.reshape(final_batchwise, [1, batch_size]),
                             tf.reshape(final_batchwise, [1, batch_size]),
-                            kernel_initializer=tf.constant_initializer(
-                                [1 / batch_size, 1 / batch_size, 1 / batch_size]),
+                            # kernel_initializer=tf.constant_initializer(
+                                # [1 / batch_size, 1 / batch_size, 1 / batch_size]),
                             units=1,
                             use_bias=False,
                             activation=None,

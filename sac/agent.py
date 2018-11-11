@@ -224,14 +224,13 @@ class AbstractAgent:
             #                 name='estimated_delta'))
 
             with tf.variable_scope('fuck'):
-                self._q1= tf.placeholder(tf.float32, [None])
-                self._v2= tf.placeholder(tf.float32, [None])
-                concat = tf.reshape(tf.stack([self._q1, self._v2], axis=0), [-1, dim])
-                self.estimated = out = tf.layers.dense(concat, 1, activation=None,
-                                                use_bias=False)
+                concat = tf.stack([self.q1, self.v2], axis=1)
+                self.estimated = out = tf.squeeze(tf.layers.dense(concat, 1,
+                                                                  activation=None,
+                                                                  use_bias=False), axis=1)
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                self.model_loss = tf.square((self._q1 - self._v2) - out)
+                self.model_loss = tf.square((self.q1 - self.v2) - out)
 
             with tf.variable_scope('fuck', reuse=True):
                 self.kernel = tf.get_variable('dense/kernel', shape=(2, 1))
@@ -250,7 +249,8 @@ class AbstractAgent:
             #                 units=1,
             #                 name='estimated'),
             #             axis=1)
-            #         kernel = tf.get_variable('agent/model/estimated/kernel', shape=(2, 1))
+            #         kernel = tf.get_variable('agent/model/estimated/kernel',
+            # shape=(2, 1))
             #         bias = tf.get_variable('agent/model/bias/kernel', shape=(1,))
             #
             # if model_type is ModelType.prior:
@@ -272,10 +272,10 @@ class AbstractAgent:
             #         zip(gradients, variables), global_step=self.global_step)
             #     self.model_grad = norm
 
-                # self.train_model, self.model_grad = train_op(
-                # loss=self.model_loss,
-                # lr=model_learning_rate,
-                # var_list=[v for scope in ['model'] for v in get_variables(scope)])
+            # self.train_model, self.model_grad = train_op(
+            # loss=self.model_loss,
+            # lr=model_learning_rate,
+            # var_list=[v for scope in ['model'] for v in get_variables(scope)])
 
             sess.run(tf.global_variables_initializer())
 

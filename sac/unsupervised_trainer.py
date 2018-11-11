@@ -59,10 +59,6 @@ class UnsupervisedTrainer(Trainer):
                 # new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
                 # old_delta_tde = self.boss_state.delta_tde or new_delta_tde
                 # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
-                # q1, v2, _ = agent.get_values(train_sample)
-                q1 = np.random.uniform(0, 10, size=[1])
-                v2 = np.random.uniform(0, 10, size=[1])
-
 
                 fetch = dict(
                     estimated=agent.estimated,
@@ -74,18 +70,18 @@ class UnsupervisedTrainer(Trainer):
                     self.sess.run(
                         fetch,
                         feed_dict={
-                            agent.O1: train_sample.o1,
-                            agent.A:  train_sample.a,
-                            agent.R:  train_sample.r,
-                            agent.O2: train_sample.o2,
-                            agent.T:  train_sample.t,
-                            agent._q1: q1, agent._v2: v2,
+                            agent.O1:  train_sample.o1,
+                            agent.A:   train_sample.a,
+                            agent.R:   train_sample.r,
+                            agent.O2:  train_sample.o2,
+                            agent.T:   train_sample.t,
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
                             # agent.delta_tde: delta_tde,
                         }))
 
                 estimated = train_result['estimated']
+                print(train_result['kernel'])
 
                 # noinspection PyTypeChecker
                 # counter.update(

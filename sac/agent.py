@@ -207,7 +207,6 @@ class AbstractAgent:
                     concat = tf.concat([Q_error, self.history], axis=1)
                     self.estimated = tf.layers.dense(
                         inputs=concat,
-                        kernel_initializer=tf.constant_initializer([[1], [0]]),
                         activation=None,
                         units=1,
                         name='final_batchwise',
@@ -216,10 +215,11 @@ class AbstractAgent:
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
-                        inputs=self.model_network(Q_error).output,
+                        inputs=Q_error,
                         activation=None,
                         units=1,
-                        name='final_batchwise')
+                        name='final_batchwise',
+                    )
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):

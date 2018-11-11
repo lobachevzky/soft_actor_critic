@@ -173,7 +173,7 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 dim = (
-                    # 1 +  # q1
+                    1 +  # q1
                     1 +  # r
                     1 +  # t
                     1  # v2
@@ -233,17 +233,6 @@ class AbstractAgent:
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(
                     tf.square(self.estimated - tf.reduce_mean(self.q1)))
-
-                optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                gradients, variables = zip(*optimizer.compute_gradients(
-                    self.model_loss, var_list=get_variables('model')))
-                if grad_clip:
-                    gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
-                else:
-                    norm = tf.global_norm(gradients)
-                op = optimizer.apply_gradients(
-                    zip(gradients, variables), global_step=self.global_step)
-                self.model_grad = norm
 
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,

@@ -175,10 +175,10 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 dim = (
-                    1 +  # q1
-                    # 1 +  # r
-                    # 1 +  # t
-                    1  # v2
+                        1 +  # q1
+                        # 1 +  # r
+                        # 1 +  # t
+                        1  # v2
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
@@ -222,6 +222,17 @@ class AbstractAgent:
             #                 inputs=tf.concat([h, p], axis=1),
             #                 units=1,
             #                 name='estimated_delta'))
+            with tf.variable_scope('fuck'):
+                concat = tf.reshape(tf.concat([self.q1, self.v2], axis=0), [-1, dim])
+                out = tf.layers.dense(concat, 1, activation=None, use_bias=False)
+
+                self.kernel = tf.get_variable('agent/fuck/dense/kernel', shape=(2, 1))
+
+                optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
+                self.model_loss = tf.square(self.q1 - self.v2 - out)
+
+                op = optimizer.minimize(self.model_loss)
+                self.train_model = op
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
@@ -233,8 +244,7 @@ class AbstractAgent:
                             name='estimated'),
                         axis=1)
                     kernel = tf.get_variable('agent/model/estimated/kernel', shape=(2, 1))
-                    bias = tf.get_variable('agent/model/bias/kernel', shape=(1, ))
-                    self.estimated = tf.Print(self.estimated, [kernel, bias])
+                    bias = tf.get_variable('agent/model/bias/kernel', shape=(1,))
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
@@ -253,8 +263,6 @@ class AbstractAgent:
                     norm = tf.global_norm(gradients)
                 op = optimizer.apply_gradients(
                     zip(gradients, variables), global_step=self.global_step)
-                gradients = tf.Print(gradients, [gradients], message='gradients')
-                self.train_model = op
                 self.model_grad = norm
 
                 # self.train_model, self.model_grad = train_op(
@@ -277,10 +285,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A: step.a,
-            self.R: np.array(step.r) * self.reward_scale,
+            self.A:  step.a,
+            self.R:  np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T: step.t,
+            self.T:  step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -309,13 +317,13 @@ class AbstractAgent:
 
     def get_values(self, step: Step):
         return self.sess.run(
-            dict(q1=self.q1, v2=self.v2, q_target=self.q_target),
+            [self.q1, self.v2, self.q_target],
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     def td_error(self, step: Step):
@@ -323,10 +331,10 @@ class AbstractAgent:
             self.model_target,
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     @abstractmethod

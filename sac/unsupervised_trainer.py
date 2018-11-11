@@ -3,6 +3,7 @@ from collections import Counter, namedtuple
 
 # third party
 import numpy as np
+import tensorflow as tf
 
 # first party
 from environments.hindsight_wrapper import Observation
@@ -13,8 +14,8 @@ from sac.utils import Step
 
 
 class BossState(
-        namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                   'reward td_error ')):
+    namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
+                            'reward td_error ')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -58,21 +59,27 @@ class UnsupervisedTrainer(Trainer):
                 # new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
                 # old_delta_tde = self.boss_state.delta_tde or new_delta_tde
                 # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
+                q1, v2, _ = agent.get_values(train_sample)
+
+                dammit = self.sess.run(
+                    dict(loss=self.loss, op=self.op, kernel=self.kernel),
+                    feed_dict={self.q1: q1, self.v2: v2})
+                print(dammit['kernel'])
 
                 fetch = dict(
                     estimated=agent.estimated,
                     model_loss=agent.model_loss,
-                    model_grad=agent.model_grad,
+                    # model_grad=agent.model_grad,
                     train_model=agent.train_model)
                 train_result.update(
                     self.sess.run(
                         fetch,
                         feed_dict={
                             agent.O1: train_sample.o1,
-                            agent.A: train_sample.a,
-                            agent.R: train_sample.r,
+                            agent.A:  train_sample.a,
+                            agent.R:  train_sample.r,
                             agent.O2: train_sample.o2,
-                            agent.T: train_sample.t,
+                            agent.T:  train_sample.t,
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
                             # agent.delta_tde: delta_tde,
@@ -90,6 +97,7 @@ class UnsupervisedTrainer(Trainer):
                     # diff=np.mean(delta_tde - estimated_delta_tde),
                     # episodic_delta_tde=np.mean(test_post_td_error -
                     #                            self.boss_state.td_error),
+                    fuck_loss=np.mean(dammit['loss'])
                 )
                 history = train_sample.replace(
                     r=train_sample.r.reshape(-1, 1), t=train_sample.t.reshape(-1, 1))
@@ -97,9 +105,9 @@ class UnsupervisedTrainer(Trainer):
                 # td_error = train_result['TDError'].reshape(-1, 1)
                 # history = np.hstack(list(history[1:]) + [td_error])
                 # self.boss_state = self.boss_state.replace(
-                    # td_error=test_post_td_error,
-                    # history=history,
-                    # delta_tde=delta_tde
+                # td_error=test_post_td_error,
+                # history=history,
+                # delta_tde=delta_tde
                 # )
 
                 for k, v in train_result.items():
@@ -158,4 +166,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

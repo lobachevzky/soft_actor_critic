@@ -51,6 +51,19 @@ class Trainer:
         self.action_space = action_space or env.action_space
         observation_space = observation_space or env.observation_space
 
+        with tf.variable_scope('fuck'):
+            self.q1 = tf.placeholder(tf.float32, [batch_size])
+            self.v2 = tf.placeholder(tf.float32, [batch_size])
+            concat = tf.reshape(tf.stack([self.q1, self.v2], axis=0), [batch_size, -1])
+            out = tf.layers.dense(concat, 1, activation=None, use_bias=False)
+
+            self.kernel = tf.trainable_variables()[0]
+
+            optimizer = tf.train.AdamOptimizer(learning_rate=kwargs['learning_rate'])
+            self.loss = tf.square(self.q1 - self.v2 - out)
+
+            self.op = optimizer.minimize(self.loss)
+
         obs = env.reset()
         self.preprocess_func = preprocess_func
         if preprocess_func is None and not isinstance(obs, np.ndarray):

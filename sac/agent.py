@@ -226,7 +226,7 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                model_target = Q_error
+                model_target = self.history
                 loss = tf.square(self.estimated - model_target)
                 self.model_loss = tf.reduce_mean(loss)
                 self.normalized_model_loss = tf.reduce_mean(loss / model_target)

@@ -182,100 +182,91 @@ class AbstractAgent:
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
-                present = tf.reshape(
-                    tf.concat(
-                        [
-                            self.q1,
-                            # self.R, self.T,
-                            self.v2
-                        ],
-                        axis=0),
-                    [-1, dim])
+                present = tf.stack(
+                    [
+                        self.q1,
+                        # self.R, self.T,
+                        self.v2
+                    ],
+                    axis=1)
                 # self.old_delta_tde = tf.placeholder(tf.float32, (),
                 # name='old_delta_tde')
                 # self.history = tf.placeholder(
                 #     tf.float32, [batch_size, key_dim], name='history')
                 # sarst = tf.concat([self.history, present], axis=0, name='sarst')
 
-            # if model_type is ModelType.complex:
-            #     h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
-            #     with tf.variable_scope('sarst'):
-            #         sim = tf.reduce_mean(
-            #             tf.reduce_sum(h * p, axis=1) /
-            #             (tf.linalg.norm(h) * tf.linalg.norm(p)))
-            #     with tf.variable_scope('delta_tde'):
-            #         old = self.old_delta_tde
-            #         new = tf.layers.dense(
-            #             inputs=self.model_network(present).output, units=1, name='new')
-            #
-            #         self.estimated_tde = sim * old + (1 - sim) * new
+                # if model_type is ModelType.complex:
+                #     h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
+                #     with tf.variable_scope('sarst'):
+                #         sim = tf.reduce_mean(
+                #             tf.reduce_sum(h * p, axis=1) /
+                #             (tf.linalg.norm(h) * tf.linalg.norm(p)))
+                #     with tf.variable_scope('delta_tde'):
+                #         old = self.old_delta_tde
+                #         new = tf.layers.dense(
+                #             inputs=self.model_network(present).output, units=1,
+                # name='new')
+                #
+                #         self.estimated_tde = sim * old + (1 - sim) * new
 
-            # if model_type is ModelType.simple:
-            #     pad = tf.pad(sarst, [[0, 0], [0, 1]],
-            # constant_values=self.old_delta_tde)
-            #     h, p = tf.split(self.model_network(pad).output, 2, axis=0)
-            #     h = tf.reduce_sum(h, axis=0, keepdims=True)
-            #     p = tf.reduce_sum(p, axis=0, keepdims=True)
-            #     with tf.variable_scope('delta_tde'):
-            #         self.estimated_tde = tf.squeeze(
-            #             tf.layers.dense(
-            #                 inputs=tf.concat([h, p], axis=1),
-            #                 units=1,
-            #                 name='estimated_delta'))
+                # if model_type is ModelType.simple:
+                #     pad = tf.pad(sarst, [[0, 0], [0, 1]],
+                # constant_values=self.old_delta_tde)
+                #     h, p = tf.split(self.model_network(pad).output, 2, axis=0)
+                #     h = tf.reduce_sum(h, axis=0, keepdims=True)
+                #     p = tf.reduce_sum(p, axis=0, keepdims=True)
+                #     with tf.variable_scope('delta_tde'):
+                #         self.estimated_tde = tf.squeeze(
+                #             tf.layers.dense(
+                #                 inputs=tf.concat([h, p], axis=1),
+                #                 units=1,
+                #                 name='estimated_delta'))
 
-            with tf.variable_scope('fuck'):
-                concat = tf.stack([self.q1, self.v2], axis=1)
-                self.estimated = out = tf.squeeze(tf.layers.dense(concat, 1,
-                                                                  activation=None,
-                                                                  use_bias=False), axis=1)
+                # with tf.variable_scope('model'):
+                #     concat = tf.stack([self.q1, self.v2], axis=1)
+                #     self.estimated = out = tf.squeeze(tf.layers.dense(concat, 1,
+                #                                                       activation=None,
+                #
+                # use_bias=False), axis=1)
+
+
+            if model_type is ModelType.memoryless:
+                with tf.variable_scope('model'):
+                    self.estimated = tf.squeeze(
+                        tf.layers.dense(
+                            inputs=present,
+                            activation=None,
+                            use_bias=False,
+                            units=1,
+                            name='estimated'),
+                        axis=1)
+
+
+                with tf.variable_scope('model', reuse=True):
+                    self.kernel = tf.get_variable('estimated/kernel', shape=(2, 1))
+
+            if model_type is ModelType.prior:
+                with tf.variable_scope('model'):
+                    self.estimated = tf.get_variable('estimated', 1)
+
+            if model_type is not ModelType.none:
+                self.model_loss = tf.square(self.estimated - self.model_target)
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-                self.model_loss = tf.square((self.q1 - self.v2) - out)
+                gradients, variables = zip(*optimizer.compute_gradients(
+                    self.model_loss, var_list=get_variables('model')))
+                if grad_clip:
+                    gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
+                else:
+                    norm = tf.global_norm(gradients)
+                op = optimizer.apply_gradients(
+                    zip(gradients, variables), global_step=self.global_step)
+                self.model_grad = norm
 
-            with tf.variable_scope('fuck', reuse=True):
-                self.kernel = tf.get_variable('dense/kernel', shape=(2, 1))
-
-            variables = get_variables('fuck')
-
-            op = optimizer.minimize(self.model_loss, var_list=variables)
-            self.train_model = op
-
-            # if model_type is ModelType.memoryless:
-            #     with tf.variable_scope('model'):
-            #         self.estimated = tf.squeeze(
-            #             tf.layers.dense(
-            #                 inputs=self.model_network(present).output,
-            #                 activation=None,
-            #                 units=1,
-            #                 name='estimated'),
-            #             axis=1)
-            #         kernel = tf.get_variable('agent/model/estimated/kernel',
-            # shape=(2, 1))
-            #         bias = tf.get_variable('agent/model/bias/kernel', shape=(1,))
-            #
-            # if model_type is ModelType.prior:
-            #     with tf.variable_scope('model'):
-            #         self.estimated = tf.get_variable('estimated', 1)
-            #
-            # if model_type is not ModelType.none:
-            #     self.model_loss = tf.reduce_mean(
-            #         .5 * tf.square(self.estimated - self.model_target))
-            #
-            #     optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
-            #     gradients, variables = zip(*optimizer.compute_gradients(
-            #         self.model_loss, var_list=get_variables('model')))
-            #     if grad_clip:
-            #         gradients, norm = tf.clip_by_global_norm(gradients, grad_clip)
-            #     else:
-            #         norm = tf.global_norm(gradients)
-            #     op = optimizer.apply_gradients(
-            #         zip(gradients, variables), global_step=self.global_step)
-            #     self.model_grad = norm
-
-            # self.train_model, self.model_grad = train_op(
-            # loss=self.model_loss,
-            # lr=model_learning_rate,
-            # var_list=[v for scope in ['model'] for v in get_variables(scope)])
+            self.train_model, self.model_grad = train_op(
+                loss=self.model_loss,
+                lr=model_learning_rate,
+                var_list=[v for scope in ['model'] for v in get_variables(scope)])
 
             sess.run(tf.global_variables_initializer())
 

@@ -228,15 +228,12 @@ class AbstractAgent:
                 with tf.variable_scope('model'):
                     self.estimated = tf.squeeze(
                         tf.layers.dense(
-                            inputs=present,
+                            inputs=self.model_network(present).output,
                             activation=None,
                             use_bias=False,
                             units=1,
                             name='estimated'),
                         axis=1)
-
-                with tf.variable_scope('model', reuse=True):
-                    self.kernel = tf.get_variable('estimated/kernel', shape=(2, 1))
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):

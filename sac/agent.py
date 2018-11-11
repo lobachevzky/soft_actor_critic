@@ -127,7 +127,6 @@ class AbstractAgent:
             not_done = 1 - T  # type: tf.Tensor
             self.q_target = q_target = R + gamma * not_done * v2
             self.Q_error = tf.square(q - q_target)
-            self.model_target = self.Q_error
             self.Q_loss = Q_loss = tf.reduce_mean(0.5 * self.Q_error)
 
             # constructing pi loss
@@ -162,6 +161,8 @@ class AbstractAgent:
             self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi)
             self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
+
+            self.model_target = self.Q_grad
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)

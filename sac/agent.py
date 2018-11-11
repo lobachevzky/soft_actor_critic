@@ -207,7 +207,6 @@ class AbstractAgent:
                         activation=None,
                         use_bias=False,
                         units=1,
-                        name='final_batchwise',
                     )
 
             if model_type is ModelType.memoryless:
@@ -227,17 +226,22 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                model_target = self.delta_tde
+                model_target = tf.reshape(self.delta_tde, [batch_size, 1])
                 loss = tf.square(self.estimated - model_target)
                 self.model_loss = tf.reduce_mean(loss)
-                self.normalized_model_loss = tf.reduce_mean(loss / model_target)
+                self.normalized_model_loss = tf.reduce_mean(
+                    loss / tf.maximum(model_target, 1e-6))
 
             with tf.control_dependencies([
-                    # tf.Print(self.estimated, [self.estimated[0]], message='estimated'),
+                    tf.Print(self.estimated, [self.estimated], message='estimated'),
+                    tf.Print(self.estimated, [model_target], message='target'),
                     # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
                     # tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
-                    # tf.Print(self.estimated, [kernel], message='kernel'),
-                    # tf.Print(self.estimated, [self.model_loss], message='loss'),
+                    tf.Print(self.estimated, [kernel], message='kernel'),
+                    tf.Print(self.estimated, [self.model_loss], message='loss'),
+                    tf.Print(
+                        self.estimated, [self.normalized_model_loss],
+                        message='norm loss'),
                     # tf.Print(self.estimated, [self.global_step], message='step'),
             ]):
                 self.train_model, self.model_grad = train_op(

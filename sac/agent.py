@@ -174,7 +174,7 @@ class AbstractAgent:
             if model_type is not ModelType.none:
                 dim = (
                     1 +  # prev_Q_error
-                    1    # prev_delta_tde
+                    1  # prev_delta_tde
                 )
                 self.delta_tde = tf.placeholder(
                     tf.float32, [batch_size], name='delta_tde')
@@ -203,10 +203,12 @@ class AbstractAgent:
                 with tf.variable_scope('model'):
                     concat = tf.concat([Q_error, self.history], axis=1)
                     self.estimated = tf.layers.dense(
-                        inputs=self.model_network(concat).output,
+                        inputs=concat,
+                        kernel_initializer=tf.constant_initializer([[1], [0]]),
                         activation=None,
                         units=1,
-                        name='final_batchwise')
+                        name='final_batchwise',
+                    )
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):

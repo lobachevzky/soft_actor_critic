@@ -92,7 +92,7 @@ class UnsupervisedTrainer(Trainer):
                             }))
 
                     # estimated = train_result['estimated']
-                    # print(np.sqrt(np.mean(train_result['model_loss'])))
+                    print('loss', train_result['model_loss'])
 
                     # noinspection PyTypeChecker
                     # counter.update(
@@ -115,6 +115,8 @@ class UnsupervisedTrainer(Trainer):
                 )
 
                 for k, v in train_result.items():
+                    if k == 'model_loss':
+                        print(k, v)
                     if np.isscalar(v):
                         counter.update(**{k: v})
 

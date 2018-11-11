@@ -221,6 +221,8 @@ class AbstractAgent:
                         use_bias=False,
                         units=1,
                     )
+            with tf.variable_scope('model', reuse=True):
+                kernel = tf.get_variable('dense/kernel')
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
@@ -229,10 +231,18 @@ class AbstractAgent:
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(tf.square(self.estimated - Q_error))
 
-            self.train_model, self.model_grad = train_op(
-                loss=self.model_loss,
-                lr=model_learning_rate,
-                var_list=[v for scope in ['model'] for v in get_variables(scope)])
+            with tf.control_dependencies([
+                    tf.Print(self.estimated, [self.estimated[0]], message='estimated'),
+                    tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
+                    tf.Print(self.estimated, [Q_error[0]], message='Q_error'),
+                    tf.Print(self.estimated, [kernel], message='kernel'),
+                    tf.Print(self.estimated, [self.model_loss], message='loss'),
+                    tf.Print(self.estimated, [self.global_step], message='step'),
+            ]):
+                self.train_model, self.model_grad = train_op(
+                    loss=self.model_loss,
+                    lr=model_learning_rate,
+                    var_list=[v for scope in ['model'] for v in get_variables(scope)])
 
             sess.run(tf.global_variables_initializer())
 

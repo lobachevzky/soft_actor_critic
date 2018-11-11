@@ -182,20 +182,13 @@ class AbstractAgent:
                 )
                 self.delta_tde = tf.placeholder(tf.float32, (), name='delta_tde')
 
-                present = tf.stack(
-                    [
-                        # self.q1,
-                        self.R,
-                        self.T,
-                        self.v2
-                    ],
-                    axis=1)
+                present = tf.stack([self.q1, self.R, self.T, self.v2], axis=1)
                 self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
                 self.history = tf.placeholder(
                     tf.float32, [batch_size, dim], name='history')
-                sarst = tf.concat([self.history, present], axis=0, name='sarst')
 
             if model_type is ModelType.complex:
+                sarst = tf.concat([self.history, present], axis=0, name='sarst')
                 h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
                 with tf.variable_scope('sarst'):
                     sim = tf.reduce_mean(
@@ -209,6 +202,7 @@ class AbstractAgent:
                     self.estimated_tde = sim * old + (1 - sim) * new
 
             if model_type is ModelType.simple:
+                sarst = tf.concat([self.history, present], axis=0, name='sarst')
                 pad = tf.pad(sarst, [[0, 0], [0, 1]], constant_values=self.old_delta_tde)
                 h, p = tf.split(self.model_network(pad).output, 2, axis=0)
                 h = tf.reduce_sum(h, axis=0, keepdims=True)

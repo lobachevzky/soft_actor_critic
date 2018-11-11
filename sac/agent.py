@@ -162,8 +162,6 @@ class AbstractAgent:
             self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
 
-            self.model_target = self.Q_grad
-
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
                 for (xbar, x) in zip(xi_bar, xi)
@@ -236,8 +234,7 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(
-                    tf.square(self.estimated - self.delta_tde))
+                self.model_loss = tf.reduce_mean(tf.square(self.estimated - self.Q_loss))
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
                 gradients, variables = zip(*optimizer.compute_gradients(

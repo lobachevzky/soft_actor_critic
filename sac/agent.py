@@ -189,46 +189,45 @@ class AbstractAgent:
                         self.v2
                     ],
                     axis=1)
-                # self.old_delta_tde = tf.placeholder(tf.float32, (),
-                # name='old_delta_tde')
-                # self.history = tf.placeholder(
-                #     tf.float32, [batch_size, key_dim], name='history')
-                # sarst = tf.concat([self.history, present], axis=0, name='sarst')
+                self.old_delta_tde = tf.placeholder(tf.float32, (),
+                                                    name='old_delta_tde')
+                self.history = tf.placeholder(
+                    tf.float32, [batch_size, dim], name='history')
+                sarst = tf.concat([self.history, present], axis=0, name='sarst')
 
-                # if model_type is ModelType.complex:
-                #     h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
-                #     with tf.variable_scope('sarst'):
-                #         sim = tf.reduce_mean(
-                #             tf.reduce_sum(h * p, axis=1) /
-                #             (tf.linalg.norm(h) * tf.linalg.norm(p)))
-                #     with tf.variable_scope('delta_tde'):
-                #         old = self.old_delta_tde
-                #         new = tf.layers.dense(
-                #             inputs=self.model_network(present).output, units=1,
-                # name='new')
-                #
-                #         self.estimated_tde = sim * old + (1 - sim) * new
+            if model_type is ModelType.complex:
+                h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
+                with tf.variable_scope('sarst'):
+                    sim = tf.reduce_mean(
+                        tf.reduce_sum(h * p, axis=1) /
+                        (tf.linalg.norm(h) * tf.linalg.norm(p)))
+                with tf.variable_scope('delta_tde'):
+                    old = self.old_delta_tde
+                    new = tf.layers.dense(
+                        inputs=self.model_network(present).output, units=1,
+                        name='new')
 
-                # if model_type is ModelType.simple:
-                #     pad = tf.pad(sarst, [[0, 0], [0, 1]],
-                # constant_values=self.old_delta_tde)
-                #     h, p = tf.split(self.model_network(pad).output, 2, axis=0)
-                #     h = tf.reduce_sum(h, axis=0, keepdims=True)
-                #     p = tf.reduce_sum(p, axis=0, keepdims=True)
-                #     with tf.variable_scope('delta_tde'):
-                #         self.estimated_tde = tf.squeeze(
-                #             tf.layers.dense(
-                #                 inputs=tf.concat([h, p], axis=1),
-                #                 units=1,
-                #                 name='estimated_delta'))
+                    self.estimated_tde = sim * old + (1 - sim) * new
 
-                # with tf.variable_scope('model'):
-                #     concat = tf.stack([self.q1, self.v2], axis=1)
-                #     self.estimated = out = tf.squeeze(tf.layers.dense(concat, 1,
-                #                                                       activation=None,
-                #
-                # use_bias=False), axis=1)
+            if model_type is ModelType.simple:
+                pad = tf.pad(sarst, [[0, 0], [0, 1]],
+                             constant_values=self.old_delta_tde)
+                h, p = tf.split(self.model_network(pad).output, 2, axis=0)
+                h = tf.reduce_sum(h, axis=0, keepdims=True)
+                p = tf.reduce_sum(p, axis=0, keepdims=True)
+                with tf.variable_scope('delta_tde'):
+                    self.estimated_tde = tf.squeeze(
+                        tf.layers.dense(
+                            inputs=tf.concat([h, p], axis=1),
+                            units=1,
+                            name='estimated_delta'))
 
+            with tf.variable_scope('model'):
+                concat = tf.stack([self.q1, self.v2], axis=1)
+                self.estimated = out = tf.squeeze(tf.layers.dense(concat, 1,
+                                                                  activation=None,
+
+                                                                  use_bias=False), axis=1)
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
@@ -240,7 +239,6 @@ class AbstractAgent:
                             units=1,
                             name='estimated'),
                         axis=1)
-
 
                 with tf.variable_scope('model', reuse=True):
                     self.kernel = tf.get_variable('estimated/kernel', shape=(2, 1))

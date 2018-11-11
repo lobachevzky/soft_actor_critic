@@ -219,37 +219,19 @@ class AbstractAgent:
 
             if model_type is ModelType.memoryless:
                 with tf.variable_scope('model'):
-                    final_batchwise = tf.layers.dense(
-                        # inputs=self.model_network(present).output,
-                        inputs=present,
-                        # kernel_initializer=tf.constant_initializer([1, 0, 0, 0]),
-                        # trainable=False,
-                        use_bias=False,
-                        activation=None,
-                        units=1,
-                        name='final_batchwise')
-
-                    self.estimated = tf.squeeze(
+                    self.estimated = tf.reduce_mean(
                         tf.layers.dense(
-                            tf.reshape(final_batchwise, [1, batch_size]),
-                            # kernel_initializer=tf.constant_initializer(
-                            # [1 / batch_size, 1 / batch_size, 1 / batch_size]),
-                            units=1,
-                            use_bias=False,
+                            inputs=self.model_network(present).output,
                             activation=None,
-                            name='final_aggregate'),
-                        axis=1)
-                with tf.variable_scope('model', reuse=True):
-                    kernel1 = tf.get_variable('final_batchwise/kernel')
-                    kernel2 = tf.get_variable('final_aggregate/kernel')
+                            units=1,
+                            name='final_batchwise'))
 
             if model_type is ModelType.prior:
                 with tf.variable_scope('model'):
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                self.model_loss = tf.reduce_mean(
-                    tf.square(self.estimated - tf.reduce_mean(self.q1)))
+                self.model_loss = tf.reduce_mean(tf.square(self.estimated - self.Q_loss))
 
             self.train_model, self.model_grad = train_op(
                 loss=self.model_loss,

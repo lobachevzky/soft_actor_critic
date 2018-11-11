@@ -237,7 +237,7 @@ class AbstractAgent:
 
             if model_type is not ModelType.none:
                 self.model_loss = tf.reduce_mean(
-                    tf.square(self.estimated - self.model_target))
+                    tf.square(self.estimated - self.delta_tde))
 
                 optimizer = tf.train.AdamOptimizer(learning_rate=model_learning_rate)
                 gradients, variables = zip(*optimizer.compute_gradients(
@@ -313,7 +313,7 @@ class AbstractAgent:
 
     def td_error(self, step: Step):
         return self.sess.run(
-            self.model_target,
+            self.Q_error,
             feed_dict={
                 self.O1: step.o1,
                 self.A: step.a,

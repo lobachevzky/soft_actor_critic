@@ -46,19 +46,19 @@ class UnsupervisedTrainer(Trainer):
                 self.test_sample.extend(self.sample_buffer())
             for i in range(self.n_train_steps):
                 # get train and test samples
-                # sample = self.sample_buffer(batch_size=1)
-                # self.test_sample.append(sample)
+                sample = self.sample_buffer(batch_size=1)
+                self.test_sample.append(sample)
                 train_sample = self.sample_buffer()
-                # test_sample = Step(*self.test_sample.buffer)
+                test_sample = Step(*self.test_sample.buffer)
 
                 # get pre- and post-td-error
                 agent = self.agents.act
-                # test_pre_td_error = agent.td_error(step=test_sample)
+                test_pre_td_error = agent.td_error(step=test_sample)
                 train_result = agent.train_step(step=train_sample)
-                # test_post_td_error = agent.td_error(step=test_sample)
-                # new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
-                # old_delta_tde = self.boss_state.delta_tde or new_delta_tde
-                # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
+                test_post_td_error = agent.td_error(step=test_sample)
+                new_delta_tde = np.mean(test_pre_td_error - test_post_td_error)
+                old_delta_tde = self.boss_state.delta_tde or new_delta_tde
+                delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
 
                 fetch = dict(
                     estimated=agent.estimated,
@@ -77,7 +77,7 @@ class UnsupervisedTrainer(Trainer):
                             agent.T: train_sample.t,
                             # agent.history: self.boss_state.history,
                             # agent.old_delta_tde: self.boss_state.delta_tde,
-                            # agent.delta_tde: delta_tde,
+                            agent.delta_tde: delta_tde,
                         }))
 
                 estimated = train_result['estimated']

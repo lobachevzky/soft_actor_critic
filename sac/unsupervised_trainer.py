@@ -6,6 +6,8 @@ import numpy as np
 import tensorflow as tf
 
 # first party
+from gym.spaces import Box
+
 from environments.hindsight_wrapper import Observation
 from environments.hsr import distance_between, HSREnv
 from sac.replay_buffer import ReplayBuffer
@@ -31,8 +33,11 @@ class UnsupervisedTrainer(Trainer):
         self.hsr_env = unwrap_env(self.env, lambda e: isinstance(e, HSREnv))
         self.reward_history = []
         self.test_sample = None
-        x = np.stack([np.ones(episodes_per_goal), np.arange(episodes_per_goal)], axis=1)
-        self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
+        if episodes_per_goal is None:
+            self.lin_regress_op = None
+        else:
+            x = np.stack([np.ones(episodes_per_goal), np.arange(episodes_per_goal)], axis=1)
+            self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.boss_state = BossState(
             td_errors=None,
             history=None,
@@ -40,6 +45,11 @@ class UnsupervisedTrainer(Trainer):
             initial_achieved=None,
             initial_value=None,
             reward=None)
+
+        self.double_goal_space = Box(
+            low=self.hsr_env.goal_space.low / np.sin(np.pi / 4),
+            high=self.hsr_env.goal_space.high / np.sin(np.pi / 4),
+        )
 
     def perform_update(self):
         counter = Counter()
@@ -114,13 +124,29 @@ class UnsupervisedTrainer(Trainer):
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
             return episode_count
 
-        self.reward_history.append(episode_count['reward'])
-        if len(self.reward_history) == self.episodes_per_goal:
-            _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(self.reward_history)
+        if self.episodes_per_goal:
+            self.reward_history.append(episode_count['reward'])
+            if len(self.reward_history) == self.episodes_per_goal:
+                _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(
+                    self.reward_history)
 
-            # choose new goal:
-            self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
-            self.reward_history = []
+                # choose new goal:
+                goal = self.double_goal_space.sample()
+                self.hsr_env.set_goal(goal)
+                self.reward_history = []
+
+                agent = self.agents.act
+                episode_count.update(self.sess.run(
+                    fetch=dict(model_accuracy=agent.model_accuracy,
+                               model_loss=agent.model_loss,
+                               model_grad=agent.model_grad,
+                               op=agent.train_model)
+                ),
+                    feed_dict={
+                        agent.goal: goal,
+                        agent.in_range: self.hsr_env.goal_space.contains(goal),
+                    }
+                )
 
         # goal_distance = distance_between(
         #     self.boss_state.initial_achieved,

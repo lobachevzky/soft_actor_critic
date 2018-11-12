@@ -29,6 +29,7 @@ class ModelType(enum.Enum):
 class AbstractAgent:
     def __init__(self,
                  sess: tf.Session,
+                 batch_size: int,
                  seq_len: int,
                  o_shape: Iterable,
                  a_shape: Sequence,
@@ -40,9 +41,13 @@ class AbstractAgent:
                  learning_rate: float,
                  grad_clip: float,
                  device_num: int = 1,
+                 model_activation: Callable = None,
+                 model_n_layers: int = None,
+                 model_layer_size: int = None,
                  reuse: bool = False,
                  scope: str = 'agent',
-                 ) -> None:
+                 model_type: ModelType = ModelType.none,
+                 model_learning_rate: float = None) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -65,6 +70,11 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
+
+        self.model_n_layers = model_n_layers or n_layers
+        self.model_layer_size = model_layer_size or layer_size
+        self.model_activation = model_activation or activation
+        model_learning_rate = model_learning_rate or learning_rate
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
@@ -128,12 +138,47 @@ class AbstractAgent:
             self.pi_loss = pi_loss = tf.reduce_mean(
                 log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
+            # TD error prediction model
+            if model_type is not ModelType.none:
+                self.in_range = tf.placeholder(tf.float32, ())
+                self.goal = tf.placeholder(tf.float32, [3])
+                goal = tf.reshape(self.goal, [1, 3])
+                in_range = tf.reshape(self.in_range, [1, 1])
+
+                dim = (
+                        1 +  # prev_Q_error
+                        1  # prev_delta_tde
+                )
+                self.history = tf.placeholder(
+                    tf.float32, [batch_size, dim], name='history')
+
+            if model_type is ModelType.memoryless:
+                with tf.variable_scope('model'):
+                    self.estimated = tf.layers.dense(
+                        inputs=self.model_network(goal).output,
+                        activation=None,
+                        use_bias=False,
+                        units=1,
+                    )
+
+            if model_type is ModelType.prior:
+                with tf.variable_scope('model'):
+                    self.estimated = tf.get_variable('estimated', 1)
+
+            if model_type is not ModelType.none:
+                model_target = in_range
+                loss = tf.square(self.estimated - model_target)
+                self.model_loss = tf.reduce_mean(loss)
+                self.normalized_model_loss = tf.reduce_mean(
+                    loss / tf.maximum(model_target, 1e-6))
+
             # grabbing all the relevant variables
             def get_variables(var_name: str) -> List[tf.Variable]:
                 return tf.get_collection(
                     tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{scope}/{var_name}/')
 
-            phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
+            phi, theta, xi, xi_bar, model_vars = map(get_variables, ['pi', 'Q', 'V',
+                                                                     'V_bar', 'model'])
 
             def train_op(loss, var_list, lr=learning_rate):
                 optimizer = tf.train.AdamOptimizer(learning_rate=lr)
@@ -150,6 +195,10 @@ class AbstractAgent:
             self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi)
             self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
+            self.train_model, self.model_grad = train_op(
+                loss=self.model_loss,
+                lr=model_learning_rate,
+                var_list=model_vars)
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
@@ -159,7 +208,6 @@ class AbstractAgent:
             # self.check = tf.add_check_numerics_ops()
             self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
             # ensure that xi and xi_bar are the same at initialization
-
 
             sess.run(tf.global_variables_initializer())
 
@@ -176,10 +224,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A: step.a,
-            self.R: np.array(step.r) * self.reward_scale,
+            self.A:  step.a,
+            self.R:  np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T: step.t,
+            self.T:  step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -211,10 +259,10 @@ class AbstractAgent:
             [self.q1, self.v2, self.q_target],
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     def td_error(self, step: Step):
@@ -222,14 +270,18 @@ class AbstractAgent:
             self.Q_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
+                self.A:  step.a,
+                self.R:  step.r,
                 self.O2: step.o2,
-                self.T: step.t
+                self.T:  step.t
             })
 
     def _print(self, tensor, name: str):
         return tf.Print(tensor, [tensor], message=name, summarize=1e5)
+
+    @abstractmethod
+    def model_network(self, inputs: tf.Tensor) -> NetworkOutput:
+        pass
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

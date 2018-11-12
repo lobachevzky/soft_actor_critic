@@ -93,7 +93,7 @@ class LstmAgent(AbstractAgent):
                 h=tf.placeholder(*state_args, name='H'))
             self.lstm = BasicLSTMCell(layer_size)
         super().__init__(
-            layer_size=layer_size, device_num=device_num, **kwargs)
+            batch_size=batch_size, layer_size=layer_size, device_num=device_num, **kwargs)
         self.initial_state = self.sess.run(self.lstm.zero_state(batch_size, tf.float32))
         assert np.shape(self.initial_state) == (2, batch_size, layer_size)
         assert self.S.c.shape == self.S.h.shape == (batch_size, layer_size)

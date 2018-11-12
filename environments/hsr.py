@@ -114,19 +114,18 @@ class HSREnv:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(25,),
+                shape=(25, ),
                 dtype=np.float32,
             )
         else:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(self.sim.nq + len(self._base_joints),),
+                shape=(self.sim.nq + len(self._base_joints), ),
                 dtype=np.float32,
             )
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
-
 
         # joint space
         all_joints = [
@@ -254,7 +253,7 @@ class HSREnv:
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
     def reset_sim(self, qpos: np.ndarray):
-        assert qpos.shape == (self.sim.nq,)
+        assert qpos.shape == (self.sim.nq, )
         self.initial_qpos = qpos
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
@@ -336,7 +335,8 @@ class HSREnv:
 
     def is_successful(self, achieved_goal=None, desired_goal=None):
         if self._min_lift_height:
-            return self.block_pos()[2] > self.initial_block_pos[0][2] + self._min_lift_height
+            return self.block_pos(
+            )[2] > self.initial_block_pos[0][2] + self._min_lift_height
 
         # only check first block
         if achieved_goal is None:
@@ -381,10 +381,12 @@ class MoveGripperEnv(HSREnv):
             achieved_goal = self.gripper_pos()
         if desired_goal is None:
             desired_goal = self.goal
-        return super().is_successful(achieved_goal=achieved_goal, desired_goal=desired_goal)
+        return super().is_successful(
+            achieved_goal=achieved_goal, desired_goal=desired_goal)
 
     def compute_reward(self):
-        return - distance_between(self.gripper_pos(), self.goal)
+        return 0 if self.is_successful() else -1
+
 
 def quaternion2euler(w, x, y, z):
     ysqr = y * y

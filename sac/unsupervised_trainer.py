@@ -1,5 +1,5 @@
 # stdlib
-from collections import Counter, namedtuple
+from collections import Counter, namedtuple, deque
 
 # third party
 import numpy as np
@@ -7,10 +7,10 @@ import tensorflow as tf
 
 # first party
 from environments.hindsight_wrapper import Observation
-from environments.hsr import distance_between
+from environments.hsr import distance_between, HSREnv
 from sac.replay_buffer import ReplayBuffer
 from sac.train import Trainer
-from sac.utils import Step
+from sac.utils import Step, unwrap_env
 
 
 class BossState(
@@ -21,17 +21,18 @@ class BossState(
         return super()._replace(**kwargs)
 
 
-Key = namedtuple('BufferKey', 'achieved_goal desired_goal')
-
 Samples = namedtuple('Samples', 'train valid test')
 
 
 class UnsupervisedTrainer(Trainer):
-    def __init__(self, alpha: float, **kwargs):
+    def __init__(self, episodes_per_goal: int, **kwargs):
         super().__init__(**kwargs)
-        assert alpha is not None
-        self.alpha = alpha
+        self.episodes_per_goal = episodes_per_goal
+        self.hsr_env = unwrap_env(self.env, lambda e: isinstance(e, HSREnv))
+        self.reward_history = []
         self.test_sample = None
+        x = np.stack([np.ones(episodes_per_goal), np.arange(episodes_per_goal)], axis=1)
+        self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.boss_state = BossState(
             td_errors=None,
             history=None,
@@ -71,12 +72,6 @@ class UnsupervisedTrainer(Trainer):
 
                 delta = Samples(*[get_delta(*args) for args in zip(pre, post)])
 
-                # new_delta_tde = delta(pre_td_error, post_td_error)
-                # old_delta_tde = self.boss_state.delta_tde or new_delta_tde
-                # delta_tde = old_delta_tde + self.alpha * (new_delta_tde - old_delta_tde)
-
-                # print(delta(test_pre_td_error, test_post_td_error))
-
                 # noinspection PyTypeChecker
                 counter.update(
                     pre_train_td_error=np.mean(pre.train),
@@ -99,23 +94,8 @@ class UnsupervisedTrainer(Trainer):
                         episodic_test_td_error_delta=episodic.test,
                         episodic_valid_td_error_delta=episodic.valid,
                     )
-                #     # test_td_error=np.mean(test_post_td_error),
-                #     # train_td_error=np.mean(train_post_td_error),
-                #     estimated_delta_tde=np.mean(estimated),
-                #     # delta_tde=delta_tde,
-                #     # train_delta_tde=np.mean(train_pre_td_error -
-                # train_post_td_error),
-                #     # diff=np.mean(delta_tde - estimated_delta_tde),
-                #     # episodic_delta_tde=np.mean(test_post_td_error -
-                #     #                            self.boss_state.td_error),
-                # )
-                # history = np.stack([train_result['Q_error'], train_delta_tde], axis=1)
-                # td_error = train_result['TDError'].reshape(-1, 1)
-                # history = np.hstack(list(history[1:]) + [td_error])
                 self.boss_state = self.boss_state.replace(
                     td_errors=post,
-                    # history=history,
-                    # delta_tde=delta_tde
                 )
 
                 for k, v in train_result.items():
@@ -127,35 +107,30 @@ class UnsupervisedTrainer(Trainer):
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
 
-    def reset(self):
-        o1 = super().reset()
-        if not self.is_eval_period():
-            # goal_delta = self.trainers.boss.get_actions(o1=o1, s=0, sample=False).output
-            # goal = o1.achieved_goal + goal_delta
-            goal = self.env.goal_space.sample()
-            self.env.hsr_env.set_goal(goal)
-
-            o1 = o1.replace(desired_goal=goal)
-
-            self.boss_state = self.boss_state.replace(
-                initial_achieved=Observation(*o1).achieved_goal)
-        return o1
-
     def run_episode(self, o1, eval_period, render):
         episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
+
         if eval_period:
+            self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
             return episode_count
-        assert np.allclose(o1.desired_goal, self.env.hsr_env.goal)
 
-        goal_distance = distance_between(
-            self.boss_state.initial_achieved,
-            o1.desired_goal,
-        )
+        self.reward_history.append(episode_count['reward'])
+        if len(self.reward_history) == self.episodes_per_goal:
+            _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(self.reward_history)
 
-        episode_count['goal_distance'] = goal_distance
+            # choose new goal:
+            self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
+            self.reward_history = []
 
-        print('\nBoss Reward:', self.boss_state.reward, '\t Goal Distance:',
-              goal_distance)
+        # goal_distance = distance_between(
+        #     self.boss_state.initial_achieved,
+        #     o1.goal,
+        # )
+        #
+        # episode_count['goal_distance'] = goal_distance
+
+        print('\nBoss Reward:', self.boss_state.reward)
+        # '\t Goal Distance:', goal_distance)
         return episode_count
 
 

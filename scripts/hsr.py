@@ -222,7 +222,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, debug, env):
+         save_threshold, no_random_reset, obs_type, debug, env, episodes_per_goal):
     env_class = env
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -243,6 +243,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             image_dimensions=image_dims,
             no_random_reset=no_random_reset,
             obs_type=obs_type,
+            random_goals=episodes_per_goal is None,
         ))
 
     kwargs = dict(
@@ -260,7 +261,11 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         debug=debug,
         n_train_steps=n_train_steps)
 
-    if hindsight_geofence:
+    if episodes_per_goal:
+        trainer = UnsupervisedTrainer(env=env,
+                                      episodes_per_goal=episodes_per_goal,
+                                      **kwargs)
+    elif hindsight_geofence:
         trainer = HindsightTrainer(
             env=HINDSIGHT_ENVS[env_class](env=env, geofence=hindsight_geofence),
             n_goals=n_goals,
@@ -324,6 +329,7 @@ def cli():
     p.add_argument('--env', choices=ENVIRONMENTS.values(),
                    type=lambda k: ENVIRONMENTS[k], default=HSREnv)
     p.add_argument('--debug', action='store_true')
+    p.add_argument('--episodes-per-goal', type=int, default=None)
     main(**vars(p.parse_args()))
 
 

@@ -33,7 +33,9 @@ class HSREnv:
                  record: bool = False,
                  record_separate_episodes: bool = False,
                  render_freq: int = None,
-                 no_random_reset: bool = False):
+                 no_random_reset: bool = False,
+                 random_goals: bool = True):
+        self.random_goals = random_goals
         if not xml_filepath.is_absolute():
             xml_filepath = Path(Path(__file__).parent, xml_filepath)
 
@@ -289,8 +291,10 @@ class HSREnv:
         # set new goal
         if self._min_lift_height:
             self.set_goal(self.block_pos() + np.array([0, 0, self._min_lift_height]))
-        else:
+        elif self.random_goals or self.goal is None:
             self.set_goal(self.goal_space.sample())
+        else:
+            self.set_goal(self.goal)
 
         if self._time_steps > 0:
             self._episode += 1

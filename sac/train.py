@@ -12,6 +12,8 @@ import numpy as np
 import tensorflow as tf
 
 # first party
+from gym.wrappers import TimeLimit
+
 from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
@@ -20,6 +22,8 @@ from sac.utils import Obs, Shape, Step, create_sess, get_space_attrs, unwrap_env
 
 Agents = namedtuple('Agents', 'train act')
 
+SUCCESS_KWD = 'success'
+LOG_COUNT_KWD = 'log count'
 
 class Trainer:
     def __init__(self,
@@ -137,9 +141,12 @@ class Trainer:
             time_steps, _ = self.sess.run(
                 [self.global_step, self.increment_global_step],
                 {self.episode_time_step: self.episode_count['time_steps']})
-            print('({}) Episode {}\t Time Steps: {}\t Reward: {}'.format(
-                'EVAL' if self.is_eval_period() else 'TRAIN', episodes, time_steps,
-                episode_reward))
+            print_statement = f'({"EVAL" if self.is_eval_period() else "TRAIN"}) ' \
+                              f'Episode: {episodes}\t ' \
+                              f'Time Steps: {time_steps}\t ' \
+                              f'Reward: {episode_reward}\t ' \
+                              f'Success: {self.episode_count[SUCCESS_KWD]}'
+            print(print_statement)
 
             if logdir:
                 summary = tf.Summary()
@@ -255,10 +262,16 @@ class Trainer:
             self.env.render()
         if type(self.action_space) is spaces.Discrete:
             # noinspection PyTypeChecker
-            return self.env.step(np.argmax(action))
+            s, r, t, i = self.env.step(np.argmax(action))
         else:
             s, r, t, i = self.env.step(fit_to_space(action, space=self.action_space))
-            return s, r, t, i
+        if isinstance(self.env, TimeLimit) and self.env._max_episode_steps and t:
+            if LOG_COUNT_KWD not in i:
+                i[LOG_COUNT_KWD] = dict()
+            if SUCCESS_KWD not in i[LOG_COUNT_KWD]:
+                i[LOG_COUNT_KWD][SUCCESS_KWD] = dict()
+            i[LOG_COUNT_KWD][SUCCESS_KWD] = 0 < self.env._elapsed_steps < self.env._max_episode_steps
+        return s, r, t, i
 
     def preprocess_obs(self, obs, shape: Shape = None):
         if self.preprocess_func is not None:

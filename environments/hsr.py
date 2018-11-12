@@ -382,7 +382,6 @@ class MoveGripperEnv(HSREnv):
     def compute_reward(self):
         return - distance_between(self.gripper_pos(), self.goal)
 
-
 def quaternion2euler(w, x, y, z):
     ysqr = y * y
 

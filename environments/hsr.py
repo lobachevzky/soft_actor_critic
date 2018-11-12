@@ -102,14 +102,14 @@ class HSREnv:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(25, ),
+                shape=(25,),
                 dtype=np.float32,
             )
         else:
             raw_obs_space = spaces.Box(
                 low=-np.inf,
                 high=np.inf,
-                shape=(self.sim.nq + len(self._base_joints), ),
+                shape=(self.sim.nq + len(self._base_joints),),
                 dtype=np.float32,
             )
         self.observation_space = spaces.Tuple(
@@ -255,7 +255,7 @@ class HSREnv:
             self.sim.get_jnt_qposadr('hand_l_proximal_joint')]
 
     def reset_sim(self, qpos: np.ndarray):
-        assert qpos.shape == (self.sim.nq, )
+        assert qpos.shape == (self.sim.nq,)
         self.initial_qpos = qpos
         self.sim.qpos[:] = qpos.copy()
         self.sim.qvel[:] = 0
@@ -372,6 +372,18 @@ class MultiBlockHSREnv(HSREnv):
         super().set_goal(goal)
         self.goals = np.stack([self.goal] +
                               [self.block_pos(i).copy() for i in range(1, self.n_blocks)])
+
+
+class MoveGripperEnv(HSREnv):
+    def is_successful(self, achieved_goal=None, desired_goal=None):
+        if achieved_goal is None:
+            achieved_goal = self.gripper_pos()
+        if desired_goal is None:
+            desired_goal = self.goal
+        return super().is_successful(achieved_goal=achieved_goal, desired_goal=desired_goal)
+
+    def compute_reward(self):
+        return - distance_between(self.gripper_pos(), self.goal)
 
 
 def quaternion2euler(w, x, y, z):

@@ -16,8 +16,9 @@ from sac.utils import Step, unwrap_env
 
 
 class BossState(
-    namedtuple('BossState', 'history delta_tde initial_achieved initial_value '
-                            'reward td_errors ')):
+        namedtuple(
+            'BossState', 'history delta_tde initial_achieved initial_value '
+            'reward td_errors ')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -34,9 +35,11 @@ class UnsupervisedTrainer(Trainer):
         self.reward_history = []
         self.test_sample = None
         if episodes_per_goal is None:
-            self.lin_regress_op = None
+            self.lin_regress_op = np.zeros(1)
         else:
-            x = np.stack([np.ones(episodes_per_goal), np.arange(episodes_per_goal)], axis=1)
+            x = np.stack(
+                [np.ones(episodes_per_goal),
+                 np.arange(episodes_per_goal)], axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.boss_state = BossState(
             td_errors=None,
@@ -67,11 +70,12 @@ class UnsupervisedTrainer(Trainer):
                 self.test_sample.append(self.sample_buffer(batch_size=1))
 
                 def td_errors():
-                    return Samples(*map(agent.td_error,
-                                        Samples(train=train_sample,
-                                                valid=valid_sample,
-                                                test=Step(
-                                                    *self.test_sample.buffer.values))))
+                    return Samples(*map(
+                        agent.td_error,
+                        Samples(
+                            train=train_sample,
+                            valid=valid_sample,
+                            test=Step(*self.test_sample.buffer.values))))
 
                 pre = td_errors()
                 train_result = agent.train_step(step=train_sample)
@@ -96,17 +100,16 @@ class UnsupervisedTrainer(Trainer):
                 )
 
                 if self.boss_state.td_errors is not None:
-                    episodic = Samples(*[get_delta(*args) for args in
-                                         zip(self.boss_state.td_errors, post)])
+                    episodic = Samples(*[
+                        get_delta(*args) for args in zip(self.boss_state.td_errors, post)
+                    ])
 
                     counter.update(
                         episodic_train_td_error_delta=episodic.train,
                         episodic_test_td_error_delta=episodic.test,
                         episodic_valid_td_error_delta=episodic.valid,
                     )
-                self.boss_state = self.boss_state.replace(
-                    td_errors=post,
-                )
+                self.boss_state = self.boss_state.replace(td_errors=post, )
 
                 for k, v in train_result.items():
                     if np.isscalar(v):
@@ -124,29 +127,28 @@ class UnsupervisedTrainer(Trainer):
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
             return episode_count
 
-        if self.episodes_per_goal:
-            self.reward_history.append(episode_count['reward'])
-            if len(self.reward_history) == self.episodes_per_goal:
-                _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(
-                    self.reward_history)
+        self.reward_history.append(episode_count['reward'])
+        if len(self.reward_history) == self.episodes_per_goal:
+            _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(
+                self.reward_history)
 
-                # choose new goal:
-                goal = self.double_goal_space.sample()
-                self.hsr_env.set_goal(goal)
-                self.reward_history = []
+            # choose new goal:
+            goal = self.double_goal_space.sample()
+            self.hsr_env.set_goal(goal)
+            self.reward_history = []
 
-                agent = self.agents.act
-                episode_count.update(self.sess.run(
-                    fetch=dict(model_accuracy=agent.model_accuracy,
-                               model_loss=agent.model_loss,
-                               model_grad=agent.model_grad,
-                               op=agent.train_model)
-                ),
-                    feed_dict={
-                        agent.goal: goal,
-                        agent.in_range: self.hsr_env.goal_space.contains(goal),
-                    }
-                )
+            agent = self.agents.act
+            episode_count.update(
+                self.sess.run(
+                    fetch=dict(
+                        model_accuracy=agent.model_accuracy,
+                        model_loss=agent.model_loss,
+                        model_grad=agent.model_grad,
+                        op=agent.train_model)),
+                feed_dict={
+                    agent.goal: goal,
+                    agent.in_range: self.hsr_env.goal_space.contains(goal),
+                })
 
         # goal_distance = distance_between(
         #     self.boss_state.initial_achieved,
@@ -175,4 +177,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

@@ -146,8 +146,8 @@ class AbstractAgent:
                 in_range = tf.reshape(self.in_range, [1, 1])
 
                 dim = (
-                        1 +  # prev_Q_error
-                        1  # prev_delta_tde
+                    1 +  # prev_Q_error
+                    1  # prev_delta_tde
                 )
                 self.history = tf.placeholder(
                     tf.float32, [batch_size, dim], name='history')
@@ -177,8 +177,8 @@ class AbstractAgent:
                 return tf.get_collection(
                     tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{scope}/{var_name}/')
 
-            phi, theta, xi, xi_bar, model_vars = map(get_variables, ['pi', 'Q', 'V',
-                                                                     'V_bar', 'model'])
+            phi, theta, xi, xi_bar, model_vars = map(get_variables,
+                                                     ['pi', 'Q', 'V', 'V_bar', 'model'])
 
             def train_op(loss, var_list, lr=learning_rate):
                 optimizer = tf.train.AdamOptimizer(learning_rate=lr)
@@ -196,9 +196,7 @@ class AbstractAgent:
             self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
             self.train_model, self.model_grad = train_op(
-                loss=self.model_loss,
-                lr=model_learning_rate,
-                var_list=model_vars)
+                loss=self.model_loss, lr=model_learning_rate, var_list=model_vars)
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
@@ -224,10 +222,10 @@ class AbstractAgent:
     def train_step(self, step: Step) -> dict:
         feed_dict = {
             self.O1: step.o1,
-            self.A:  step.a,
-            self.R:  np.array(step.r) * self.reward_scale,
+            self.A: step.a,
+            self.R: np.array(step.r) * self.reward_scale,
             self.O2: step.o2,
-            self.T:  step.t,
+            self.T: step.t,
         }
         return self.sess.run(
             {attr: getattr(self, attr)
@@ -259,10 +257,10 @@ class AbstractAgent:
             [self.q1, self.v2, self.q_target],
             feed_dict={
                 self.O1: step.o1,
-                self.A:  step.a,
-                self.R:  step.r,
+                self.A: step.a,
+                self.R: step.r,
                 self.O2: step.o2,
-                self.T:  step.t
+                self.T: step.t
             })
 
     def td_error(self, step: Step):
@@ -270,10 +268,10 @@ class AbstractAgent:
             self.Q_error,
             feed_dict={
                 self.O1: step.o1,
-                self.A:  step.a,
-                self.R:  step.r,
+                self.A: step.a,
+                self.R: step.r,
                 self.O2: step.o2,
-                self.T:  step.t
+                self.T: step.t
             })
 
     def _print(self, tensor, name: str):

@@ -73,7 +73,26 @@ class HSREnv:
         # initial values
         self.initial_qpos = self.sim.qpos.ravel().copy()
         self.initial_qvel = self.sim.qvel.ravel().copy()
-        self.initial_block_pos = np.copy(self.block_pos())
+
+        # block stuff
+        self.initial_block_pos = []
+        self._block_qposadrs = []
+        self.n_blocks = 0
+        offset = np.array([
+            0,  # x
+            1,  # y
+            3,  # quat0
+            6,  # quat3
+        ])
+        self._block_space = block_space
+        try:
+            for i in itertools.count():
+                self.initial_block_pos.append(np.copy(self.block_pos(blocknum=i)))
+                joint_offset = self.sim.get_jnt_qposadr(f'block{i}joint') + offset
+                self._block_qposadrs.append(joint_offset)
+                self.n_blocks = i + 1
+        except MujocoError:
+            pass
 
         # goal space
         self._min_lift_height = min_lift_height
@@ -84,15 +103,6 @@ class HSREnv:
         self.goal_space.high[too_close] += epsilon
         self.goal_space.low[too_close] -= epsilon
         self.goal = None
-
-        # block space
-        self._block_space = block_space
-        try:
-            for i in itertools.count():
-                self.sim.name2id(ObjType.BODY, f'block{i}')
-                self.n_blocks = i + 1
-        except MujocoError:
-            pass
 
         def using_joint(name):
             return self.sim.contains(ObjType.JOINT, name)
@@ -115,19 +125,6 @@ class HSREnv:
         self.observation_space = spaces.Tuple(
             Observation(observation=raw_obs_space, goal=self.goal_space))
 
-        block_joint = self.sim.get_jnt_qposadr('block0joint')
-        self._block_qposadrs = block_joint + np.array([0, 1, 3, 6])
-        offset = np.array([
-            0,  # x
-            1,  # y
-            3,  # quat0
-            6,  # quat3
-        ])
-
-        self._block_qposadrs = [
-            self.sim.get_jnt_qposadr(f'block{i}joint') + offset
-            for i in range(self.n_blocks)
-        ]
 
         # joint space
         all_joints = [
@@ -335,7 +332,7 @@ class HSREnv:
 
     def is_successful(self, achieved_goal=None, desired_goal=None):
         if self._min_lift_height:
-            return self.block_pos()[2] > self.initial_block_pos[2] + self._min_lift_height
+            return self.block_pos()[2] > self.initial_block_pos[0][2] + self._min_lift_height
 
         # only check first block
         if achieved_goal is None:
@@ -368,7 +365,7 @@ class MultiBlockHSREnv(HSREnv):
             axis=-1)
 
     def set_goal(self, goal: np.ndarray):
-        goal[2] = self.initial_block_pos[2]
+        goal[2] = self.initial_block_pos[0][2]
         super().set_goal(goal)
         self.goals = np.stack([self.goal] +
                               [self.block_pos(i).copy() for i in range(1, self.n_blocks)])

@@ -18,7 +18,7 @@ import tensorflow as tf
 
 # first party
 from environments.hindsight_wrapper import HSRHindsightWrapper, MBHSRHindsightWrapper
-from environments.hsr import HSREnv, MultiBlockHSREnv
+from environments.hsr import HSREnv, MultiBlockHSREnv, MoveGripperEnv
 from sac.agent import ModelType
 from sac.networks import MlpAgent
 from sac.train import HindsightTrainer, Trainer
@@ -39,6 +39,9 @@ def parametric_relu(_x):
 def make_box(*tuples: Tuple[float, float]):
     low, high = map(np.array, zip(*[(map(float, m)) for m in tuples]))
     return spaces.Box(low=low, high=high, dtype=np.float32)
+
+
+ENVIRONMENTS = dict(multi_block=MultiBlockHSREnv, move_block=HSREnv, move_gripper=MoveGripperEnv, )
 
 
 def parse_space(dim: int):
@@ -67,6 +70,11 @@ def parse_vector(length: int, delim: str):
 def cast_to_int(arg: str):
     return int(float(arg))
 
+
+HINDSIGHT_ENVS = {
+    HSREnv: HSRHindsightWrapper,
+    MultiBlockHSREnv: MBHSRHindsightWrapper,
+}
 
 ACTIVATIONS = dict(
     relu=tf.nn.relu,
@@ -151,7 +159,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
                         rgba=rgba[i],
                         condim='6',
                         solimp="0.99 0.99 "
-                        "0.01",
+                               "0.01",
                         solref='0.01 1'))
                 ET.SubElement(body, 'freejoint', attrib=dict(name=f'block{i}joint'))
 
@@ -210,16 +218,15 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
 
 @env_wrapper
 def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
-         activation, n_layers, layer_size, model_activation, model_n_layers,
-         model_layer_size, learning_rate, reward_scale, entropy_scale, goal_space,
+         activation, n_layers, layer_size, learning_rate, reward_scale, entropy_scale, goal_space,
          block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, multi_block, model_type, debug, alpha,
-         model_learning_rate):
+         save_threshold, no_random_reset, obs_type, debug, env):
+    env_class = env
     env = TimeLimit(
         max_episode_steps=max_steps,
-        env=(MultiBlockHSREnv if multi_block else HSREnv)(
+        env=env_class(
             steps_per_action=steps_per_action,
             randomize_pose=randomize_pose,
             min_lift_height=min_lift_height,
@@ -239,7 +246,6 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         ))
 
     kwargs = dict(
-        seq_len=None,
         base_agent=MlpAgent,
         seed=seed,
         buffer_size=buffer_size,
@@ -247,10 +253,6 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        model_activation=model_activation,
-        model_n_layers=model_n_layers,
-        model_layer_size=model_layer_size,
-        model_learning_rate=model_learning_rate,
         reward_scale=reward_scale,
         entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
@@ -258,21 +260,13 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         debug=debug,
         n_train_steps=n_train_steps)
 
-    # if model_type is ModelType.none:
-    #     if hindsight_geofence:
-    #         trainer = HindsightTrainer(
-    #             env=(MBHSRHindsightWrapper if multi_block else HSRHindsightWrapper)(
-    #                 env=env, geofence=hindsight_geofence),
-    #             n_goals=n_goals,
-    #             **kwargs)
-    #     else:
-    #         trainer = Trainer(env=env, **kwargs)
-    # else:
-    trainer = UnsupervisedTrainer(
-        env=HSRHindsightWrapper(env, geofence=geofence),
-        model_type=model_type,
-        alpha=alpha,
-        **kwargs)
+    if hindsight_geofence:
+        trainer = HindsightTrainer(
+            env=HINDSIGHT_ENVS[env_class](env=env, geofence=hindsight_geofence),
+            n_goals=n_goals,
+            **kwargs)
+    else:
+        trainer = Trainer(env=env, **kwargs)
     trainer.train(
         load_path=load_path,
         logdir=logdir,
@@ -292,14 +286,6 @@ def cli():
         choices=ACTIVATIONS.values())
     p.add_argument('--n-layers', type=int, required=True)
     p.add_argument('--layer-size', type=int, required=True)
-    p.add_argument(
-        '--model-activation',
-        type=parse_activation,
-        default=tf.nn.relu,
-        choices=ACTIVATIONS.values())
-    p.add_argument('--model-n-layers', type=int)
-    p.add_argument('--model-layer-size', type=int)
-    p.add_argument('--model-learning-rate', type=float)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)
     p.add_argument('--n-train-steps', type=int, required=True)
     p.add_argument('--steps-per-action', type=int, required=True)
@@ -318,7 +304,6 @@ def cli():
     p.add_argument('--obs-type', type=str, default=None)
     p.add_argument('--geofence', type=float, required=True)
     p.add_argument('--hindsight-geofence', type=float)
-    p.add_argument('--alpha', type=float)
     p.add_argument('--no-random-reset', action='store_true')
     p.add_argument('--randomize-pose', action='store_true')
     p.add_argument('--logdir', type=str, default=None)
@@ -336,10 +321,9 @@ def cli():
     p.add_argument('--xml-file', type=Path, default='world.xml')
     p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
     p.add_argument('--use-dof', type=str, action='append')
-    p.add_argument('--multi-block', action='store_true')
+    p.add_argument('--env', choices=ENVIRONMENTS.values(),
+                   type=lambda k: ENVIRONMENTS[k], default=HSREnv)
     p.add_argument('--debug', action='store_true')
-    p.add_argument(
-        '--model-type', type=ModelType, default=ModelType.none, choices=list(ModelType))
     main(**vars(p.parse_args()))
 
 

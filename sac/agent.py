@@ -29,7 +29,6 @@ class ModelType(enum.Enum):
 class AbstractAgent:
     def __init__(self,
                  sess: tf.Session,
-                 batch_size: int,
                  seq_len: int,
                  o_shape: Iterable,
                  a_shape: Sequence,
@@ -41,13 +40,9 @@ class AbstractAgent:
                  learning_rate: float,
                  grad_clip: float,
                  device_num: int = 1,
-                 model_activation: Callable = None,
-                 model_n_layers: int = None,
-                 model_layer_size: int = None,
                  reuse: bool = False,
                  scope: str = 'agent',
-                 model_type: ModelType = ModelType.none,
-                 model_learning_rate: float = None) -> None:
+                 ) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -70,11 +65,6 @@ class AbstractAgent:
         self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
-
-        self.model_n_layers = model_n_layers or n_layers
-        self.model_layer_size = model_layer_size or layer_size
-        self.model_activation = model_activation or activation
-        model_learning_rate = model_learning_rate or learning_rate
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
@@ -170,72 +160,6 @@ class AbstractAgent:
             self.entropy = tf.reduce_mean(self.entropy_from_params(self.parameters))
             # ensure that xi and xi_bar are the same at initialization
 
-            # TD error prediction model
-            if model_type is not ModelType.none:
-                dim = (
-                    1 +  # prev_Q_error
-                    1  # prev_delta_tde
-                )
-                self.delta_tde = tf.placeholder(
-                    tf.float32, [batch_size], name='delta_tde')
-
-                present = tf.stack([self.q1, self.R, self.T, self.v2], axis=1)
-                self.old_delta_tde = tf.placeholder(tf.float32, (), name='old_delta_tde')
-                self.history = tf.placeholder(
-                    tf.float32, [batch_size, dim], name='history')
-                Q_error = tf.reshape(self.Q_error, [batch_size, 1])
-
-            if model_type is ModelType.complex:
-                sarst = tf.concat([self.history, present], axis=0, name='sarst')
-                h, p = tf.split(self.model_network(sarst).output, 2, axis=0)
-                with tf.variable_scope('sarst'):
-                    sim = tf.reduce_mean(
-                        tf.reduce_sum(h * p, axis=1) /
-                        (tf.linalg.norm(h) * tf.linalg.norm(p)))
-                with tf.variable_scope('delta_tde'):
-                    old = self.old_delta_tde
-                    new = tf.layers.dense(
-                        inputs=self.model_network(present).output, units=1, name='new')
-
-                    self.estimated_tde = sim * old + (1 - sim) * new
-
-            if model_type is ModelType.simple:
-                with tf.variable_scope('model'):
-                    concat = tf.concat([Q_error, self.history], axis=1)
-                    self.estimated = tf.layers.dense(
-                        inputs=self.model_network(concat).output,
-                        activation=None,
-                        use_bias=False,
-                        units=1,
-                    )
-
-            if model_type is ModelType.memoryless:
-                with tf.variable_scope('model'):
-                    self.estimated = tf.layers.dense(
-                        inputs=self.model_network(Q_error).output,
-                        activation=None,
-                        use_bias=False,
-                        units=1,
-                    )
-            if model_type in [ModelType.memoryless, ModelType.simple]:
-                with tf.variable_scope('model', reuse=True):
-                    kernel = tf.get_variable('dense/kernel')
-
-            if model_type is ModelType.prior:
-                with tf.variable_scope('model'):
-                    self.estimated = tf.get_variable('estimated', 1)
-
-            if model_type is not ModelType.none:
-                model_target = tf.reshape(self.delta_tde, [batch_size, 1])
-                loss = tf.square(self.estimated - model_target)
-                self.model_loss = tf.reduce_mean(loss)
-                self.normalized_model_loss = tf.reduce_mean(
-                    loss / tf.maximum(model_target, 1e-6))
-
-                self.train_model, self.model_grad = train_op(
-                    loss=self.model_loss,
-                    lr=model_learning_rate,
-                    var_list=[v for scope in ['model'] for v in get_variables(scope)])
 
             sess.run(tf.global_variables_initializer())
 
@@ -306,10 +230,6 @@ class AbstractAgent:
 
     def _print(self, tensor, name: str):
         return tf.Print(tensor, [tensor], message=name, summarize=1e5)
-
-    @abstractmethod
-    def model_network(self, inputs: tf.Tensor) -> NetworkOutput:
-        pass
 
     @abstractmethod
     def network(self, inputs: tf.Tensor) -> NetworkOutput:

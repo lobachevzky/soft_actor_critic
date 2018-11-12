@@ -27,7 +27,6 @@ class Trainer:
                  seed: Optional[int],
                  buffer_size: int,
                  batch_size: int,
-                 seq_len: int,
                  n_train_steps: int,
                  debug: bool,
                  sess: tf.Session = None,
@@ -70,7 +69,6 @@ class Trainer:
         self.agents = Agents(
             act=self.build_agent(
                 sess=self.sess,
-                batch_size=batch_size,
                 seq_len=1,
                 reuse=False,
                 action_space=action_space,

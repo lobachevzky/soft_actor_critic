@@ -10,9 +10,10 @@ import ipdb
 import numpy as np
 
 # first party
-from environments.hsr import HSREnv, print1
-from mujoco import ObjType
+from environments.hsr import HSREnv, print1, MoveGripperEnv
 from scripts.hsr import make_box, mutate_xml
+
+from mujoco import ObjType
 
 saved_pos = None
 
@@ -34,11 +35,11 @@ def cli(discrete, xml_file):
                 "slide_x", "slide_y", "arm_lift_joint", "arm_flex_joint",
                 "wrist_roll_joint", "hand_l_proximal_joint", "hand_r_proximal_joint"
             ],
-            n_blocks=3,
+            n_blocks=0,
             goal_space=goal_space,
             xml_filepath=xml_filepath) as temp_path:
         # xml_filepath = Path(Path(__file__).parent.parent, 'environments', 'models', xml_file) as temp_path:
-        env = HSREnv(
+        env = MoveGripperEnv(
             xml_filepath=temp_path,
             steps_per_action=300,
             geofence=.05,
@@ -120,7 +121,7 @@ def cli(discrete, xml_file):
             # 'wrist_flex_joint ' \
             joint_angles = [env.sim.get_joint_qpos(j) for j in joints]
             # print1(','.join(map(str, joint_angles)))
-            print1(joint_angles[i])
+            print1(r)
 
             if discrete:
                 action = 0
@@ -131,8 +132,8 @@ def cli(discrete, xml_file):
         if done:
             if not pause:
                 print('\nresetting', total_reward)
-            pause = True
             total_reward = 0
+            env.reset()
         # labels = {f'x{i}': g for i, g in
         #           enumerate([(x, y, z)
         #                      for x in env.env.goal_x

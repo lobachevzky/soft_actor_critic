@@ -37,9 +37,9 @@ class UnsupervisedTrainer(Trainer):
         if episodes_per_goal == 1:
             self.lin_regress_op = None
         else:
-            x = np.stack(
-                [np.ones(episodes_per_goal),
-                 np.arange(episodes_per_goal)], axis=1)
+            x = np.stack([np.ones(episodes_per_goal),
+                          np.arange(episodes_per_goal)],
+                         axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.boss_state = BossState(
             td_errors=None,
@@ -113,8 +113,7 @@ class UnsupervisedTrainer(Trainer):
                     )
                 cumulative = self.boss_state.cumulative_delta_td_error
                 self.boss_state = self.boss_state.replace(
-                    td_errors=post,
-                    cumulative_delta_td_error=cumulative + post.train)
+                    td_errors=post, cumulative_delta_td_error=cumulative + post.train)
 
                 for k, v in train_result.items():
                     if np.isscalar(v):
@@ -148,7 +147,6 @@ class UnsupervisedTrainer(Trainer):
             agent = self.agents.act
             train_result = self.sess.run(
                 dict(
-                    model_accuracy=agent.model_accuracy,
                     model_loss=agent.model_loss,
                     model_grad=agent.model_grad,
                     op=agent.train_model),

@@ -18,7 +18,7 @@ from sac.utils import Step, unwrap_env
 class BossState(
         namedtuple(
             'BossState', 'history delta_tde initial_achieved initial_value '
-            'reward td_errors ')):
+            'reward td_errors cumulative_delta_td_error')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -47,7 +47,9 @@ class UnsupervisedTrainer(Trainer):
             delta_tde=None,
             initial_achieved=None,
             initial_value=None,
-            reward=None)
+            reward=None,
+            cumulative_delta_td_error=0,
+        )
 
         self.double_goal_space = Box(
             low=self.hsr_env.goal_space.low * 1.1,
@@ -109,7 +111,10 @@ class UnsupervisedTrainer(Trainer):
                         episodic_test_td_error_delta=episodic.test,
                         episodic_valid_td_error_delta=episodic.valid,
                     )
-                self.boss_state = self.boss_state.replace(td_errors=post, )
+                cumulative = self.boss_state.cumulative_delta_td_error
+                self.boss_state = self.boss_state.replace(
+                    td_errors=post,
+                    cumulative_delta_td_error=cumulative + post.train)
 
                 for k, v in train_result.items():
                     if np.isscalar(v):
@@ -149,8 +154,11 @@ class UnsupervisedTrainer(Trainer):
                     op=agent.train_model),
                 feed_dict={
                     agent.goal: goal,
-                    agent.in_range: in_range,
+                    agent.model_target: episode_count['reward_delta'],
                 })
+
+            self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0)
+
             episode_count.update(dict(in_range=in_range))
             for k, v in train_result.items():
                 if np.isscalar(v):

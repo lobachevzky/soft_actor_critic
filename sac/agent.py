@@ -140,10 +140,10 @@ class AbstractAgent:
 
             # TD error prediction model
             if model_type is not ModelType.none:
-                self.in_range = tf.placeholder(tf.float32, (), name='in_range')
+                self.model_target = tf.placeholder(tf.float32, (), name='in_range')
                 self.goal = tf.placeholder(tf.float32, [3], name='goal')
                 goal = tf.reshape(self.goal, [1, 3])
-                in_range = tf.reshape(self.in_range, [1, 1])
+                model_target = tf.reshape(self.model_target, [1, 1])
 
                 dim = (
                     1 +  # prev_Q_error
@@ -166,7 +166,6 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
-                model_target = in_range
                 loss = tf.square(self.estimated - model_target)
                 self.model_loss = tf.reduce_mean(loss)
                 self.model_accuracy = tf.reduce_all(tf.equal(

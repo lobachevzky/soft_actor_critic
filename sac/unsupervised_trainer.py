@@ -137,12 +137,7 @@ class UnsupervisedTrainer(Trainer):
                 _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(
                     self.reward_history)
 
-            # choose new goal:
-            goal = self.double_goal_space.sample()
-            self.hsr_env.set_goal(goal)
-            self.reward_history = []
-
-            in_range = self.hsr_env.goal_space.contains(goal)
+            in_range = self.hsr_env.goal_space.contains(self.hsr_env.goal)
             positive_delta = episode_count['reward_delta'] > 0
             agreement = (in_range and positive_delta) or not (in_range or positive_delta)
             failure_to_learn = in_range and not positive_delta
@@ -155,9 +150,14 @@ class UnsupervisedTrainer(Trainer):
                     model_grad=agent.model_grad,
                     op=agent.train_model),
                 feed_dict={
-                    agent.goal: goal,
+                    agent.goal: self.hsr_env.goal,
                     agent.model_target: positive_delta,
                 })
+
+            # choose new goal:
+            goal = self.double_goal_space.sample()
+            self.hsr_env.set_goal(goal)
+            self.reward_history = []
 
             self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0, )
             episode_count.update(

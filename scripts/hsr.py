@@ -41,7 +41,11 @@ def make_box(*tuples: Tuple[float, float]):
     return spaces.Box(low=low, high=high, dtype=np.float32)
 
 
-ENVIRONMENTS = dict(multi_block=MultiBlockHSREnv, move_block=HSREnv, move_gripper=MoveGripperEnv, )
+ENVIRONMENTS = dict(
+    multi_block=MultiBlockHSREnv,
+    move_block=HSREnv,
+    move_gripper=MoveGripperEnv,
+)
 
 
 def parse_space(dim: int):
@@ -159,7 +163,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
                         rgba=rgba[i],
                         condim='6',
                         solimp="0.99 0.99 "
-                               "0.01",
+                        "0.01",
                         solref='0.01 1'))
                 ET.SubElement(body, 'freejoint', attrib=dict(name=f'block{i}joint'))
 
@@ -226,6 +230,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          save_threshold, no_random_reset, obs_type, model_type, debug, env,
          episodes_per_goal, model_learning_rate):
     env_class = env
+    unsupervised = episodes_per_goal or model_type is not ModelType.none
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=env_class(
@@ -245,7 +250,7 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
             image_dimensions=image_dims,
             no_random_reset=no_random_reset,
             obs_type=obs_type,
-            random_goals=episodes_per_goal is None,
+            random_goals=not unsupervised,
         ))
 
     kwargs = dict(
@@ -269,11 +274,9 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         model_type=model_type,
     )
 
-
-    if episodes_per_goal or model_type is not ModelType.none:
-        trainer = UnsupervisedTrainer(env=env,
-                                      episodes_per_goal=episodes_per_goal,
-                                      **kwargs)
+    if unsupervised:
+        trainer = UnsupervisedTrainer(
+            env=env, episodes_per_goal=episodes_per_goal, **kwargs)
     elif hindsight_geofence:
         trainer = HindsightTrainer(
             env=HINDSIGHT_ENVS[env_class](env=env, geofence=hindsight_geofence),
@@ -343,13 +346,15 @@ def cli():
     p.add_argument('--xml-file', type=Path, default='world.xml')
     p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
     p.add_argument('--use-dof', type=str, action='append')
-    p.add_argument('--env', choices=ENVIRONMENTS.values(),
-                   type=lambda k: ENVIRONMENTS[k], default=HSREnv)
-    p.add_argument('--debug', action='store_true')
-    p.add_argument('--episodes-per-goal', type=int, default=None)
     p.add_argument(
-        '--model-type', type=ModelType, default=ModelType.none,
-        choices=list(ModelType))
+        '--env',
+        choices=ENVIRONMENTS.values(),
+        type=lambda k: ENVIRONMENTS[k],
+        default=HSREnv)
+    p.add_argument('--debug', action='store_true')
+    p.add_argument('--episodes-per-goal', type=int, default=1)
+    p.add_argument(
+        '--model-type', type=ModelType, default=ModelType.none, choices=list(ModelType))
     main(**vars(p.parse_args()))
 
 

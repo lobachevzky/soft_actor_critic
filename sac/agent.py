@@ -140,8 +140,8 @@ class AbstractAgent:
 
             # TD error prediction model
             if model_type is not ModelType.none:
-                self.in_range = tf.placeholder(tf.float32, ())
-                self.goal = tf.placeholder(tf.float32, [3])
+                self.in_range = tf.placeholder(tf.float32, (), name='in_range')
+                self.goal = tf.placeholder(tf.float32, [3], name='goal')
                 goal = tf.reshape(self.goal, [1, 3])
                 in_range = tf.reshape(self.in_range, [1, 1])
 

@@ -50,8 +50,8 @@ class UnsupervisedTrainer(Trainer):
             reward=None)
 
         self.double_goal_space = Box(
-            low=self.hsr_env.goal_space.low / np.sin(np.pi / 4),
-            high=self.hsr_env.goal_space.high / np.sin(np.pi / 4),
+            low=self.hsr_env.goal_space.low * 1.1,
+            high=self.hsr_env.goal_space.high * 1.1,
         )
 
     def perform_update(self):
@@ -139,6 +139,7 @@ class UnsupervisedTrainer(Trainer):
             self.reward_history = []
 
             in_range = self.hsr_env.goal_space.contains(goal)
+
             agent = self.agents.act
             train_result = self.sess.run(
                 dict(

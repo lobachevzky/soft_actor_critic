@@ -145,6 +145,8 @@ class UnsupervisedTrainer(Trainer):
             in_range = self.hsr_env.goal_space.contains(goal)
             positive_delta = episode_count['reward_delta'] > 0
             agreement = (in_range and positive_delta) or not (in_range or positive_delta)
+            failure_to_learn = in_range and not positive_delta
+            the_impossible = not in_range and positive_delta
 
             agent = self.agents.act
             train_result = self.sess.run(
@@ -153,14 +155,17 @@ class UnsupervisedTrainer(Trainer):
                     model_grad=agent.model_grad,
                     op=agent.train_model),
                 feed_dict={
-                    agent.goal:         goal,
+                    agent.goal: goal,
                     agent.model_target: positive_delta,
                 })
 
-            self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0)
-
-            episode_count.update(dict(in_range=in_range,
-                                      agreement=agreement))
+            self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0, )
+            episode_count.update(
+                dict(
+                    in_range=in_range,
+                    agreement=agreement,
+                    failure_to_learn=failure_to_learn,
+                    the_impossible=the_impossible))
             for k, v in train_result.items():
                 if np.isscalar(v):
                     episode_count.update(**{k: v})

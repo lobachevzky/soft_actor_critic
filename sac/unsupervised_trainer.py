@@ -138,17 +138,19 @@ class UnsupervisedTrainer(Trainer):
             self.hsr_env.set_goal(goal)
             self.reward_history = []
 
+            in_range = self.hsr_env.goal_space.contains(goal)
             agent = self.agents.act
             train_result = self.sess.run(
                 dict(
-                    # model_accuracy=agent.model_accuracy,
+                    model_accuracy=agent.model_accuracy,
                     model_loss=agent.model_loss,
                     model_grad=agent.model_grad,
                     op=agent.train_model),
                 feed_dict={
                     agent.goal: goal,
-                    agent.in_range: self.hsr_env.goal_space.contains(goal),
+                    agent.in_range: in_range,
                 })
+            episode_count.update(dict(in_range=in_range))
             for k, v in train_result.items():
                 if np.isscalar(v):
                     episode_count.update(**{k: v})

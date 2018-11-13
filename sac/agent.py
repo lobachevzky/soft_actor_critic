@@ -169,6 +169,7 @@ class AbstractAgent:
                 model_target = in_range
                 loss = tf.square(self.estimated - model_target)
                 self.model_loss = tf.reduce_mean(loss)
+                self.model_accuracy = tf.equal(tf.round(self.estimated), model_target)
                 self.normalized_model_loss = tf.reduce_mean(
                     loss / tf.maximum(model_target, 1e-6))
 

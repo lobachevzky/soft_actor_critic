@@ -153,9 +153,10 @@ class Trainer:
                 if self.is_eval_period():
                     summary.value.add(tag='eval return', simple_value=episode_return)
                 else:
-                    for k in self.episode_count:
-                        summary.value.add(
-                            tag=k.replace('_', ' '), simple_value=self.episode_count[k])
+                    for k, v in self.episode_count.items():
+                        if np.isscalar(v):
+                            summary.value.add(
+                                tag=k.replace('_', ' '), simple_value=v)
                 tb_writer.add_summary(summary, time_steps)
                 tb_writer.flush()
 

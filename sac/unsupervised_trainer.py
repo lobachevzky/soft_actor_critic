@@ -127,6 +127,7 @@ class UnsupervisedTrainer(Trainer):
                     goal=agent.new_goal,
                     goal_loss=agent.goal_loss,
                     baseline_loss=agent.baseline_loss,
+                    check=agent.check,
                     op=agent.train_goal),
                 feed_dict={
                     agent.old_goal: self.hsr_env.goal,

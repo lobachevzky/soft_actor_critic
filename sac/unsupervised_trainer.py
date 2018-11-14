@@ -125,14 +125,14 @@ class UnsupervisedTrainer(Trainer):
             train_result = self.sess.run(
                 fetches=dict(
                     goal=agent.new_goal,
-                    goal_norm=agent.goal_norm,
+                    goal_loss=agent.goal_loss,
                     baseline_loss=agent.baseline_loss,
                     op=agent.train_goal),
                 feed_dict={
                     agent.old_goal: self.hsr_env.goal,
                     agent.old_initial_obs: self.preprocess_func(self.initial_obs),
                     agent.new_initial_obs: self.preprocess_func(o1),
-                    agent.goal_reward: np.abs(return_delta),
+                    agent.goal_reward: self.hsr_env.goal_space.contains(self.hsr_env.goal),
                 })
             goal = train_result['goal']
             self.hsr_env.set_goal(goal)

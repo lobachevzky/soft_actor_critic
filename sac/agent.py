@@ -176,20 +176,17 @@ class AbstractAgent:
             goal_log_prob = self.policy_parameters_to_log_prob(
                 old_goal, produce_goal_params(old_initial_obs, reuse=True))
             optimizer = tf.train.AdamOptimizer(learning_rate=goal_learning_rate)
-            grad_log_prob, goal_vars = zip(
-                *optimizer.compute_gradients(goal_log_prob, get_variables('goal')))
-
             with tf.variable_scope('baseline'):
                 baseline = tf.squeeze(tf.layers.dense(self.goal_network(old_initial_obs), 1))
                 self.baseline_loss = tf.reduce_mean(
                     .5 * tf.square(baseline - self.goal_reward))
 
-            goal_grad_vars = [g * (self.goal_reward - baseline) for g in grad_log_prob]
+            self.goal_loss = tf.reduce_mean(
+                -goal_log_prob * tf.stop_gradient(self.goal_reward - baseline))
 
             self.train_goal = tf.group(
-                optimizer.apply_gradients(zip(goal_grad_vars, goal_vars)),
+                optimizer.minimize(self.goal_loss),
                 optimizer.minimize(self.baseline_loss))
-            self.goal_norm = tf.global_norm(goal_grad_vars)
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)

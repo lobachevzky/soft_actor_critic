@@ -27,13 +27,11 @@ REWARD_DELTA_KWD = 'reward_delta'
 
 
 class UnsupervisedTrainer(Trainer):
-    def __init__(self, episodes_per_goal: int, len_history: int, **kwargs):
-        size_model_input = 3 + (4 * len_history)
-        super().__init__(size_model_input=size_model_input, **kwargs)
+    def __init__(self, episodes_per_goal: int, **kwargs):
+        super().__init__(**kwargs)
         self.episodes_per_goal = episodes_per_goal
         self.hsr_env = unwrap_env(self.env, lambda e: isinstance(e, HSREnv))
         self.reward_history = []
-        self.queue = deque(maxlen=len_history)
         self.test_sample = None
         if episodes_per_goal == 1:
             self.lin_regress_op = None
@@ -141,28 +139,24 @@ class UnsupervisedTrainer(Trainer):
             positive_delta = episode_count[REWARD_DELTA_KWD] > 0
 
             agent = self.agents.act
-            if len(self.queue) == self.queue.maxlen:
 
-                model_input = np.hstack([self.hsr_env.goal] +
-                                        [x for pair in self.queue for x in pair])
+            model_input = self.hsr_env.goal
 
-                train_result = self.sess.run(
-                    dict(
-                        model_accuracy=agent.model_accuracy,
-                        model_loss=agent.model_loss,
-                        model_grad=agent.model_grad,
-                        op=agent.train_model),
-                    feed_dict={
-                        agent.model_input:  model_input,
-                        agent.model_target: positive_delta,
-                    })
+            train_result = self.sess.run(
+                dict(
+                    model_accuracy=agent.model_accuracy,
+                    model_loss=agent.model_loss,
+                    model_grad=agent.model_grad,
+                    op=agent.train_model),
+                feed_dict={
+                    agent.model_input:  model_input,
+                    agent.model_target: positive_delta,
+                })
 
-                for k, v in train_result.items():
-                    if np.isscalar(v):
-                        episode_count.update(**{k: v})
+            for k, v in train_result.items():
+                if np.isscalar(v):
+                    episode_count.update(**{k: v})
 
-            self.queue.append((self.hsr_env.goal, np.array([episode_count[
-                REWARD_DELTA_KWD]])))
             self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0)
 
             # choose new goal:

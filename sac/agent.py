@@ -44,7 +44,7 @@ class AbstractAgent:
                  scope: str = 'agent',
                  model_type: ModelType = ModelType.none,
                  model_learning_rate: float = None,
-                 size_model_input=None) -> None:
+                 size_model_input=3) -> None:
 
         self.default_train_values = [
             'entropy',

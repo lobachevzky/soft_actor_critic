@@ -10,10 +10,10 @@ class GaussianPolicy(object):
     """
 
     @staticmethod
-    def produce_policy_parameters(a_shape, processed_s):
-        mu_params = tf.layers.dense(processed_s, a_shape, name='mu_params')
+    def produce_policy_parameters(a_size: int, processed_s: tf.Tensor):
+        mu_params = tf.layers.dense(processed_s, a_size, name='mu_params')
         sigma_params = tf.layers.dense(
-            processed_s, a_shape, tf.nn.sigmoid, name='sigma_params')
+            processed_s, a_size, tf.nn.sigmoid, name='sigma_params')
         return mu_params, sigma_params + 0.0001
 
     @staticmethod

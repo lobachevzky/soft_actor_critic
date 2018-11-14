@@ -1,25 +1,15 @@
 # stdlib
-from collections import Counter, namedtuple, deque
+from collections import Counter, namedtuple
 
 # third party
 import numpy as np
 # first party
 from gym.spaces import Box
 
-from environments.hsr import HSREnv
+from environments.hsr import HSREnv, distance_between
 from sac.replay_buffer import ReplayBuffer
 from sac.train import Trainer
 from sac.utils import Step, unwrap_env
-
-
-class BossState(
-    namedtuple(
-        'BossState', 'history delta_tde initial_achieved initial_value '
-                     'td_errors cumulative_delta_td_error')):
-    def replace(self, **kwargs):
-        # noinspection PyProtectedMember
-        return super()._replace(**kwargs)
-
 
 Samples = namedtuple('Samples', 'train valid test')
 
@@ -40,14 +30,9 @@ class UnsupervisedTrainer(Trainer):
                 [np.ones(episodes_per_goal),
                  np.arange(episodes_per_goal)], axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
-        self.boss_state = BossState(
-            td_errors=None,
-            history=None,
-            delta_tde=None,
-            initial_achieved=None,
-            initial_value=None,
-            cumulative_delta_td_error=0,
-        )
+        self.td_errors = None
+        self.initial_obs = None
+        self.initial_achieved = None
 
         self.double_goal_space = Box(
             low=self.hsr_env.goal_space.low * 1.1,
@@ -99,9 +84,9 @@ class UnsupervisedTrainer(Trainer):
                     valid_td_error_delta=delta.valid,
                 )
 
-                if self.boss_state.td_errors is not None:
+                if self.td_errors is not None:
                     episodic = Samples(*[
-                        get_delta(*args) for args in zip(self.boss_state.td_errors, post)
+                        get_delta(*args) for args in zip(self.td_errors, post)
                     ])
 
                     counter.update(
@@ -109,9 +94,7 @@ class UnsupervisedTrainer(Trainer):
                         episodic_test_td_error_delta=episodic.test,
                         episodic_valid_td_error_delta=episodic.valid,
                     )
-                cumulative = self.boss_state.cumulative_delta_td_error
-                self.boss_state = self.boss_state.replace(
-                    td_errors=post, cumulative_delta_td_error=cumulative + post.train)
+                self.td_errors = post
 
                 for k, v in train_result.items():
                     if np.isscalar(v):
@@ -123,50 +106,53 @@ class UnsupervisedTrainer(Trainer):
         raise NotImplementedError
 
     def run_episode(self, o1, eval_period, render):
-        episode_count = super().run_episode(o1=o1, eval_period=eval_period, render=render)
+        episode_count = dict()
+        achieved_goal = self.hsr_env.achieved_goal()
+
+        if self.initial_obs is None:
+            self.initial_obs = o1
+        if self.initial_achieved is None:
+            self.initial_achieved = achieved_goal
 
         if eval_period:
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
-            return episode_count
 
-        self.return_history.append(episode_count['return'])
-        if len(self.return_history) == self.episodes_per_goal:
-            if self.episodes_per_goal > 1:
-                _, episode_count[REWARD_DELTA_KWD] = self.lin_regress_op @ np.array(
-                    self.return_history)
-
-            positive_delta = episode_count[REWARD_DELTA_KWD] > 0
-
-            model_input = self.hsr_env.goal
+        elif len(self.return_history) == self.episodes_per_goal:
+            _, return_delta = self.lin_regress_op @ np.array(
+                self.return_history)
 
             agent = self.agents.act
             train_result = self.sess.run(
                 fetches=dict(
-                    model_accuracy=agent.model_accuracy,
-                    model_loss=agent.model_loss,
-                    model_grad=agent.model_grad,
-                    op=agent.train_model),
+                    goal=agent.new_goal,
+                    goal_norm=agent.goal_norm,
+                    baseline_loss=agent.baseline_loss,
+                    op=agent.train_goal),
                 feed_dict={
-                    agent.model_input: model_input,
-                    agent.model_target: positive_delta,
+                    agent.old_goal: self.hsr_env.goal,
+                    agent.old_initial_obs: self.preprocess_func(self.initial_obs),
+                    agent.new_initial_obs: self.preprocess_func(o1),
+                    agent.goal_reward: return_delta,
                 })
-
-            for k, v in train_result.items():
-                if np.isscalar(v):
-                    episode_count.update(**{k: v})
-
-            # choose new goal:
-            goal = self.double_goal_space.sample()
+            goal = train_result['goal']
             self.hsr_env.set_goal(goal)
-            self.return_history = []
-            self.delta_v1 = 0
+            print(f'Goal: {goal}')
 
-        # goal_distance = distance_between(
-        #     self.boss_state.initial_achieved,
-        #     o1.goal,
-        # )
-        #
-        # episode_count['goal_distance'] = goal_distance
+            # reset values
+            self.return_history = []
+            self.initial_obs = o1
+            self.initial_achieved = achieved_goal
+
+            episode_count.update(return_delta=return_delta,
+                                 **train_result)
+
+        goal_distance = distance_between(achieved_goal, self.hsr_env.goal)
+        print(f'Goal distance: {goal_distance}')
+        episode_count.update(goal_distance=goal_distance,
+                             **super().run_episode(o1=o1, eval_period=eval_period, render=render))
+
+        if not eval_period:
+            self.return_history.append(episode_count['reward'])
 
         return episode_count
 

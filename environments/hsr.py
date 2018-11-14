@@ -308,6 +308,9 @@ class HSREnv:
 
         return self._get_obs()
 
+    def achieved_goal(self):
+        return self.block_pos()
+
     def block_pos(self, blocknum=0):
         return self.sim.get_body_xpos(self._block_name + str(blocknum))
 
@@ -383,6 +386,9 @@ class MoveGripperEnv(HSREnv):
             desired_goal = self.goal
         return super().is_successful(
             achieved_goal=achieved_goal, desired_goal=desired_goal)
+
+    def achieved_goal(self):
+        return self.gripper_pos()
 
     def compute_reward(self):
         return 0 if self.is_successful() else -1

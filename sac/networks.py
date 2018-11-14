@@ -31,14 +31,12 @@ class MlpAgent(AbstractAgent):
                 activation=self.activation),
             state=None)
 
-    def model_network(self, inputs: tf.Tensor):
-        return NetworkOutput(
-            output=mlp(
-                inputs=inputs,
-                layer_size=self.model_layer_size,
-                n_layers=self.model_n_layers,
-                activation=self.model_activation),
-            state=None)
+    def goal_network(self, inputs: tf.Tensor):
+        return mlp(
+            inputs=inputs,
+            layer_size=self.goal_layer_size,
+            n_layers=self.goal_n_layers,
+            activation=self.goal_activation)
 
 
 class SACXAgent(AbstractAgent):
@@ -92,8 +90,7 @@ class LstmAgent(AbstractAgent):
                 c=tf.placeholder(*state_args, name='C'),
                 h=tf.placeholder(*state_args, name='H'))
             self.lstm = BasicLSTMCell(layer_size)
-        super().__init__(
-            layer_size=layer_size, device_num=device_num, **kwargs)
+        super().__init__(layer_size=layer_size, device_num=device_num, **kwargs)
         self.initial_state = self.sess.run(self.lstm.zero_state(batch_size, tf.float32))
         assert np.shape(self.initial_state) == (2, batch_size, layer_size)
         assert self.S.c.shape == self.S.h.shape == (batch_size, layer_size)

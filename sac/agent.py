@@ -37,14 +37,13 @@ class AbstractAgent:
                  learning_rate: float,
                  grad_clip: float,
                  device_num: int = 1,
-                 model_activation: Callable = None,
-                 model_n_layers: int = None,
-                 model_layer_size: int = None,
+                 goal_activation: Callable = None,
+                 goal_n_layers: int = None,
+                 goal_layer_size: int = None,
                  reuse: bool = False,
                  scope: str = 'agent',
-                 model_type: ModelType = ModelType.none,
-                 model_learning_rate: float = None,
-                 size_model_input=3) -> None:
+                 goal_learning_rate: float = None,
+                 size_goal=3) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -67,10 +66,10 @@ class AbstractAgent:
         self.initial_state = None
         self.sess = sess
 
-        self.model_n_layers = model_n_layers or n_layers
-        self.model_layer_size = model_layer_size or layer_size
-        self.model_activation = model_activation or activation
-        model_learning_rate = model_learning_rate or learning_rate
+        self.goal_n_layers = goal_n_layers or n_layers
+        self.goal_layer_size = goal_layer_size or layer_size
+        self.goal_activation = goal_activation or activation
+        goal_learning_rate = goal_learning_rate or learning_rate
 
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
@@ -130,43 +129,12 @@ class AbstractAgent:
             self.pi_loss = pi_loss = tf.reduce_mean(
                 log_pi_sampled2 * tf.stop_gradient(log_pi_sampled2 - q2 + v1))
 
-            # TD error prediction model
-            if model_type is not ModelType.none:
-                self.model_target = tf.placeholder(tf.float32, (), name='model_target')
-
-            if model_type is ModelType.posterior:
-                self.model_input = tf.placeholder(
-                    tf.float32, [size_model_input], name='model_input')
-                model_input = tf.reshape(self.model_input, [1, size_model_input])
-                with tf.variable_scope('model'):
-                    self.estimated = tf.layers.dense(
-                        inputs=self.model_network(model_input).output,
-                        activation=None,
-                        use_bias=False,
-                        units=1,
-                    )
-
-            if model_type is ModelType.prior:
-                with tf.variable_scope('model'):
-                    self.estimated = tf.get_variable('estimated', 1)
-
-            if model_type is not ModelType.none:
-                model_target = tf.reshape(self.model_target, [1, 1])
-                loss = tf.square(self.estimated - model_target)
-                self.model_loss = tf.reduce_mean(loss)
-                self.model_accuracy = tf.squeeze(
-                    tf.equal(
-                        tf.greater(self.estimated, .5),
-                        tf.greater(model_target, .5),
-                    ))
-
             # grabbing all the relevant variables
             def get_variables(var_name: str) -> List[tf.Variable]:
                 return tf.get_collection(
                     tf.GraphKeys.TRAINABLE_VARIABLES, scope=f'{scope}/{var_name}/')
 
-            phi, theta, xi, xi_bar, model_vars = map(get_variables,
-                                                     ['pi', 'Q', 'V', 'V_bar', 'model'])
+            phi, theta, xi, xi_bar = map(get_variables, ['pi', 'Q', 'V', 'V_bar'])
 
             def train_op(loss, var_list, lr=learning_rate):
                 optimizer = tf.train.AdamOptimizer(learning_rate=lr)
@@ -183,8 +151,43 @@ class AbstractAgent:
             self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi)
             self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
             self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
-            self.train_model, self.model_grad = train_op(
-                loss=self.model_loss, lr=model_learning_rate, var_list=model_vars)
+
+            # placeholders
+            self.old_goal = tf.placeholder(tf.float32, [size_goal], name='old_goal')
+            self.old_initial_obs = tf.placeholder(tf.float32, o_shape, name='old_initial_obs')
+            self.new_initial_obs = tf.placeholder(tf.float32, o_shape, name='new_initial_obs')
+            self.goal_reward = tf.placeholder(tf.float32, (), name='goal_reward')
+            old_goal = tf.expand_dims(self.old_goal, axis=0)
+            old_initial_obs = tf.expand_dims(self.old_initial_obs, axis=0)
+            new_initial_obs = tf.expand_dims(self.new_initial_obs, axis=0)
+
+            def produce_goal_params(initial_obs, reuse):
+                with tf.variable_scope('goal', reuse=reuse):
+                    return self.produce_policy_parameters(
+                        size_goal, self.goal_network(initial_obs))
+
+            # infer
+            self.new_goal = tf.reshape(self.policy_parameters_to_sample(
+                produce_goal_params(new_initial_obs, reuse=False)), [size_goal])
+
+            # train
+            goal_log_prob = self.policy_parameters_to_log_prob(
+                old_goal, produce_goal_params(old_initial_obs, reuse=True))
+            optimizer = tf.train.AdamOptimizer(learning_rate=goal_learning_rate)
+            grad_log_prob, goal_vars = zip(
+                *optimizer.compute_gradients(goal_log_prob, get_variables('goal')))
+
+            with tf.variable_scope('baseline'):
+                baseline = tf.squeeze(tf.layers.dense(self.goal_network(old_initial_obs), 1))
+                self.baseline_loss = tf.reduce_mean(
+                    .5 * tf.square(baseline - self.goal_reward))
+
+            goal_grad_vars = [g * (self.goal_reward - baseline) for g in grad_log_prob]
+
+            self.train_goal = tf.group(
+                optimizer.apply_gradients(zip(goal_grad_vars, goal_vars)),
+                optimizer.minimize(self.baseline_loss))
+            self.goal_norm = tf.global_norm(goal_grad_vars)
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
@@ -261,7 +264,7 @@ class AbstractAgent:
         return tf.Print(tensor, [tensor], message=name, summarize=1e5)
 
     @abstractmethod
-    def model_network(self, inputs: tf.Tensor) -> NetworkOutput:
+    def goal_network(self, inputs: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod
@@ -269,8 +272,7 @@ class AbstractAgent:
         pass
 
     @abstractmethod
-    def produce_policy_parameters(self, a_shape: Iterable,
-                                  processed_o: tf.Tensor) -> tf.Tensor:
+    def produce_policy_parameters(self, a_shape: int, processed_o: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod

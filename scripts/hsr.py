@@ -221,18 +221,52 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
 
 
 @env_wrapper
-def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_size,
-         activation, n_layers, layer_size, model_activation, model_n_layers,
-         model_layer_size, learning_rate, reward_scale, entropy_scale, goal_space,
-         block_space, grad_clip, batch_size, n_train_steps, record_separate_episodes,
-         steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
-         record, randomize_pose, image_dims, record_freq, record_path, temp_path,
-         save_threshold, no_random_reset, obs_type, model_type, debug, env,
-         episodes_per_goal, model_learning_rate, ):
+def main(
+        max_steps,
+        min_lift_height,
+        geofence,
+        hindsight_geofence,
+        seed,
+        buffer_size,
+        activation,
+        n_layers,
+        layer_size,
+        goal_activation,
+        goal_n_layers,
+        goal_layer_size,
+        learning_rate,
+        reward_scale,
+        entropy_scale,
+        goal_space,
+        block_space,
+        grad_clip,
+        batch_size,
+        n_train_steps,
+        record_separate_episodes,
+        steps_per_action,
+        logdir,
+        save_path,
+        load_path,
+        render,
+        render_freq,
+        n_goals,
+        record,
+        randomize_pose,
+        image_dims,
+        record_freq,
+        record_path,
+        temp_path,
+        save_threshold,
+        no_random_reset,
+        obs_type,
+        debug,
+        env,
+        episodes_per_goal,
+        goal_learning_rate,
+):
     env_class = env
     unsupervised = any([
         episodes_per_goal,
-        model_type is not ModelType.none,
     ])
     env = TimeLimit(
         max_episode_steps=max_steps,
@@ -264,23 +298,24 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
         n_layers=n_layers,
         layer_size=layer_size,
         learning_rate=learning_rate,
-        model_activation=model_activation,
-        model_n_layers=model_n_layers,
-        model_layer_size=model_layer_size,
-        model_learning_rate=model_learning_rate,
+        goal_activation=goal_activation,
+        goal_n_layers=goal_n_layers,
+        goal_layer_size=goal_layer_size,
+        goal_learning_rate=goal_learning_rate,
         reward_scale=reward_scale,
         entropy_scale=entropy_scale,
         grad_clip=grad_clip if grad_clip > 0 else None,
         batch_size=batch_size,
         debug=debug,
         n_train_steps=n_train_steps,
-        model_type=model_type,
     )
 
     if unsupervised:
         trainer = UnsupervisedTrainer(
-            env=env, episodes_per_goal=episodes_per_goal,
-            **kwargs,)
+            env=env,
+            episodes_per_goal=episodes_per_goal,
+            **kwargs,
+        )
     elif hindsight_geofence:
         trainer = HindsightTrainer(
             env=HINDSIGHT_ENVS[env_class](env=env, geofence=hindsight_geofence),
@@ -308,13 +343,13 @@ def cli():
     p.add_argument('--n-layers', type=int, required=True)
     p.add_argument('--layer-size', type=int, required=True)
     p.add_argument(
-        '--model-activation',
+        '--goal-activation',
         type=parse_activation,
         default=tf.nn.relu,
         choices=ACTIVATIONS.values())
-    p.add_argument('--model-n-layers', type=int)
-    p.add_argument('--model-layer-size', type=int)
-    p.add_argument('--model-learning-rate', type=float)
+    p.add_argument('--goal-n-layers', type=int)
+    p.add_argument('--goal-layer-size', type=int)
+    p.add_argument('--goal-learning-rate', type=float)
     p.add_argument('--buffer-size', type=cast_to_int, required=True)
     p.add_argument('--n-train-steps', type=int, required=True)
     p.add_argument('--steps-per-action', type=int, required=True)
@@ -357,8 +392,6 @@ def cli():
         default=HSREnv)
     p.add_argument('--debug', action='store_true')
     p.add_argument('--episodes-per-goal', type=int, default=1)
-    p.add_argument(
-        '--model-type', type=ModelType, default=ModelType.none, choices=list(ModelType))
     main(**vars(p.parse_args()))
 
 

@@ -122,7 +122,7 @@ class Trainer:
                 render=render,
                 eval_period=self.is_eval_period() and load_path is None)
 
-            episode_return = self.episode_count['return']
+            episode_return = self.episode_count['reward']
 
             # save model
             passes_save_threshold = True

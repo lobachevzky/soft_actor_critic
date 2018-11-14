@@ -132,7 +132,7 @@ class UnsupervisedTrainer(Trainer):
                     agent.old_goal: self.hsr_env.goal,
                     agent.old_initial_obs: self.preprocess_func(self.initial_obs),
                     agent.new_initial_obs: self.preprocess_func(o1),
-                    agent.goal_reward: return_delta,
+                    agent.goal_reward: np.abs(return_delta),
                 })
             goal = train_result['goal']
             self.hsr_env.set_goal(goal)

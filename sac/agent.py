@@ -167,8 +167,10 @@ class AbstractAgent:
                         size_goal, self.goal_network(initial_obs))
 
             # infer
-            self.new_goal = tf.reshape(self.policy_parameters_to_sample(
-                produce_goal_params(new_initial_obs, reuse=False)), [size_goal])
+            params = mu, sigma = produce_goal_params(new_initial_obs, reuse=False)
+            with tf.control_dependencies([ tf.Print(mu, params)]):
+                self.new_goal = tf.reshape(self.policy_parameters_to_sample(
+                params), [size_goal])
 
             # train
             goal_log_prob = self.policy_parameters_to_log_prob(

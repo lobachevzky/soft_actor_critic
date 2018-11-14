@@ -27,8 +27,6 @@ class ModelType(enum.Enum):
 class AbstractAgent:
     def __init__(self,
                  sess: tf.Session,
-                 batch_size: int,
-                 seq_len: int,
                  o_shape: Iterable,
                  a_shape: Sequence,
                  reward_scale: float,
@@ -66,7 +64,6 @@ class AbstractAgent:
         self.activation = activation
         self.n_layers = n_layers
         self.layer_size = layer_size
-        self._seq_len = seq_len
         self.initial_state = None
         self.sess = sess
 
@@ -78,12 +75,8 @@ class AbstractAgent:
         with tf.device('/gpu:' + str(device_num)), tf.variable_scope(scope, reuse=reuse):
             self.global_step = tf.Variable(0, name='global_step')
 
-            seq_dim = [None]
-            if self.seq_len is not None:
-                seq_dim = [None, self.seq_len]
-
-            self.O1 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O1')
-            self.O2 = tf.placeholder(tf.float32, seq_dim + list(o_shape), name='O2')
+            self.O1 = tf.placeholder(tf.float32, [None] + list(o_shape), name='O1')
+            self.O2 = tf.placeholder(tf.float32, [None] + list(o_shape), name='O2')
             self.A = A = tf.placeholder(tf.float32, [None] + list(a_shape), name='A')
             self.R = R = tf.placeholder(tf.float32, [None], name='R')
             self.T = T = tf.placeholder(tf.float32, [None], name='T')

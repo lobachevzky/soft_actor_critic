@@ -146,6 +146,7 @@ class UnsupervisedTrainer(Trainer):
             agent = self.agents.act
             train_result = self.sess.run(
                 dict(
+                    model_accuracy=agent.model_accuracy,
                     model_loss=agent.model_loss,
                     model_grad=agent.model_grad,
                     op=agent.train_model),

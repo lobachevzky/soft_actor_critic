@@ -168,6 +168,11 @@ class AbstractAgent:
             if model_type is not ModelType.none:
                 loss = tf.square(self.estimated - model_target)
                 self.model_loss = tf.reduce_mean(loss)
+                self.model_accuracy = tf.squeeze(
+                    tf.equal(
+                        tf.greater(self.estimated, .5),
+                        tf.greater(model_target, .5),
+                    ))
 
             # grabbing all the relevant variables
             def get_variables(var_name: str) -> List[tf.Variable]:

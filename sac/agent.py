@@ -135,8 +135,8 @@ class AbstractAgent:
                 self.model_target = tf.placeholder(tf.float32, (), name='model_target')
 
             if model_type is ModelType.posterior:
-                self.model_input = tf.placeholder(tf.float32, [size_model_input],
-                                                  name='model_input')
+                self.model_input = tf.placeholder(
+                    tf.float32, [size_model_input], name='model_input')
                 model_input = tf.reshape(self.model_input, [1, size_model_input])
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
@@ -178,13 +178,29 @@ class AbstractAgent:
                     norm = tf.global_norm(gradients)
                 op = optimizer.apply_gradients(
                     zip(gradients, variables), global_step=self.global_step)
-                return op, norm
 
-            self.train_V, self.V_grad = train_op(loss=V_loss, var_list=xi)
-            self.train_Q, self.Q_grad = train_op(loss=Q_loss, var_list=theta)
-            self.train_pi, self.pi_grad = train_op(loss=pi_loss, var_list=phi)
-            self.train_model, self.model_grad = train_op(
+                M = [optimizer.get_slot(var, "m") for var in variables]
+                V = [optimizer.get_slot(var, "v") for var in variables]
+                adam_step_size = [lr * m / (tf.sqrt(v) + optimizer._epsilon)
+                                  for m, v in zip(M, V)]
+                return op, norm, [s * g for s, g in zip(adam_step_size, gradients)]
+
+            self.train_V, self.V_grad, _ = train_op(loss=V_loss, var_list=xi)
+            self.train_Q, self.Q_grad, _ = train_op(loss=Q_loss, var_list=theta)
+            self.train_pi, self.pi_grad, delta_phi = train_op(loss=pi_loss, var_list=phi)
+            self.train_model, self.model_grad, _ = train_op(
                 loss=self.model_loss, lr=model_learning_rate, var_list=model_vars)
+
+            self.o = tf.placeholder(tf.float32, shape=o_shape)
+            self.a = tf.placeholder(tf.float32, shape=a_shape[0])
+            o = tf.reshape(self.o, [1, o_shape[0]])
+            a = tf.reshape(self.a, [1, a_shape[0]])
+
+            log_pi_grads = tf.gradients(pi_network_log_prob(a, name='pi', _reuse=True), phi)
+            advantage = self.q_network(o, a, name='Q', reuse=True) - self.v_network(o, name='V',
+                                                                                              reuse=True)
+            self.delta_G = tf.add_n([tf.reduce_sum(advantage * d_log_pi * d)
+                                     for d_log_pi, d in zip(log_pi_grads, delta_phi)])
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)
@@ -240,15 +256,10 @@ class AbstractAgent:
     def get_v1(self, o1: np.ndarray):
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
-    def get_values(self, step: Step):
+    def get_value(self, step: Step):
         return self.sess.run(
-            [self.q1, self.v2, self.q_target],
-            feed_dict={
+            self.v1, feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
-                self.O2: step.o2,
-                self.T: step.t
             })
 
     def td_error(self, step: Step):

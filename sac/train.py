@@ -25,6 +25,7 @@ Agents = namedtuple('Agents', 'train act')
 SUCCESS_KWD = 'success'
 LOG_COUNT_KWD = 'log count'
 
+
 class Trainer:
     def __init__(self,
                  env: gym.Env,
@@ -121,12 +122,12 @@ class Trainer:
                 render=render,
                 eval_period=self.is_eval_period() and load_path is None)
 
-            episode_reward = self.episode_count['reward']
+            episode_return = self.episode_count['reward']
 
             # save model
             passes_save_threshold = True
             if save_threshold is not None:
-                past_rewards.append(episode_reward)
+                past_rewards.append(episode_return)
                 new_average = np.mean(past_rewards)
                 if new_average < best_average:
                     passes_save_threshold = False
@@ -143,14 +144,14 @@ class Trainer:
             print_statement = f'({"EVAL" if self.is_eval_period() else "TRAIN"}) ' \
                               f'Episode: {episodes}\t ' \
                               f'Time Steps: {time_steps}\t ' \
-                              f'Reward: {episode_reward}\t ' \
+                              f'Reward: {episode_return}\t ' \
                               f'Success: {self.episode_count[SUCCESS_KWD]}'
             print(print_statement)
 
             if logdir:
                 summary = tf.Summary()
                 if self.is_eval_period():
-                    summary.value.add(tag='eval reward', simple_value=episode_reward)
+                    summary.value.add(tag='eval reward', simple_value=episode_return)
                 else:
                     for k in self.episode_count:
                         summary.value.add(
@@ -269,7 +270,8 @@ class Trainer:
                 i[LOG_COUNT_KWD] = dict()
             if SUCCESS_KWD not in i[LOG_COUNT_KWD]:
                 i[LOG_COUNT_KWD][SUCCESS_KWD] = dict()
-            i[LOG_COUNT_KWD][SUCCESS_KWD] = 0 < self.env._elapsed_steps < self.env._max_episode_steps
+            i[LOG_COUNT_KWD][
+                SUCCESS_KWD] = 0 < self.env._elapsed_steps < self.env._max_episode_steps
         return s, r, t, i
 
     def preprocess_obs(self, obs, shape: Shape = None):

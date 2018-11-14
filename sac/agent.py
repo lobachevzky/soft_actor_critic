@@ -135,8 +135,8 @@ class AbstractAgent:
                 self.model_target = tf.placeholder(tf.float32, (), name='model_target')
 
             if model_type is ModelType.posterior:
-                self.model_input = tf.placeholder(tf.float32, [size_model_input],
-                                                  name='model_input')
+                self.model_input = tf.placeholder(
+                    tf.float32, [size_model_input], name='model_input')
                 model_input = tf.reshape(self.model_input, [1, size_model_input])
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
@@ -240,15 +240,10 @@ class AbstractAgent:
     def get_v1(self, o1: np.ndarray):
         return self.sess.run(self.v1, feed_dict={self.O1: [o1]})[0]
 
-    def get_values(self, step: Step):
+    def get_value(self, step: Step):
         return self.sess.run(
-            [self.q1, self.v2, self.q_target],
-            feed_dict={
+            self.v1, feed_dict={
                 self.O1: step.o1,
-                self.A: step.a,
-                self.R: step.r,
-                self.O2: step.o2,
-                self.T: step.t
             })
 
     def td_error(self, step: Step):

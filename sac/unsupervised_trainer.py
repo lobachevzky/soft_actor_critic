@@ -15,7 +15,7 @@ from sac.utils import Step, unwrap_env
 class BossState(
     namedtuple(
         'BossState', 'history delta_tde initial_achieved initial_value '
-                     'reward td_errors cumulative_delta_td_error')):
+                     'td_errors cumulative_delta_td_error')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -23,7 +23,7 @@ class BossState(
 
 Samples = namedtuple('Samples', 'train valid test')
 
-REWARD_DELTA_KWD = 'reward_delta'
+REWARD_DELTA_KWD = 'return_delta'
 
 
 class UnsupervisedTrainer(Trainer):
@@ -31,14 +31,14 @@ class UnsupervisedTrainer(Trainer):
         super().__init__(**kwargs)
         self.episodes_per_goal = episodes_per_goal
         self.hsr_env = unwrap_env(self.env, lambda e: isinstance(e, HSREnv))
-        self.reward_history = []
+        self.return_history = []
         self.test_sample = None
         if episodes_per_goal == 1:
             self.lin_regress_op = None
         else:
-            x = np.stack([np.ones(episodes_per_goal),
-                          np.arange(episodes_per_goal)],
-                         axis=1)
+            x = np.stack(
+                [np.ones(episodes_per_goal),
+                 np.arange(episodes_per_goal)], axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.boss_state = BossState(
             td_errors=None,
@@ -46,7 +46,6 @@ class UnsupervisedTrainer(Trainer):
             delta_tde=None,
             initial_achieved=None,
             initial_value=None,
-            reward=None,
             cumulative_delta_td_error=0,
         )
 
@@ -130,26 +129,25 @@ class UnsupervisedTrainer(Trainer):
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
             return episode_count
 
-        self.reward_history.append(episode_count['reward'])
-        if len(self.reward_history) == self.episodes_per_goal:
+        self.return_history.append(episode_count['return'])
+        if len(self.return_history) == self.episodes_per_goal:
             if self.episodes_per_goal > 1:
                 _, episode_count[REWARD_DELTA_KWD] = self.lin_regress_op @ np.array(
-                    self.reward_history)
+                    self.return_history)
 
             positive_delta = episode_count[REWARD_DELTA_KWD] > 0
 
-            agent = self.agents.act
-
             model_input = self.hsr_env.goal
 
+            agent = self.agents.act
             train_result = self.sess.run(
-                dict(
+                fetches=dict(
                     model_accuracy=agent.model_accuracy,
                     model_loss=agent.model_loss,
                     model_grad=agent.model_grad,
                     op=agent.train_model),
                 feed_dict={
-                    agent.model_input:  model_input,
+                    agent.model_input: model_input,
                     agent.model_target: positive_delta,
                 })
 
@@ -157,12 +155,11 @@ class UnsupervisedTrainer(Trainer):
                 if np.isscalar(v):
                     episode_count.update(**{k: v})
 
-            self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0)
-
             # choose new goal:
             goal = self.double_goal_space.sample()
             self.hsr_env.set_goal(goal)
-            self.reward_history = []
+            self.return_history = []
+            self.delta_v1 = 0
 
         # goal_distance = distance_between(
         #     self.boss_state.initial_achieved,
@@ -171,8 +168,6 @@ class UnsupervisedTrainer(Trainer):
         #
         # episode_count['goal_distance'] = goal_distance
 
-        print('\nBoss Reward:', self.boss_state.reward)
-        # '\t Goal Distance:', goal_distance)
         return episode_count
 
 

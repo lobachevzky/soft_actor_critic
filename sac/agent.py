@@ -16,9 +16,7 @@ NetworkOutput = namedtuple('NetworkOutput', 'output state')
 
 # noinspection PyArgumentList
 class ModelType(enum.Enum):
-    complex = 'complex'
-    simple = 'simple'
-    memoryless = 'memoryless'
+    posterior = 'posterior'
     prior = 'prior'
     none = 'none'
 
@@ -47,7 +45,8 @@ class AbstractAgent:
                  reuse: bool = False,
                  scope: str = 'agent',
                  model_type: ModelType = ModelType.none,
-                 model_learning_rate: float = None) -> None:
+                 model_learning_rate: float = None,
+                 size_model_input=None) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -141,21 +140,14 @@ class AbstractAgent:
             # TD error prediction model
             if model_type is not ModelType.none:
                 self.model_target = tf.placeholder(tf.float32, (), name='model_target')
-                self.goal = tf.placeholder(tf.float32, [3], name='goal')
-                goal = tf.reshape(self.goal, [1, 3])
-                model_target = tf.reshape(self.model_target, [1, 1])
 
-                dim = (
-                    1 +  # prev_Q_error
-                    1  # prev_delta_tde
-                )
-                self.history = tf.placeholder(
-                    tf.float32, [batch_size, dim], name='history')
-
-            if model_type is ModelType.memoryless:
+            if model_type is ModelType.posterior:
+                self.model_input = tf.placeholder(tf.float32, [size_model_input],
+                                                  name='model_input')
+                model_input = tf.reshape(self.model_input, [1, size_model_input])
                 with tf.variable_scope('model'):
                     self.estimated = tf.layers.dense(
-                        inputs=self.model_network(goal).output,
+                        inputs=self.model_network(model_input).output,
                         activation=None,
                         use_bias=False,
                         units=1,
@@ -166,6 +158,7 @@ class AbstractAgent:
                     self.estimated = tf.get_variable('estimated', 1)
 
             if model_type is not ModelType.none:
+                model_target = tf.reshape(self.model_target, [1, 1])
                 loss = tf.square(self.estimated - model_target)
                 self.model_loss = tf.reduce_mean(loss)
                 self.model_accuracy = tf.squeeze(

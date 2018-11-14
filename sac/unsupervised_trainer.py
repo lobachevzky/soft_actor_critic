@@ -3,22 +3,19 @@ from collections import Counter, namedtuple, deque
 
 # third party
 import numpy as np
-import tensorflow as tf
-
 # first party
 from gym.spaces import Box
 
-from environments.hindsight_wrapper import Observation
-from environments.hsr import distance_between, HSREnv
+from environments.hsr import HSREnv
 from sac.replay_buffer import ReplayBuffer
 from sac.train import Trainer
 from sac.utils import Step, unwrap_env
 
 
 class BossState(
-        namedtuple(
-            'BossState', 'history delta_tde initial_achieved initial_value '
-            'reward td_errors cumulative_delta_td_error')):
+    namedtuple(
+        'BossState', 'history delta_tde initial_achieved initial_value '
+                     'reward td_errors cumulative_delta_td_error')):
     def replace(self, **kwargs):
         # noinspection PyProtectedMember
         return super()._replace(**kwargs)
@@ -26,13 +23,17 @@ class BossState(
 
 Samples = namedtuple('Samples', 'train valid test')
 
+REWARD_DELTA_KWD = 'reward_delta'
+
 
 class UnsupervisedTrainer(Trainer):
-    def __init__(self, episodes_per_goal: int, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, episodes_per_goal: int, len_history: int, **kwargs):
+        size_model_input = 3 + (4 * len_history)
+        super().__init__(size_model_input=size_model_input, **kwargs)
         self.episodes_per_goal = episodes_per_goal
         self.hsr_env = unwrap_env(self.env, lambda e: isinstance(e, HSREnv))
         self.reward_history = []
+        self.queue = deque(maxlen=len_history)
         self.test_sample = None
         if episodes_per_goal == 1:
             self.lin_regress_op = None
@@ -134,42 +135,40 @@ class UnsupervisedTrainer(Trainer):
         self.reward_history.append(episode_count['reward'])
         if len(self.reward_history) == self.episodes_per_goal:
             if self.episodes_per_goal > 1:
-                _, episode_count['reward_delta'] = self.lin_regress_op @ np.array(
+                _, episode_count[REWARD_DELTA_KWD] = self.lin_regress_op @ np.array(
                     self.reward_history)
 
-            in_range = self.hsr_env.goal_space.contains(self.hsr_env.goal)
-            positive_delta = episode_count['reward_delta'] > 0
-            agreement = (in_range and positive_delta) or not (in_range or positive_delta)
-            failure_to_learn = in_range and not positive_delta
-            the_impossible = not in_range and positive_delta
+            positive_delta = episode_count[REWARD_DELTA_KWD] > 0
 
             agent = self.agents.act
-            train_result = self.sess.run(
-                dict(
-                    model_accuracy=agent.model_accuracy,
-                    model_loss=agent.model_loss,
-                    model_grad=agent.model_grad,
-                    op=agent.train_model),
-                feed_dict={
-                    agent.goal: self.hsr_env.goal,
-                    agent.model_target: positive_delta,
-                })
+            if len(self.queue) == self.queue.maxlen:
+
+                model_input = np.hstack([self.hsr_env.goal] +
+                                        [x for pair in self.queue for x in pair])
+
+                train_result = self.sess.run(
+                    dict(
+                        model_accuracy=agent.model_accuracy,
+                        model_loss=agent.model_loss,
+                        model_grad=agent.model_grad,
+                        op=agent.train_model),
+                    feed_dict={
+                        agent.model_input:  model_input,
+                        agent.model_target: positive_delta,
+                    })
+
+                for k, v in train_result.items():
+                    if np.isscalar(v):
+                        episode_count.update(**{k: v})
+
+            self.queue.append((self.hsr_env.goal, np.array([episode_count[
+                REWARD_DELTA_KWD]])))
+            self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0)
 
             # choose new goal:
             goal = self.double_goal_space.sample()
             self.hsr_env.set_goal(goal)
             self.reward_history = []
-
-            self.boss_state = self.boss_state.replace(cumulative_delta_td_error=0, )
-            episode_count.update(
-                dict(
-                    in_range=in_range,
-                    agreement=agreement,
-                    failure_to_learn=failure_to_learn,
-                    the_impossible=the_impossible))
-            for k, v in train_result.items():
-                if np.isscalar(v):
-                    episode_count.update(**{k: v})
 
         # goal_distance = distance_between(
         #     self.boss_state.initial_achieved,
@@ -198,4 +197,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)

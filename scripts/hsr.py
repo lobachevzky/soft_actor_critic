@@ -228,9 +228,13 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
          steps_per_action, logdir, save_path, load_path, render, render_freq, n_goals,
          record, randomize_pose, image_dims, record_freq, record_path, temp_path,
          save_threshold, no_random_reset, obs_type, model_type, debug, env,
-         episodes_per_goal, model_learning_rate):
+         episodes_per_goal, model_learning_rate, len_history):
     env_class = env
-    unsupervised = episodes_per_goal or model_type is not ModelType.none
+    unsupervised = any([
+        episodes_per_goal,
+        model_type is not ModelType.none,
+        len_history is not None,
+    ])
     env = TimeLimit(
         max_episode_steps=max_steps,
         env=env_class(
@@ -276,7 +280,8 @@ def main(max_steps, min_lift_height, geofence, hindsight_geofence, seed, buffer_
 
     if unsupervised:
         trainer = UnsupervisedTrainer(
-            env=env, episodes_per_goal=episodes_per_goal, **kwargs)
+            env=env, episodes_per_goal=episodes_per_goal, len_history=len_history,
+            **kwargs,)
     elif hindsight_geofence:
         trainer = HindsightTrainer(
             env=HINDSIGHT_ENVS[env_class](env=env, geofence=hindsight_geofence),
@@ -353,6 +358,7 @@ def cli():
         default=HSREnv)
     p.add_argument('--debug', action='store_true')
     p.add_argument('--episodes-per-goal', type=int, default=1)
+    p.add_argument('--len-history', type=int, default=None)
     p.add_argument(
         '--model-type', type=ModelType, default=ModelType.none, choices=list(ModelType))
     main(**vars(p.parse_args()))

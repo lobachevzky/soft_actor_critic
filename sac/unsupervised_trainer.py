@@ -107,10 +107,13 @@ class UnsupervisedTrainer(Trainer):
         raise NotImplementedError
 
     def train_step(self, sample=None):
+        train_result = self.reinforce()
+        return {**train_result, **super().train_step(sample)}
+
+    def reinforce(self):
         o1 = [1]
         agent = self.agents.act
         goal_reward = -np.sum(np.square(self.prev_goal))
-
         train_result = {
             **self.sess.run(
                 fetches=dict(
@@ -130,8 +133,7 @@ class UnsupervisedTrainer(Trainer):
         print(goal)
         self.prev_goal = goal
         self.prev_obs = o1
-
-        return {**train_result, **super().train_step(sample)}
+        return train_result
 
     def run_episode(self, o1, eval_period, render):
         episode_count = dict()

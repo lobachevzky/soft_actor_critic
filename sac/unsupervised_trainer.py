@@ -114,12 +114,12 @@ class UnsupervisedTrainer(Trainer):
         return {**super().train_step(), **self.reinforce()}
 
     def reinforce(self):
+        goal_space = self.hsr_env.goal_space
         if self.prev_goal is None:
-            self.prev_goal = self.hsr_env.goal_space.sample()
-            self.prev_obs = self.hsr_env.goal_space.sample()
+            self.prev_goal = goal_space.sample()
+            self.prev_obs = goal_space.sample()
         o1 = self.prev_obs
         agent = self.agents.act
-        goal_space = Box(low=-.1, high=.1, shape=[3])
         goal_reward = goal_space.contains(self.prev_goal)
         train_result = {
             **self.sess.run(

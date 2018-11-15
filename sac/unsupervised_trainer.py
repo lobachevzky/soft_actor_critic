@@ -111,18 +111,21 @@ class UnsupervisedTrainer(Trainer):
         agent = self.agents.act
         goal_reward = -np.sum(np.square(self.prev_goal))
 
-        train_result = self.sess.run(
-            fetches=dict(
-                goal=agent.new_goal,
-                goal_loss=agent.goal_loss,
-                # baseline_loss=agent.baseline_loss,
-                op=agent.train_goal),
-            feed_dict={
-                agent.old_goal: self.prev_goal,
-                agent.old_initial_obs: self.preprocess_func(self.prev_obs),
-                agent.new_initial_obs: self.preprocess_func(o1),
-                agent.goal_reward: goal_reward,
-            })
+        train_result = {
+            **self.sess.run(
+                fetches=dict(
+                    goal=agent.new_goal,
+                    goal_loss=agent.goal_loss,
+                    # baseline_loss=agent.baseline_loss,
+                    op=agent.train_goal),
+                feed_dict={
+                    agent.old_goal: self.prev_goal,
+                    agent.old_initial_obs: self.preprocess_func(self.prev_obs),
+                    agent.new_initial_obs: self.preprocess_func(o1),
+                    agent.goal_reward: goal_reward,
+                }),
+            **dict(goal_reward=goal_reward)
+        }
         goal = train_result['goal']
         print(goal)
         self.prev_goal = goal

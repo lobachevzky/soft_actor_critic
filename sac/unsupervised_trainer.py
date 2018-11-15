@@ -136,6 +136,7 @@ class UnsupervisedTrainer(Trainer):
             **dict(goal_reward=goal_reward)
         }
         goal = train_result['goal']
+        print(goal, self.hsr_env.goal_space.contains(goal))
         self.prev_goal = goal
         self.prev_obs = o1
         return train_result

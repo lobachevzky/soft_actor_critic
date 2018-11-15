@@ -110,16 +110,12 @@ class UnsupervisedTrainer(Trainer):
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
 
-    def train_step(self, sample=None):
-        return {**super().train_step(), **self.reinforce(self.initial_obs)}
-
-    def reinforce(self, o1):
+    def reinforce(self, o1, goal_reward: float):
         agent = self.agents.act
         fetches = dict(goal=agent.new_goal)
         feed_dict = {agent.new_initial_obs: self.preprocess_func(o1)}
         additional_results = dict()
         if self.prev_obs is not None:
-            goal_reward = self.hsr_env.goal_space.contains(self.prev_goal)
             fetches.update(
                 goal_loss=agent.goal_loss,
                 op=agent.train_goal,
@@ -151,8 +147,12 @@ class UnsupervisedTrainer(Trainer):
 
         elif len(self.return_history) == self.episodes_per_goal:
             _, return_delta = self.lin_regress_op @ np.array(self.return_history)
-            # goal_reward = self.hsr_env.goal_space.contains(self.hsr_env.goal)
-            self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
+
+            reinforce_result = self.reinforce(self.initial_obs, goal_reward=return_delta)
+            episode_count.update(reinforce_result)
+            goal = reinforce_result['goal']
+            print('goal', goal)
+            self.hsr_env.set_goal(goal)
 
             # reset values
             self.return_history = []

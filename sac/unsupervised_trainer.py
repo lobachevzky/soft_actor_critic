@@ -111,33 +111,29 @@ class UnsupervisedTrainer(Trainer):
         raise NotImplementedError
 
     def train_step(self, sample=None):
-        return {**super().train_step(), **self.reinforce()}
+        return {**super().train_step(), **self.reinforce(self.initial_obs)}
 
-    def reinforce(self):
+    def reinforce(self, o1):
         goal_space = self.hsr_env.goal_space
-        if self.prev_goal is None:
-            self.prev_goal = goal_space.sample()
-            self.prev_obs = goal_space.sample()
-        o1 = self.prev_obs
         agent = self.agents.act
-        goal_reward = goal_space.contains(self.prev_goal)
-        train_result = {
-            **self.sess.run(
-                fetches=dict(
-                    goal=agent.new_goal,
-                    goal_loss=agent.goal_loss,
-                    op=agent.train_goal,
-                ),
-                feed_dict={
-                    agent.old_goal: self.prev_goal,
-                    agent.old_initial_obs: self.preprocess_func(self.prev_obs),
-                    agent.new_initial_obs: self.preprocess_func(o1),
-                    agent.goal_reward: goal_reward,
-                }),
-            **dict(goal_reward=goal_reward)
-        }
-        goal = train_result['goal']
-        self.prev_goal = goal
+        fetches = dict(goal=agent.new_goal)
+        feed_dict = {agent.new_initial_obs: self.preprocess_func(o1)}
+        g = dict()
+        if self.prev_obs is not None:
+            goal_reward = goal_space.contains(self.prev_goal)
+            fetches.update(
+                goal_loss=agent.goal_loss,
+                op=agent.train_goal,
+            )
+            feed_dict.update({
+                agent.old_goal: self.prev_goal,
+                agent.old_initial_obs: self.preprocess_func(self.prev_obs),
+                agent.goal_reward: goal_reward,
+            })
+            g = dict(goal_reward=goal_reward)
+
+        train_result = {**self.sess.run(fetches=fetches, feed_dict=feed_dict), **g}
+        self.prev_goal = train_result['goal']
         self.prev_obs = o1
         return train_result
 

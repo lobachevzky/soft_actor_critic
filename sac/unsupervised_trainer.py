@@ -108,7 +108,7 @@ class UnsupervisedTrainer(Trainer):
         raise NotImplementedError
 
     def train_step(self, sample=None):
-        o1 = np.random.uniform(low=-1, high=1, size=(9,)),\
+        o1 = np.random.uniform(low=-1, high=1, size=(16,)),\
              np.random.uniform(low=-1, high=1, size=(3,)),
         goal = np.random.uniform(low=-1, high=1, size=(1,))
 
@@ -116,6 +116,7 @@ class UnsupervisedTrainer(Trainer):
 
             agent = self.agents.act
             goal_reward = -np.sum(np.square(self.prev_goal))
+
             train_result = self.sess.run(
                 fetches=dict(
                     goal=agent.new_goal,

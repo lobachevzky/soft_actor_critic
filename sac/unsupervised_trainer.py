@@ -117,9 +117,9 @@ class UnsupervisedTrainer(Trainer):
         if self.prev_goal is None:
             self.prev_goal = np.random.uniform(-1, 1, 3)
             self.prev_obs = np.random.uniform(-1, 1, 3)
-        o1 = np.random.uniform(-1, 1, 3)
+        o1 = self.prev_obs
         agent = self.agents.act
-        goal_reward = -np.sum(np.square(self.prev_goal - self.prev_obs))
+        goal_reward = self.hsr_env.goal_space.contains(self.prev_goal)
         train_result = {
             **self.sess.run(
                 fetches=dict(
@@ -136,7 +136,6 @@ class UnsupervisedTrainer(Trainer):
             **dict(goal_reward=goal_reward)
         }
         goal = train_result['goal']
-        print(goal)
         self.prev_goal = goal
         self.prev_obs = o1
         return train_result

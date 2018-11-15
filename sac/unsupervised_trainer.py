@@ -106,6 +106,9 @@ class UnsupervisedTrainer(Trainer):
     def trajectory(self, time_steps: int, final_index=None):
         raise NotImplementedError
 
+    def train_step(self, sample=None):
+        return {**super().train_step(), **self.reinforce()}
+
     def reinforce(self):
         o1 = [1]
         agent = self.agents.act
@@ -154,7 +157,7 @@ class UnsupervisedTrainer(Trainer):
             self.initial_obs = o1
             self.initial_achieved = achieved_goal
 
-            episode_count.update(return_delta=return_delta, **self.reinforce())
+            episode_count.update(return_delta=return_delta)
             # **train_result)
 
         goal_distance = distance_between(achieved_goal, self.hsr_env.goal)

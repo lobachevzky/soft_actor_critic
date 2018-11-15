@@ -191,16 +191,16 @@ class AbstractAgent:
                 new_goal = self.policy_parameters_to_sample(new_params)
                 self.new_goal = tf.squeeze(new_goal, axis=0)
 
-            self.new_goal = tf.Print(self.new_goal, [self.old_goal], message='goal')
-            self.new_goal = tf.Print(self.new_goal, [old_params], message='params')
-            self.new_goal = tf.Print(self.new_goal, [goal_log_prob], message='log prob')
-            self.new_goal = tf.Print(
-                self.new_goal, [self.goal_reward], message='goal reward')
-            self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
-            self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
-            self.new_goal = tf.Print(self.new_goal, goal_variables, message='goal params')
-            self.new_goal = tf.Print(
-                self.new_goal, [-x for x in self.goal_grad], message='goal grad')
+            # self.new_goal = tf.Print(self.new_goal, [self.old_goal], message='goal')
+            # self.new_goal = tf.Print(self.new_goal, [old_params], message='params')
+            # self.new_goal = tf.Print(self.new_goal, [goal_log_prob], message='log prob')
+            # self.new_goal = tf.Print(
+            # self.new_goal, [self.goal_reward], message='goal reward')
+            # self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
+            # self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
+            # self.new_goal = tf.Print(self.new_goal, goal_variables, message='goal params')
+            # self.new_goal = tf.Print(
+            # self.new_goal, [-x for x in self.goal_grad], message='goal grad')
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)

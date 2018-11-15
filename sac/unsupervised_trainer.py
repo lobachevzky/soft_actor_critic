@@ -115,8 +115,8 @@ class UnsupervisedTrainer(Trainer):
 
     def reinforce(self):
         if self.prev_goal is None:
-            self.prev_goal = np.random.uniform(-1, 1, 3)
-            self.prev_obs = np.random.uniform(-1, 1, 3)
+            self.prev_goal = self.hsr_env.goal_space.sample()
+            self.prev_obs = self.hsr_env.goal_space.sample()
         o1 = self.prev_obs
         agent = self.agents.act
         goal_reward = self.hsr_env.goal_space.contains(self.prev_goal)

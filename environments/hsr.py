@@ -346,7 +346,9 @@ class HSREnv:
             achieved_goal = self.block_pos()
         if desired_goal is None:
             desired_goal = self.goal
-        return distance_between(achieved_goal, desired_goal) < self.geofence
+        d = distance_between(achieved_goal, desired_goal)
+        print1(d)
+        return d < self.geofence
 
     def set_goal(self, goal: np.ndarray):
         # assert self.goal_space.contains(goal)

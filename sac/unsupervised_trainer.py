@@ -148,7 +148,7 @@ class UnsupervisedTrainer(Trainer):
         elif len(self.return_history) == self.episodes_per_goal:
             _, return_delta = self.lin_regress_op @ np.array(self.return_history)
 
-            reinforce_result = self.reinforce(self.initial_obs, goal_reward=return_delta)
+            reinforce_result = self.reinforce(self.initial_obs, goal_reward=np.abs(return_delta))
             episode_count.update(reinforce_result)
             goal = reinforce_result['goal']
             print('goal', goal)

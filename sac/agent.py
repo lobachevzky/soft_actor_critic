@@ -163,8 +163,12 @@ class AbstractAgent:
 
             def produce_goal_params(initial_obs, reuse):
                 with tf.variable_scope('goal', reuse=reuse):
-                    return self.produce_policy_parameters(
-                        size_goal, tf.layers.dense(initial_obs, 1, use_bias=False, activation=None))
+                    return (
+                        tf.layers.dense(initial_obs, 1, use_bias=False, activation=None),
+                        tf.square(tf.layers.dense(initial_obs, 1, use_bias=False, activation=None)),
+                    )
+                    # return self.produce_policy_parameters(
+                    #     size_goal, tf.layers.dense(initial_obs, 1, use_bias=False, activation=None))
 
             # train
             old_params = produce_goal_params(old_initial_obs, reuse=False)
@@ -172,8 +176,8 @@ class AbstractAgent:
                 old_goal, old_params)
             optimizer = tf.train.AdamOptimizer(learning_rate=goal_learning_rate)
             # with tf.variable_scope('baseline'):
-                # baseline = tf.squeeze(tf.layers.dense(old_initial_obs, 1))
-                # self.baseline_loss = tf.reduce_mean(.5 * tf.square(baseline - self.goal_reward))
+            # baseline = tf.squeeze(tf.layers.dense(old_initial_obs, 1))
+            # self.baseline_loss = tf.reduce_mean(.5 * tf.square(baseline - self.goal_reward))
 
             self.goal_loss = tf.reduce_mean(
                 -goal_log_prob * tf.stop_gradient(self.goal_reward))
@@ -182,7 +186,7 @@ class AbstractAgent:
             self.goal_grad, _ = zip(*optimizer.compute_gradients(self.goal_loss, var_list=goal_variables))
 
             self.train_goal = tf.group(
-                    optimizer.minimize(self.goal_loss, var_list=goal_variables), )
+                optimizer.minimize(self.goal_loss, var_list=goal_variables), )
             # optimizer.minimize(self.baseline_loss))
 
             with tf.control_dependencies([self.train_goal]):
@@ -191,8 +195,9 @@ class AbstractAgent:
                 new_goal = self.policy_parameters_to_sample(new_params)
                 self.new_goal = tf.squeeze(new_goal, axis=0)
 
-            self.new_goal = tf.Print(self.new_goal, [old_params], message='old params')
-            self.new_goal = tf.Print(self.new_goal, [goal_log_prob], message='old log prob')
+            self.new_goal = tf.Print(self.new_goal, [self.old_goal], message='goal')
+            self.new_goal = tf.Print(self.new_goal, [old_params], message='params')
+            self.new_goal = tf.Print(self.new_goal, [goal_log_prob], message='log prob')
             self.new_goal = tf.Print(self.new_goal, [self.goal_reward], message='goal reward')
             self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
             self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')

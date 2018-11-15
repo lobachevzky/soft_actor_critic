@@ -198,7 +198,8 @@ class AbstractAgent:
             self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
             self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
             self.new_goal = tf.Print(self.new_goal, goal_variables, message='goal params')
-            self.new_goal = tf.Print(self.new_goal, self.goal_grad, message='goal grad')
+            self.new_goal = tf.Print(
+                self.new_goal, [-x for x in self.goal_grad], message='goal grad')
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)

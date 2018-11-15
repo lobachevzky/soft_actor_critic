@@ -33,8 +33,8 @@ class UnsupervisedTrainer(Trainer):
         self.td_errors = None
         self.initial_obs = None
         self.initial_achieved = None
-        self.prev_goal = None
-        self.prev_obs = None
+        self.prev_obs = [1]
+        self.prev_goal = np.random.uniform(-1, 1, (1, ))
 
         self.double_goal_space = Box(
             low=self.hsr_env.goal_space.low * 1.1,
@@ -108,33 +108,26 @@ class UnsupervisedTrainer(Trainer):
 
     def train_step(self, sample=None):
         o1 = [1]
+        agent = self.agents.act
+        goal_reward = -np.sum(np.square(self.prev_goal))
 
-        if self.prev_obs is not None:
-
-            agent = self.agents.act
-            goal_reward = -np.sum(np.square(self.prev_goal))
-
-            train_result = self.sess.run(
-                fetches=dict(
-                    goal=agent.new_goal,
-                    goal_loss=agent.goal_loss,
-                    # baseline_loss=agent.baseline_loss,
-                    op=agent.train_goal),
-                feed_dict={
-                    agent.old_goal: self.prev_goal,
-                    agent.old_initial_obs: self.preprocess_func(self.prev_obs),
-                    agent.new_initial_obs: self.preprocess_func(o1),
-                    agent.goal_reward: goal_reward,
-                })
-            goal = train_result['goal']
-            print(goal)
-            self.prev_goal = goal
-            self.prev_obs = o1
-            return {**super().train_step(sample), **train_result,
-                    **dict(goal_reward=goal_reward)}
-
+        train_result = self.sess.run(
+            fetches=dict(
+                goal=agent.new_goal,
+                goal_loss=agent.goal_loss,
+                # baseline_loss=agent.baseline_loss,
+                op=agent.train_goal),
+            feed_dict={
+                agent.old_goal: self.prev_goal,
+                agent.old_initial_obs: self.preprocess_func(self.prev_obs),
+                agent.new_initial_obs: self.preprocess_func(o1),
+                agent.goal_reward: goal_reward,
+            })
+        goal = train_result['goal']
+        print(goal)
+        self.prev_goal = goal
         self.prev_obs = o1
-        self.prev_goal = np.random.uniform(-1, 1, (1, ))
+
         return super().train_step(sample)
 
     def run_episode(self, o1, eval_period, render):

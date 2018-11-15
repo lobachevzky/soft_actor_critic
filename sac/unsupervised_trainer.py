@@ -114,13 +114,12 @@ class UnsupervisedTrainer(Trainer):
         return {**super().train_step(), **self.reinforce(self.initial_obs)}
 
     def reinforce(self, o1):
-        goal_space = self.hsr_env.goal_space
         agent = self.agents.act
         fetches = dict(goal=agent.new_goal)
         feed_dict = {agent.new_initial_obs: self.preprocess_func(o1)}
-        g = dict()
+        additional_results = dict()
         if self.prev_obs is not None:
-            goal_reward = goal_space.contains(self.prev_goal)
+            goal_reward = self.hsr_env.goal_space.contains(self.prev_goal)
             fetches.update(
                 goal_loss=agent.goal_loss,
                 op=agent.train_goal,
@@ -130,9 +129,10 @@ class UnsupervisedTrainer(Trainer):
                 agent.old_initial_obs: self.preprocess_func(self.prev_obs),
                 agent.goal_reward: goal_reward,
             })
-            g = dict(goal_reward=goal_reward)
+            additional_results = dict(goal_reward=goal_reward)
 
-        train_result = {**self.sess.run(fetches=fetches, feed_dict=feed_dict), **g}
+        train_result = {**self.sess.run(fetches=fetches, feed_dict=feed_dict),
+                        **additional_results}
         self.prev_goal = train_result['goal']
         self.prev_obs = o1
         return train_result

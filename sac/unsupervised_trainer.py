@@ -26,9 +26,9 @@ class UnsupervisedTrainer(Trainer):
         if episodes_per_goal == 1:
             self.lin_regress_op = None
         else:
-            x = np.stack(
-                [np.ones(episodes_per_goal),
-                 np.arange(episodes_per_goal)], axis=1)
+            x = np.stack([np.ones(episodes_per_goal),
+                          np.arange(episodes_per_goal)],
+                         axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.td_errors = None
         self.initial_obs = None
@@ -87,9 +87,8 @@ class UnsupervisedTrainer(Trainer):
                 )
 
                 if self.td_errors is not None:
-                    episodic = Samples(*[
-                        get_delta(*args) for args in zip(self.td_errors, post)
-                    ])
+                    episodic = Samples(
+                        *[get_delta(*args) for args in zip(self.td_errors, post)])
 
                     counter.update(
                         episodic_train_td_error_delta=episodic.train,
@@ -131,10 +130,11 @@ class UnsupervisedTrainer(Trainer):
             print(goal)
             self.prev_goal = goal
             self.prev_obs = o1
-            return {**super().train_step(sample), **train_result}
+            return {**super().train_step(sample), **train_result,
+                    **dict(goal_reward=goal_reward)}
 
         self.prev_obs = o1
-        self.prev_goal = np.random.uniform(-1, 1, (1,))
+        self.prev_goal = np.random.uniform(-1, 1, (1, ))
         return super().train_step(sample)
 
     def run_episode(self, o1, eval_period, render):
@@ -150,8 +150,7 @@ class UnsupervisedTrainer(Trainer):
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
 
         elif len(self.return_history) == self.episodes_per_goal:
-            _, return_delta = self.lin_regress_op @ np.array(
-                self.return_history)
+            _, return_delta = self.lin_regress_op @ np.array(self.return_history)
 
             # goal_reward = self.hsr_env.goal_space.contains(self.hsr_env.goal)
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
@@ -162,13 +161,14 @@ class UnsupervisedTrainer(Trainer):
             self.initial_obs = o1
             self.initial_achieved = achieved_goal
 
-            episode_count.update(return_delta=return_delta,)
-                                 # **train_result)
+            episode_count.update(return_delta=return_delta, )
+            # **train_result)
 
         goal_distance = distance_between(achieved_goal, self.hsr_env.goal)
         print(f'Goal distance: {goal_distance}')
-        episode_count.update(goal_distance=goal_distance,
-                             **super().run_episode(o1=o1, eval_period=eval_period, render=render))
+        episode_count.update(
+            goal_distance=goal_distance,
+            **super().run_episode(o1=o1, eval_period=eval_period, render=render))
 
         if not eval_period:
             self.return_history.append(episode_count['reward'])
@@ -191,4 +191,4 @@ def regression_slope2(Y):
     Y = np.array(Y)
     X = np.arange(Y.size)
     normalized_X = X - X.mean()
-    return np.sum(normalized_X * Y) / np.sum(normalized_X ** 2)
+    return np.sum(normalized_X * Y) / np.sum(normalized_X**2)

@@ -185,11 +185,10 @@ class AbstractAgent:
                 optimizer.minimize(self.goal_loss, var_list=goal_variables), )
             # optimizer.minimize(self.baseline_loss))
 
-            with tf.control_dependencies([self.train_goal]):
-                # infer
-                new_params = produce_goal_params(new_initial_obs, _reuse=True)
-                new_goal = self.policy_parameters_to_sample(new_params)
-                self.new_goal = tf.squeeze(new_goal, axis=0)
+            # infer
+            new_params = produce_goal_params(new_initial_obs, _reuse=True)
+            new_goal = self.policy_parameters_to_sample(new_params)
+            self.new_goal = tf.squeeze(new_goal, axis=0)
 
             # self.new_goal = tf.Print(self.new_goal, [self.old_goal], message='goal')
             # self.new_goal = tf.Print(self.new_goal, [old_params], message='params')

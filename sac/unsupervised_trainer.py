@@ -26,9 +26,9 @@ class UnsupervisedTrainer(Trainer):
         if episodes_per_goal == 1:
             self.lin_regress_op = None
         else:
-            x = np.stack([np.ones(episodes_per_goal),
-                          np.arange(episodes_per_goal)],
-                         axis=1)
+            x = np.stack(
+                [np.ones(episodes_per_goal),
+                 np.arange(episodes_per_goal)], axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.td_errors = None
         self.initial_obs = None

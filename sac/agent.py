@@ -43,7 +43,7 @@ class AbstractAgent:
                  reuse: bool = False,
                  scope: str = 'agent',
                  goal_learning_rate: float = None,
-                 size_goal=3) -> None:
+                 size_goal=1) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -155,21 +155,21 @@ class AbstractAgent:
             # placeholders
             self.old_goal = tf.placeholder(tf.float32, [size_goal], name='old_goal')
             self.old_initial_obs = tf.placeholder(
-                tf.float32, o_shape, name='old_initial_obs')
+                tf.float32, [1], name='old_initial_obs')
             self.new_initial_obs = tf.placeholder(
-                tf.float32, o_shape, name='new_initial_obs')
+                tf.float32, [1], name='new_initial_obs')
             self.goal_reward = tf.placeholder(tf.float32, (), name='goal_reward')
             old_goal = tf.expand_dims(self.old_goal, axis=0)
             old_initial_obs = tf.expand_dims(self.old_initial_obs, axis=0)
             new_initial_obs = tf.expand_dims(self.new_initial_obs, axis=0)
 
-            def produce_goal_params(initial_obs, reuse):
-                with tf.variable_scope('goal', reuse=reuse):
+            def produce_goal_params(initial_obs, _reuse):
+                with tf.variable_scope('goal', reuse=_reuse):
                     return self.produce_policy_parameters(size_goal,
                                                           self.goal_network(initial_obs))
 
             # train
-            old_params = produce_goal_params(old_initial_obs, reuse=False)
+            old_params = produce_goal_params(old_initial_obs, _reuse=False)
             goal_log_prob = self.policy_parameters_to_log_prob(old_goal, old_params)
             optimizer = tf.train.AdamOptimizer(learning_rate=goal_learning_rate)
             # with tf.variable_scope('baseline'):
@@ -189,7 +189,7 @@ class AbstractAgent:
 
             with tf.control_dependencies([self.train_goal]):
                 # infer
-                new_params = produce_goal_params(new_initial_obs, reuse=True)
+                new_params = produce_goal_params(new_initial_obs, _reuse=True)
                 new_goal = self.policy_parameters_to_sample(new_params)
                 self.new_goal = tf.squeeze(new_goal, axis=0)
 

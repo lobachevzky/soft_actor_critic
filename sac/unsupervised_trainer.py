@@ -37,7 +37,8 @@ class UnsupervisedTrainer(Trainer):
             np.random.uniform(-1, 1, space.low.shape)
             for space in self.env.observation_space.spaces
         ]
-        self.prev_goal = np.random.uniform(-1, 1, (3, ))
+        self.prev_obs = None
+        self.prev_goal = None
 
         self.double_goal_space = Box(
             low=self.hsr_env.goal_space.low * 1.1,
@@ -113,12 +114,16 @@ class UnsupervisedTrainer(Trainer):
         return {**super().train_step(), **self.reinforce()}
 
     def reinforce(self):
-        o1 = [
-            np.random.uniform(-1, 1, space.low.shape)
-            for space in self.env.observation_space.spaces
-        ]
+        # o1 = [
+        #     np.random.uniform(-1, 1, space.low.shape)
+        #     for space in self.env.observation_space.spaces
+        # ]
+        if self.prev_goal is None:
+            self.prev_goal = np.random.uniform(-1, 1, 1)
+            self.prev_obs = np.random.uniform(-1, 1, 1)
+        o1 = np.random.uniform(-1, 1, 1)
         agent = self.agents.act
-        goal_reward = -np.sum(np.square(self.prev_goal))
+        goal_reward = np.sum(np.square(self.prev_goal - self.prev_obs))
         train_result = {
             **self.sess.run(
                 fetches=dict(

@@ -199,8 +199,9 @@ class Trainer:
                     episode_count[k] = episode_mean[k] / float(time_steps)
                 return episode_count
 
-    def train_step(self):
-        return self.agents.act.train_step(self.sample_buffer())
+    def train_step(self, sample=None):
+        sample = sample or self.sample_buffer()
+        return self.agents.act.train_step(sample)
 
     def perform_update(self):
         counter = Counter()

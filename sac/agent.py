@@ -43,7 +43,7 @@ class AbstractAgent:
                  reuse: bool = False,
                  scope: str = 'agent',
                  goal_learning_rate: float = None,
-                 size_goal=1) -> None:
+                 size_goal=3) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -154,10 +154,8 @@ class AbstractAgent:
 
             # placeholders
             self.old_goal = tf.placeholder(tf.float32, [size_goal], name='old_goal')
-            self.old_initial_obs = tf.placeholder(
-                tf.float32, [1], name='old_initial_obs')
-            self.new_initial_obs = tf.placeholder(
-                tf.float32, [1], name='new_initial_obs')
+            self.old_initial_obs = tf.placeholder(tf.float32, [3], name='old_initial_obs')
+            self.new_initial_obs = tf.placeholder(tf.float32, [3], name='new_initial_obs')
             self.goal_reward = tf.placeholder(tf.float32, (), name='goal_reward')
             old_goal = tf.expand_dims(self.old_goal, axis=0)
             old_initial_obs = tf.expand_dims(self.old_initial_obs, axis=0)

@@ -43,7 +43,7 @@ class AbstractAgent:
                  reuse: bool = False,
                  scope: str = 'agent',
                  goal_learning_rate: float = None,
-                 size_goal=3) -> None:
+                 size_goal=1) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -166,27 +166,34 @@ class AbstractAgent:
                     return self.produce_policy_parameters(
                         size_goal, self.goal_network(initial_obs))
 
-            # infer
-            params = mu, sigma = produce_goal_params(new_initial_obs, reuse=False)
-            with tf.control_dependencies([ tf.Print(mu, params)]):
-                self.new_goal = tf.reshape(self.policy_parameters_to_sample(
-                params), [size_goal])
-
             # train
+            old_params = produce_goal_params(old_initial_obs, reuse=False)
             goal_log_prob = self.policy_parameters_to_log_prob(
-                old_goal, produce_goal_params(old_initial_obs, reuse=True))
+                old_goal, old_params)
             optimizer = tf.train.AdamOptimizer(learning_rate=goal_learning_rate)
             with tf.variable_scope('baseline'):
                 baseline = tf.squeeze(tf.layers.dense(self.goal_network(old_initial_obs), 1))
-                self.baseline_loss = tf.reduce_mean(
-                    .5 * tf.square(baseline - self.goal_reward))
+                self.baseline_loss = tf.reduce_mean(.5 * tf.square(baseline - self.goal_reward))
 
             self.goal_loss = tf.reduce_mean(
-                -goal_log_prob * tf.stop_gradient(self.goal_reward - baseline))
+                -goal_log_prob * tf.stop_gradient(self.goal_reward))
 
             self.train_goal = tf.group(
-                optimizer.minimize(self.goal_loss),
-                optimizer.minimize(self.baseline_loss))
+                    optimizer.minimize(self.goal_loss, var_list=get_variables('goal')), )
+            # optimizer.minimize(self.baseline_loss))
+
+            with tf.control_dependencies([self.train_goal]):
+                # infer
+                new_params = produce_goal_params(new_initial_obs, reuse=True)
+                new_goal = self.policy_parameters_to_sample(new_params)
+                self.new_goal = tf.squeeze(new_goal, axis=0)
+                log_prob = self.policy_parameters_to_log_prob(new_goal, new_params)
+            self.new_goal = tf.Print(self.new_goal, [old_params], message='old params')
+            self.new_goal = tf.Print(self.new_goal, [new_params], message='new params')
+            self.new_goal = tf.Print(self.new_goal, [log_prob], message='new log prob')
+            self.new_goal = tf.Print(self.new_goal, [goal_log_prob], message='old log prob')
+            self.new_goal = tf.Print(self.new_goal, [self.goal_reward], message='goal reward')
+            self.new_goal = tf.Print(self.new_goal, [self.goal_loss], message='goal loss')
 
             soft_update_xi_bar_ops = [
                 tf.assign(xbar, tau * x + (1 - tau) * xbar)

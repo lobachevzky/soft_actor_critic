@@ -43,7 +43,7 @@ class AbstractAgent:
                  reuse: bool = False,
                  scope: str = 'agent',
                  goal_learning_rate: float = None,
-                 size_goal=1) -> None:
+                 size_goal=3) -> None:
 
         self.default_train_values = [
             'entropy',
@@ -163,7 +163,8 @@ class AbstractAgent:
 
             def produce_goal_params(initial_obs, reuse):
                 with tf.variable_scope('goal', reuse=reuse):
-                    return self.produce_policy_parameters(size_goal, self.goal_network(initial_obs))
+                    return self.produce_policy_parameters(size_goal,
+                                                          self.goal_network(initial_obs))
 
             # train
             old_params = produce_goal_params(old_initial_obs, reuse=False)

@@ -115,8 +115,8 @@ class UnsupervisedTrainer(Trainer):
                 fetches=dict(
                     goal=agent.new_goal,
                     goal_loss=agent.goal_loss,
-                    # baseline_loss=agent.baseline_loss,
-                    op=agent.train_goal),
+                    op=agent.train_goal,
+                ),
                 feed_dict={
                     agent.old_goal: self.prev_goal,
                     agent.old_initial_obs: self.preprocess_func(self.prev_obs),

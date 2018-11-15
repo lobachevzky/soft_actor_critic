@@ -108,9 +108,7 @@ class UnsupervisedTrainer(Trainer):
         raise NotImplementedError
 
     def train_step(self, sample=None):
-        o1 = np.random.uniform(low=-1, high=1, size=(16,)),\
-             np.random.uniform(low=-1, high=1, size=(3,)),
-        goal = np.random.uniform(low=-1, high=1, size=(1,))
+        o1 = [1]
 
         if self.prev_obs is not None:
 
@@ -121,7 +119,7 @@ class UnsupervisedTrainer(Trainer):
                 fetches=dict(
                     goal=agent.new_goal,
                     goal_loss=agent.goal_loss,
-                    baseline_loss=agent.baseline_loss,
+                    # baseline_loss=agent.baseline_loss,
                     op=agent.train_goal),
                 feed_dict={
                     agent.old_goal: self.prev_goal,
@@ -129,14 +127,14 @@ class UnsupervisedTrainer(Trainer):
                     agent.new_initial_obs: self.preprocess_func(o1),
                     agent.goal_reward: goal_reward,
                 })
-            print(goal)
             goal = train_result['goal']
+            print(goal)
             self.prev_goal = goal
             self.prev_obs = o1
             return {**super().train_step(sample), **train_result}
 
         self.prev_obs = o1
-        self.prev_goal = goal
+        self.prev_goal = np.random.uniform(-1, 1, (1,))
         return super().train_step(sample)
 
     def run_episode(self, o1, eval_period, render):

@@ -120,7 +120,7 @@ class UnsupervisedTrainer(Trainer):
         o1 = self.prev_obs
         agent = self.agents.act
         goal_space = Box(low=-.2, high=.2, shape=[3])
-        goal_reward = goal_space.contains(self.prev_goal)
+        goal_reward = float(goal_space.contains(self.prev_goal))
         print(goal_reward)
         train_result = {
             **self.sess.run(

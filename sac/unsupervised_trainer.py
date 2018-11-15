@@ -137,7 +137,6 @@ class UnsupervisedTrainer(Trainer):
             **dict(goal_reward=goal_reward)
         }
         goal = train_result['goal']
-        print(goal, goal_space.contains(goal))
         self.prev_goal = goal
         self.prev_obs = o1
         return train_result
@@ -158,7 +157,6 @@ class UnsupervisedTrainer(Trainer):
             _, return_delta = self.lin_regress_op @ np.array(self.return_history)
             # goal_reward = self.hsr_env.goal_space.contains(self.hsr_env.goal)
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
-            # print(f'Goal: {goal}')
 
             # reset values
             self.return_history = []

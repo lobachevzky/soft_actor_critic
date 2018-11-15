@@ -26,9 +26,9 @@ class UnsupervisedTrainer(Trainer):
         if episodes_per_goal == 1:
             self.lin_regress_op = None
         else:
-            x = np.stack([np.ones(episodes_per_goal),
-                          np.arange(episodes_per_goal)],
-                         axis=1)
+            x = np.stack(
+                [np.ones(episodes_per_goal),
+                 np.arange(episodes_per_goal)], axis=1)
             self.lin_regress_op = np.linalg.inv(x.T @ x) @ x.T
         self.td_errors = None
         self.initial_obs = None
@@ -121,6 +121,7 @@ class UnsupervisedTrainer(Trainer):
         agent = self.agents.act
         goal_space = Box(low=-.2, high=.2, shape=[3])
         goal_reward = goal_space.contains(self.prev_goal)
+        print(goal_reward)
         train_result = {
             **self.sess.run(
                 fetches=dict(

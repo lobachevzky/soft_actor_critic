@@ -128,7 +128,7 @@ class UnsupervisedTrainer(Trainer):
         self.prev_goal = goal
         self.prev_obs = o1
 
-        return super().train_step(sample)
+        return {**train_result, **super().train_step(sample)}
 
     def run_episode(self, o1, eval_period, render):
         episode_count = dict()

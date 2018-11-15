@@ -163,9 +163,7 @@ class AbstractAgent:
 
             def produce_goal_params(initial_obs, reuse):
                 with tf.variable_scope('goal', reuse=reuse):
-                    return self.produce_policy_parameters(
-                        size_goal,
-                        tf.layers.dense(initial_obs, 1, use_bias=False, activation=None))
+                    return self.produce_policy_parameters(size_goal, initial_obs)
 
             # train
             old_params = produce_goal_params(old_initial_obs, reuse=False)

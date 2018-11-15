@@ -86,6 +86,7 @@ ACTIVATIONS = dict(
     elu=tf.nn.elu,
     selu=tf.nn.selu,
     prelu=parametric_relu,
+    none=None,
 )
 
 

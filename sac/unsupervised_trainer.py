@@ -119,7 +119,7 @@ class UnsupervisedTrainer(Trainer):
             self.prev_obs = self.hsr_env.goal_space.sample()
         o1 = self.prev_obs
         agent = self.agents.act
-        goal_space = Box(low=-.2, high=.2, shape=[3])
+        goal_space = Box(low=-.1, high=.1, shape=[3])
         goal_reward = goal_space.contains(self.prev_goal)
         train_result = {
             **self.sess.run(

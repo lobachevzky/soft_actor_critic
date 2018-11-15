@@ -114,14 +114,13 @@ class UnsupervisedTrainer(Trainer):
         return {**super().train_step(), **self.reinforce()}
 
     def reinforce(self):
+        goal_space = self.hsr_env.goal_space
         if self.prev_goal is None:
-            self.prev_goal = self.hsr_env.goal_space.sample()
-            self.prev_obs = self.hsr_env.goal_space.sample()
+            self.prev_goal = goal_space.sample()
+            self.prev_obs = goal_space.sample()
         o1 = self.prev_obs
         agent = self.agents.act
-        goal_space = Box(low=-.2, high=.2, shape=[3])
-        goal_reward = float(goal_space.contains(self.prev_goal))
-        print(goal_reward)
+        goal_reward = goal_space.contains(self.prev_goal)
         train_result = {
             **self.sess.run(
                 fetches=dict(
@@ -138,7 +137,6 @@ class UnsupervisedTrainer(Trainer):
             **dict(goal_reward=goal_reward)
         }
         goal = train_result['goal']
-        print(goal, goal_space.contains(goal))
         self.prev_goal = goal
         self.prev_obs = o1
         return train_result
@@ -159,7 +157,6 @@ class UnsupervisedTrainer(Trainer):
             _, return_delta = self.lin_regress_op @ np.array(self.return_history)
             # goal_reward = self.hsr_env.goal_space.contains(self.hsr_env.goal)
             self.hsr_env.set_goal(self.hsr_env.goal_space.sample())
-            # print(f'Goal: {goal}')
 
             # reset values
             self.return_history = []

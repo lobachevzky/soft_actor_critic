@@ -3,6 +3,7 @@ import argparse
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import wraps
+from itertools import filterfalse
 from pathlib import Path
 import re
 import tempfile
@@ -76,7 +77,7 @@ def cast_to_int(arg: str):
 
 
 HINDSIGHT_ENVS = {
-    HSREnv: HSRHindsightWrapper,
+    HSREnv:           HSRHindsightWrapper,
     MultiBlockHSREnv: MBHSRHindsightWrapper,
 }
 
@@ -107,7 +108,8 @@ def put_in_xml_setter(arg: str):
 
 def env_wrapper(func):
     @wraps(func)
-    def _wrapper(set_xml, use_dof, n_blocks, goal_space, xml_file, geofence, **kwargs):
+    def _wrapper(set_xml, use_dof, n_blocks, goal_space, xml_file, geofence,
+                 env_args: dict, **kwargs):
         xml_filepath = Path(
             Path(__file__).parent.parent, 'environments', 'models', xml_file).absolute()
         if set_xml is None:
@@ -121,10 +123,13 @@ def env_wrapper(func):
                 n_blocks=n_blocks,
                 goal_space=goal_space,
                 xml_filepath=xml_filepath) as temp_path:
-            return func(
-                geofence=geofence, temp_path=temp_path, goal_space=goal_space, **kwargs)
+            env_args.update(
+                geofence=geofence, xml_filepath=temp_path, goal_space=goal_space,
+            )
 
-    return _wrapper
+            return func(env_args=env_args, **kwargs)
+
+    return lambda wrapper_args, **kwargs: _wrapper(**wrapper_args, **kwargs)
 
 
 XMLSetter = namedtuple('XMLSetter', 'path value')
@@ -166,7 +171,7 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
                         rgba=rgba[i],
                         condim='6',
                         solimp="0.99 0.99 "
-                        "0.01",
+                               "0.01",
                         solref='0.01 1'))
                 ET.SubElement(body, 'freejoint', attrib=dict(name=f'block{i}joint'))
 
@@ -225,177 +230,142 @@ def mutate_xml(changes: List[XMLSetter], dofs: List[str], goal_space: Box, n_blo
 
 @env_wrapper
 def main(
-        max_steps,
-        min_lift_height,
-        geofence,
-        hindsight_geofence,
-        seed,
-        buffer_size,
-        activation,
-        n_layers,
-        layer_size,
-        goal_activation,
-        goal_n_layers,
-        goal_layer_size,
-        learning_rate,
-        reward_scale,
-        entropy_scale,
-        goal_space,
-        block_space,
-        grad_clip,
-        batch_size,
-        n_train_steps,
-        record_separate_episodes,
-        steps_per_action,
-        logdir,
-        save_path,
-        load_path,
-        render,
-        render_freq,
-        n_goals,
-        record,
-        randomize_pose,
-        image_dims,
-        record_freq,
-        record_path,
-        temp_path,
-        save_threshold,
-        no_random_reset,
-        obs_type,
-        debug,
         env,
         episodes_per_goal,
-        goal_learning_rate,
+        max_steps,
+        env_args,
+        hindsight_args,
+        trainer_args,
+        train_args,
 ):
     env_class = env
-    unsupervised = any([
-        episodes_per_goal,
-    ])
-    env = TimeLimit(
-        max_episode_steps=max_steps,
-        env=env_class(
-            steps_per_action=steps_per_action,
-            randomize_pose=randomize_pose,
-            min_lift_height=min_lift_height,
-            xml_filepath=temp_path,
-            block_space=block_space,
-            goal_space=goal_space,
-            geofence=geofence,
-            render=render,
-            render_freq=render_freq,
-            record=record,
-            record_path=record_path,
-            record_freq=record_freq,
-            record_separate_episodes=record_separate_episodes,
-            image_dimensions=image_dims,
-            no_random_reset=no_random_reset,
-            obs_type=obs_type,
-            random_goals=not unsupervised,
-        ))
+    unsupervised = any([episodes_per_goal, ])
+    env = TimeLimit(max_episode_steps=max_steps, env=env_class(**env_args))
 
-    kwargs = dict(
-        base_agent=MlpAgent,
-        seed=seed,
-        buffer_size=buffer_size,
-        activation=activation,
-        n_layers=n_layers,
-        layer_size=layer_size,
-        learning_rate=learning_rate,
-        goal_activation=goal_activation,
-        goal_n_layers=goal_n_layers,
-        goal_layer_size=goal_layer_size,
-        goal_learning_rate=goal_learning_rate,
-        reward_scale=reward_scale,
-        entropy_scale=entropy_scale,
-        grad_clip=grad_clip if grad_clip > 0 else None,
-        batch_size=batch_size,
-        debug=debug,
-        n_train_steps=n_train_steps,
-    )
+    trainer_args['base_agent'] = MlpAgent
 
     if unsupervised:
         trainer = UnsupervisedTrainer(
             env=env,
             episodes_per_goal=episodes_per_goal,
-            **kwargs,
+            **trainer_args,
         )
-    elif hindsight_geofence:
+    elif hindsight_args:
         trainer = HindsightTrainer(
-            env=HINDSIGHT_ENVS[env_class](env=env, geofence=hindsight_geofence),
-            n_goals=n_goals,
-            **kwargs)
+            env=HINDSIGHT_ENVS[env_class](env=env, **hindsight_args),
+            **trainer_args)
     else:
-        trainer = Trainer(env=env, **kwargs)
-    trainer.train(
-        load_path=load_path,
-        logdir=logdir,
-        render=False,
-        save_path=save_path,
-        save_threshold=save_threshold,
-    )
+        trainer = Trainer(env=env, render=False, **trainer_args)
+    trainer.train(**train_args)
 
 
-def cli():
-    p = argparse.ArgumentParser()
-    p.add_argument('--seed', type=int, required=True)
-    p.add_argument(
+def parse_groups(parser: argparse.ArgumentParser):
+    args = parser.parse_args()
+
+    def is_optional(group):
+        return group.title == 'optional arguments'
+
+    def parse_group(group):
+        # noinspection PyProtectedMember
+        return {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+
+    # noinspection PyUnresolvedReferences,PyProtectedMember
+    groups = [g for g in parser._action_groups if g.title != 'positional arguments']
+    optional = filter(is_optional, groups)
+    not_optional = filterfalse(is_optional, groups)
+
+    kwarg_dicts = {group.title: parse_group(group) for group in not_optional}
+    kwargs = (parse_group(next(optional)))
+    del kwargs['help']
+    return {**kwarg_dicts, **kwargs}
+
+
+def add_train_args(parser):
+    parser.add_argument('--logdir', type=str, default=None)
+    parser.add_argument('--load-path', type=str, default=None)
+    parser.add_argument('--save-path', type=str, default=None)
+    parser.add_argument('--save-threshold', type=int, default=None)
+
+
+def add_hindsight_args(parser):
+    parser.add_argument('--n-goals', type=int)
+    parser.add_argument('--hindsight-geofence', type=float)
+
+
+def add_trainer_args(parser):
+    parser.add_argument('--seed', type=int, required=True)
+    parser.add_argument(
         '--activation',
         type=parse_activation,
         default=tf.nn.relu,
         choices=ACTIVATIONS.values())
-    p.add_argument('--n-layers', type=int, required=True)
-    p.add_argument('--layer-size', type=int, required=True)
-    p.add_argument(
+    parser.add_argument('--n-layers', type=int, required=True)
+    parser.add_argument('--layer-size', type=int, required=True)
+    parser.add_argument(
         '--goal-activation',
         type=parse_activation,
         default=tf.nn.relu,
         choices=ACTIVATIONS.values())
-    p.add_argument('--goal-n-layers', type=int)
-    p.add_argument('--goal-layer-size', type=int)
-    p.add_argument('--goal-learning-rate', type=float)
-    p.add_argument('--buffer-size', type=cast_to_int, required=True)
-    p.add_argument('--n-train-steps', type=int, required=True)
-    p.add_argument('--steps-per-action', type=int, required=True)
-    p.add_argument('--batch-size', type=int, required=True)
-    scales = p.add_mutually_exclusive_group(required=True)
+    parser.add_argument('--goal-n-layers', type=int)
+    parser.add_argument('--goal-layer-size', type=int)
+    parser.add_argument('--goal-learning-rate', type=float)
+    parser.add_argument('--buffer-size', type=cast_to_int, required=True)
+    parser.add_argument('--n-train-steps', type=int, required=True)
+    parser.add_argument('--batch-size', type=int, required=True)
+    scales = parser.add_mutually_exclusive_group(required=True)
     scales.add_argument('--reward-scale', type=float, default=1)
     scales.add_argument('--entropy-scale', type=float, default=1)
-    p.add_argument('--learning-rate', type=float, required=True)
-    p.add_argument('--max-steps', type=int, required=True)
-    p.add_argument('--n-goals', type=int)
-    p.add_argument('--n-blocks', type=int, required=True)
-    p.add_argument('--min-lift-height', type=float, default=None)
-    p.add_argument('--grad-clip', type=float, required=True)
-    p.add_argument('--goal-space', type=parse_space(dim=3), default=None)  # TODO
-    p.add_argument('--block-space', type=parse_space(dim=4), required=True)
-    p.add_argument('--obs-type', type=str, default=None)
-    p.add_argument('--geofence', type=float, required=True)
-    p.add_argument('--hindsight-geofence', type=float)
-    p.add_argument('--no-random-reset', action='store_true')
-    p.add_argument('--randomize-pose', action='store_true')
-    p.add_argument('--logdir', type=str, default=None)
-    p.add_argument('--load-path', type=str, default=None)
-    p.add_argument('--save-path', type=str, default=None)
-    p.add_argument('--save-threshold', type=int, default=None)
-    p.add_argument(
+    parser.add_argument('--learning-rate', type=float, required=True)
+    parser.add_argument('--grad-clip', type=float, required=True)
+    parser.add_argument('--debug', action='store_true')
+
+
+def add_env_args(parser):
+    parser.add_argument(
         '--image-dims', type=parse_vector(length=2, delim=','), default='800,800')
-    p.add_argument('--render', action='store_true')
-    p.add_argument('--render-freq', type=int, default=None)
-    p.add_argument('--record', action='store_true')
-    p.add_argument('--record-separate-episodes', action='store_true')
-    p.add_argument('--record-freq', type=int, default=None)
-    p.add_argument('--record-path', type=Path, default=None)
-    p.add_argument('--xml-file', type=Path, default='world.xml')
-    p.add_argument('--set-xml', type=put_in_xml_setter, action='append', nargs='*')
-    p.add_argument('--use-dof', type=str, action='append')
-    p.add_argument(
+    parser.add_argument('--block-space', type=parse_space(dim=4), required=True)
+    parser.add_argument('--min-lift-height', type=float, default=None)
+    parser.add_argument('--no-random-reset', action='store_true')
+    parser.add_argument('--obs-type', type=str, default=None)
+    parser.add_argument('--randomize-pose', action='store_true')
+    parser.add_argument('--render', action='store_true')
+    parser.add_argument('--render-freq', type=int, default=None)
+    parser.add_argument('--record', action='store_true')
+    parser.add_argument('--record-separate-episodes', action='store_true')
+    parser.add_argument('--record-freq', type=int, default=None)
+    parser.add_argument('--record-path', type=Path, default=None)
+    parser.add_argument('--steps-per-action', type=int, required=True)
+
+
+def add_wrapper_args(parser):
+    parser.add_argument('--xml-file', type=Path, default='world.xml')
+    parser.add_argument('--set-xml', type=put_in_xml_setter, action='append',
+                        nargs='*')
+    parser.add_argument('--use-dof', type=str, action='append')
+    parser.add_argument('--geofence', type=float, required=True)
+    parser.add_argument('--n-blocks', type=int, required=True)
+    parser.add_argument('--goal-space', type=parse_space(dim=3),
+                        default=None)  # TODO
+
+
+def cli():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
         '--env',
         choices=ENVIRONMENTS.values(),
         type=lambda k: ENVIRONMENTS[k],
         default=HSREnv)
-    p.add_argument('--debug', action='store_true')
-    p.add_argument('--episodes-per-goal', type=int, default=1)
-    main(**vars(p.parse_args()))
+    parser.add_argument('--episodes-per-goal', type=int, default=1)
+    parser.add_argument('--max-steps', type=int, required=True)
+
+    add_wrapper_args(parser=parser.add_argument_group('wrapper_args'))
+    add_env_args(parser=parser.add_argument_group('env_args'))
+    add_trainer_args(parser=parser.add_argument_group('trainer_args'))
+    add_train_args(parser=parser.add_argument_group('train_args'))
+    add_hindsight_args(parser=parser.add_argument_group('hindsight_args'))
+
+    main(**(parse_groups(parser)))
 
 
 if __name__ == '__main__':

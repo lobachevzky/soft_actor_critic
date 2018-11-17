@@ -103,7 +103,7 @@ class Trainer:
               save_path: Path,
               load_path: Path,
               logdir: Path,
-              render: bool,
+              render: bool = False,
               save_threshold: int = None):
         saver = tf.train.Saver()
         tb_writer = None

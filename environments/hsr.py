@@ -26,7 +26,7 @@ class HSREnv:
                  min_lift_height: float = None,
                  randomize_pose: bool = False,
                  obs_type: str = None,
-                 image_dimensions: Tuple[int] = None,
+                 image_dims: Tuple[int] = None,
                  render: bool = False,
                  record_path: Path = None,
                  record_freq: int = None,
@@ -61,16 +61,16 @@ class HSREnv:
         self._record = any((record_separate_episodes, record_path, record_freq, record))
         if self._record:
             self._record_path = record_path or Path('/tmp/training-video')
-            image_dimensions = image_dimensions or (1000, 1000)
+            image_dims = image_dims or (1000, 1000)
             self._record_freq = record_freq or 20
 
             if not record_separate_episodes:
                 self._video_recorder = self.reset_recorder(self._record_path)
         else:
-            image_dimensions = image_dimensions or []
-        self._image_dimensions = image_dimensions
+            image_dims = image_dims or []
+        self._image_dimensions = image_dims
 
-        self.sim = mujoco.Sim(str(xml_filepath), *image_dimensions, n_substeps=1)
+        self.sim = mujoco.Sim(str(xml_filepath), *image_dims, n_substeps=1)
 
         # initial values
         self.initial_qpos = self.sim.qpos.ravel().copy()

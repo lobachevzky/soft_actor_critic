@@ -6,6 +6,7 @@ from typing import Any, Callable, Sequence, Union
 import gym
 import numpy as np
 import tensorflow as tf
+from gym import spaces
 from tensorflow.python import debug as tf_debug
 
 Shape = Union[int, Sequence[int]]
@@ -205,3 +206,16 @@ def parse_double(ctx, param, string):
         return
     a, b = map(float, string.split(','))
     return a, b
+
+
+def space_to_size(space: gym.Space):
+    if isinstance(space, spaces.Discrete):
+        return space.n
+    elif isinstance(space, (spaces.Dict, spaces.Tuple)):
+        if isinstance(space, spaces.Dict):
+            _spaces = list(space.spaces.values())
+        else:
+            _spaces = list(space.spaces)
+        return sum(space_to_size(s) for s in _spaces)
+    else:
+        return space.shape[0]

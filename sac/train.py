@@ -18,7 +18,8 @@ from environments.hindsight_wrapper import HindsightWrapper
 from sac.agent import AbstractAgent
 from sac.policies import CategoricalPolicy, GaussianPolicy
 from sac.replay_buffer import ReplayBuffer
-from sac.utils import Obs, Shape, Step, create_sess, get_space_attrs, unwrap_env, vectorize
+from sac.utils import Obs, Shape, Step, create_sess, get_space_attrs, unwrap_env, \
+    vectorize, space_to_size
 
 Agents = namedtuple('Agents', 'train act')
 
@@ -226,18 +227,6 @@ class Trainer:
                     **kwargs) -> AbstractAgent:
         if action_space is None:
             action_space = self.action_space
-
-        def space_to_size(space: gym.Space):
-            if isinstance(space, spaces.Discrete):
-                return space.n
-            elif isinstance(space, (spaces.Dict, spaces.Tuple)):
-                if isinstance(space, spaces.Dict):
-                    _spaces = list(space.spaces.values())
-                else:
-                    _spaces = list(space.spaces)
-                return sum(space_to_size(s) for s in _spaces)
-            else:
-                return space.shape[0]
 
         if isinstance(action_space, spaces.Discrete):
             policy_type = CategoricalPolicy

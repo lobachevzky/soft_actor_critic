@@ -323,7 +323,7 @@ def add_trainer_args(parser):
 def add_env_args(parser):
     parser.add_argument(
         '--image-dims', type=parse_vector(length=2, delim=','), default='800,800')
-    parser.add_argument('--block-space', type=parse_space(dim=4), required=True)
+    parser.add_argument('--block-space', type=parse_space(dim=4))
     parser.add_argument('--min-lift-height', type=float, default=None)
     parser.add_argument('--no-random-reset', action='store_true')
     parser.add_argument('--obs-type', type=str, default=None)

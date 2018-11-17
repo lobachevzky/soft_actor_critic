@@ -341,11 +341,10 @@ def add_wrapper_args(parser):
     parser.add_argument('--xml-file', type=Path, default='world.xml')
     parser.add_argument('--set-xml', type=put_in_xml_setter, action='append',
                         nargs='*')
-    parser.add_argument('--use-dof', type=str, action='append')
+    parser.add_argument('--use-dof', type=str, action='append', default=[])
     parser.add_argument('--geofence', type=float, required=True)
     parser.add_argument('--n-blocks', type=int, required=True)
-    parser.add_argument('--goal-space', type=parse_space(dim=3),
-                        default=None)  # TODO
+    parser.add_argument('--goal-space', type=parse_space(dim=3), required=True)  # TODO
 
 
 def cli():
